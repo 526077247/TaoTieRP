@@ -1,0 +1,8 @@
+{
+    "name": "com.taotie.render-pipelines",
+    "version": "1.0.0",
+    "displayName": "TaoTie RP",
+    "dependencies": {
+        "com.unity.render-pipelines.core": "14.0.10"
+      }
+}
