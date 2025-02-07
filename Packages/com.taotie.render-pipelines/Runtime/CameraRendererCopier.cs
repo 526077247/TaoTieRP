@@ -17,7 +17,7 @@ namespace TaoTie
 
 		public static bool RequiresRenderTargetResetAfterCopy => !copyTextureSupported;
 
-		public readonly Camera Camera => camera;
+		public Camera Camera => camera;
 
 		readonly Material material;
 

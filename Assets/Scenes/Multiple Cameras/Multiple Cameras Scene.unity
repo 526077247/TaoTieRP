@@ -785,7 +785,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.4399928, g: 1, b: 0.4198113, a: 1}
-  cutoff: 0.5
+  cutoff: 0.75
   metallic: 0
   smoothness: 0.73
   emissionColor: {r: 0.9764706, g: 1, b: 0.4392157, a: 1}
@@ -10226,7 +10226,7 @@ MonoBehaviour:
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 0
-    postFXSettings: {fileID: 11400000, guid: c5a268fdfe4e14ffd9efb94a8709e4f6, type: 2}
+    postFXSettings: {fileID: 11400000, guid: 16180271c9b8f6c4dba4914d9319a37f, type: 2}
     allowFXAA: 1
     keepAlpha: 1
     finalBlendMode:

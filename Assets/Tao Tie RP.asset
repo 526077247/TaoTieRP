@@ -12,39 +12,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b16a2a346ad2402d8102bcc0288905f6, type: 3}
   m_Name: Tao Tie RP
   m_EditorClassIdentifier: 
-  cameraBuffer:
-    allowHDR: 1
-    copyColor: 1
-    copyColorReflection: 0
-    copyDepth: 1
-    copyDepthReflection: 0
-    renderScale: 1
-    bicubicRescaling: 1
-    fxaa:
-      enabled: 1
-      fixedThreshold: 0.0312
-      relativeThreshold: 0.063
-      subpixelBlending: 0.75
-      quality: 2
-  useSRPBatcher: 1
-  useLightsPerObject: 1
-  shadows:
-    maxDistance: 30
-    distanceFade: 0.1
-    directional:
-      atlasSize: 4096
-      filter: 2
-      cascadeCount: 4
-      cascadeRatio1: 0.3
-      cascadeRatio2: 0.4
-      cascadeRatio3: 0.5
-      cascadeFade: 0.1
-      cascadeBlend: 1
-    other:
-      atlasSize: 1024
-      filter: 2
-  postFXSettings: {fileID: 11400000, guid: d78384e16e845f340a75fe167b39b86d, type: 2}
-  colorLUTResolution: 32
-  cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}
-  useDynamicBatching: 0
-  useGPUInstancing: 1
+  settings:
+    cameraBuffer:
+      allowHDR: 1
+      copyColor: 1
+      copyColorReflection: 0
+      copyDepth: 1
+      copyDepthReflection: 0
+      renderScale: 1
+      bicubicRescaling: 1
+      fxaa:
+        enabled: 1
+        fixedThreshold: 0.0312
+        relativeThreshold: 0.063
+        subpixelBlending: 0.75
+        quality: 2
+    useSRPBatcher: 1
+    useLightsPerObject: 1
+    shadows:
+      maxDistance: 30
+      distanceFade: 0.1
+      directional:
+        atlasSize: 4096
+        filter: 2
+        cascadeCount: 4
+        cascadeRatio1: 0.3
+        cascadeRatio2: 0.4
+        cascadeRatio3: 0.5
+        cascadeFade: 0.1
+        cascadeBlend: 1
+      other:
+        atlasSize: 1024
+        filter: 2
+    postFXSettings: {fileID: 11400000, guid: d78384e16e845f340a75fe167b39b86d, type: 2}
+    colorLUTResolution: 32
+    cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}

@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace TaoTie
 {
-    public class Shadows
+    public partial class Shadows
     {
         const int maxShadowedDirLightCount = 4, maxShadowedOtherLightCount = 16;
         const int maxCascades = 4;
@@ -30,75 +30,129 @@ namespace TaoTie
         ShadowedOtherLight[] shadowedOtherLights =
             new ShadowedOtherLight[maxShadowedOtherLightCount];
 
-        static string[] directionalFilterKeywords =
+        static readonly GlobalKeyword[] directionalFilterKeywords =
         {
-            "_DIRECTIONAL_PCF3",
-            "_DIRECTIONAL_PCF5",
-            "_DIRECTIONAL_PCF7",
+            GlobalKeyword.Create("_DIRECTIONAL_PCF3"),
+            GlobalKeyword.Create("_DIRECTIONAL_PCF5"),
+            GlobalKeyword.Create("_DIRECTIONAL_PCF7"),
         };
 
-        static string[] cascadeBlendKeywords =
+        static readonly GlobalKeyword[] otherFilterKeywords =
         {
-            "_CASCADE_BLEND_SOFT",
-            "_CASCADE_BLEND_DITHER"
+            GlobalKeyword.Create("_OTHER_PCF3"),
+            GlobalKeyword.Create("_OTHER_PCF5"),
+            GlobalKeyword.Create("_OTHER_PCF7"),
         };
 
-        static string[] shadowMaskKeywords =
+        static readonly GlobalKeyword[] cascadeBlendKeywords =
         {
-            "_SHADOW_MASK_ALWAYS",
-            "_SHADOW_MASK_DISTANCE"
+            GlobalKeyword.Create("_CASCADE_BLEND_SOFT"),
+            GlobalKeyword.Create("_CASCADE_BLEND_DITHER"),
         };
 
-        static string[] otherFilterKeywords =
+        static readonly GlobalKeyword[] shadowMaskKeywords =
         {
-            "_OTHER_PCF3",
-            "_OTHER_PCF5",
-            "_OTHER_PCF7",
+            GlobalKeyword.Create("_SHADOW_MASK_ALWAYS"),
+            GlobalKeyword.Create("_SHADOW_MASK_DISTANCE"),
         };
 
         static int
-            dirShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas"),
-            dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowMatrices"),
+            directionalShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas"),
+            directionalShadowCascadesId = Shader.PropertyToID("_DirectionalShadowCascades"),
+            directionalShadowMatricesId = Shader.PropertyToID("_DirectionalShadowMatrices"),
             otherShadowAtlasId = Shader.PropertyToID("_OtherShadowAtlas"),
-            otherShadowMatricesId = Shader.PropertyToID("_OtherShadowMatrices"),
-            otherShadowTilesId = Shader.PropertyToID("_OtherShadowTiles"),
+            otherShadowDataId = Shader.PropertyToID("_OtherShadowData"),
             cascadeCountId = Shader.PropertyToID("_CascadeCount"),
-            cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres"),
-            cascadeDataId = Shader.PropertyToID("_CascadeData"),
             shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize"),
             shadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade"),
             shadowPancakingId = Shader.PropertyToID("_ShadowPancaking");
 
-        static Vector4[]
-            cascadeCullingSpheres = new Vector4[maxCascades],
-            cascadeData = new Vector4[maxCascades],
-            otherShadowTiles = new Vector4[maxShadowedOtherLightCount];
+        static readonly DirectionalShadowCascade[] directionalShadowCascades =
+            new DirectionalShadowCascade[maxCascades];
 
-        static Matrix4x4[]
-            dirShadowMatrices = new Matrix4x4[maxShadowedDirLightCount * maxCascades],
-            otherShadowMatrices = new Matrix4x4[maxShadowedOtherLightCount];
+        private static Matrix4x4[]
+            dirShadowMatrices = new Matrix4x4[maxShadowedDirLightCount * maxCascades];
 
-        
+        static readonly OtherShadowData[] otherShadowData =
+            new OtherShadowData[maxShadowedOtherLightCount];
+
         ScriptableRenderContext context;
         CullingResults cullingResults;
         bool useShadowMask;
         ShadowSettings settings;
-        
+
         int shadowedDirLightCount, shadowedOtherLightCount;
         Vector4 atlasSizes;
         CommandBuffer buffer;
-        
-        public void Setup(
-            RenderGraphContext context, CullingResults cullingResults,
+        TextureHandle directionalAtlas, otherAtlas;
+
+        ComputeBufferHandle
+            directionalShadowCascadesBuffer,
+            directionalShadowMatricesBuffer,
+            otherShadowDataBuffer;
+
+        public void Setup(CullingResults cullingResults,
             ShadowSettings settings
         )
         {
-            buffer = context.cmd;
-            this.context = context.renderContext;
             this.cullingResults = cullingResults;
             this.settings = settings;
             shadowedDirLightCount = shadowedOtherLightCount = 0;
             useShadowMask = false;
+        }
+
+        public ShadowResources GetResources(
+            RenderGraph renderGraph,
+            RenderGraphBuilder builder)
+        {
+            int atlasSize = (int) settings.directional.atlasSize;
+            var desc = new TextureDesc(atlasSize, atlasSize)
+            {
+                depthBufferBits = DepthBits.Depth32,
+                isShadowMap = true,
+                name = "Directional Shadow Atlas"
+            };
+            directionalAtlas = shadowedDirLightCount > 0
+                ? builder.WriteTexture(renderGraph.CreateTexture(desc))
+                : renderGraph.defaultResources.defaultShadowTexture;
+
+            directionalShadowCascadesBuffer = builder.WriteComputeBuffer(
+                renderGraph.CreateComputeBuffer(new ComputeBufferDesc
+                {
+                    name = "Shadow Cascades",
+                    stride = DirectionalShadowCascade.stride,
+                    count = maxCascades
+                }));
+
+            directionalShadowMatricesBuffer = builder.WriteComputeBuffer(
+                renderGraph.CreateComputeBuffer(new ComputeBufferDesc
+                {
+                    name = "Directional Shadow Matrices",
+                    stride = 4 * 16,
+                    count = maxShadowedDirLightCount * maxCascades
+                }));
+
+            atlasSize = (int) settings.other.atlasSize;
+            desc.width = desc.height = atlasSize;
+            desc.name = "Other Shadow Atlas";
+            otherAtlas = shadowedOtherLightCount > 0
+                ? builder.WriteTexture(renderGraph.CreateTexture(desc))
+                : renderGraph.defaultResources.defaultShadowTexture;
+
+            otherShadowDataBuffer = builder.WriteComputeBuffer(
+                renderGraph.CreateComputeBuffer(new ComputeBufferDesc
+                {
+                    name = "Other Shadow Data",
+                    stride = OtherShadowData.stride,
+                    count = maxShadowedOtherLightCount
+                }));
+
+            return new ShadowResources(
+                directionalAtlas,
+                otherAtlas,
+                directionalShadowCascadesBuffer,
+                directionalShadowMatricesBuffer,
+                otherShadowDataBuffer);
         }
 
         void ExecuteBuffer()
@@ -151,29 +205,28 @@ namespace TaoTie
             return new Vector4(0f, 0f, 0f, -1f);
         }
 
-        public void Render()
+        public void Render(RenderGraphContext context)
         {
+            buffer = context.cmd;
+            this.context = context.renderContext;
             if (shadowedDirLightCount > 0)
             {
                 RenderDirectionalShadows();
-            }
-            else
-            {
-                buffer.GetTemporaryRT(
-                    dirShadowAtlasId, 1, 1,
-                    32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap
-                );
             }
 
             if (shadowedOtherLightCount > 0)
             {
                 RenderOtherShadows();
             }
-            else
-            {
-                buffer.SetGlobalTexture(otherShadowAtlasId, dirShadowAtlasId);
-            }
-            
+
+            buffer.SetGlobalBuffer(
+                directionalShadowCascadesId, directionalShadowCascadesBuffer);
+            buffer.SetGlobalBuffer(
+                directionalShadowMatricesId, directionalShadowMatricesBuffer);
+            buffer.SetGlobalBuffer(otherShadowDataId, otherShadowDataBuffer);
+            buffer.SetGlobalTexture(directionalShadowAtlasId, directionalAtlas);
+            buffer.SetGlobalTexture(otherShadowAtlasId, otherAtlas);
+
             SetKeywords(shadowMaskKeywords,
                 useShadowMask ? QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1 : -1);
             buffer.SetGlobalInt(
@@ -197,10 +250,8 @@ namespace TaoTie
             atlasSizes.x = atlasSize;
             atlasSizes.y = 1f / atlasSize;
 
-            buffer.GetTemporaryRT(dirShadowAtlasId, atlasSize, atlasSize,
-                32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
             buffer.SetRenderTarget(
-                dirShadowAtlasId,
+                directionalAtlas,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store
             );
             buffer.ClearRenderTarget(true, false, Color.clear);
@@ -215,12 +266,14 @@ namespace TaoTie
             {
                 RenderDirectionalShadows(i, split, tileSize);
             }
-            
-            buffer.SetGlobalVectorArray(
-                cascadeCullingSpheresId, cascadeCullingSpheres
-            );
-            buffer.SetGlobalVectorArray(cascadeDataId, cascadeData);
-            buffer.SetGlobalMatrixArray(dirShadowMatricesId, dirShadowMatrices);
+
+            buffer.SetBufferData(
+                directionalShadowCascadesBuffer, directionalShadowCascades,
+                0, 0, settings.directional.cascadeCount);
+            buffer.SetBufferData(
+                directionalShadowMatricesBuffer, dirShadowMatrices,
+                0, 0, shadowedDirLightCount * settings.directional.cascadeCount);
+
             SetKeywords(
                 directionalFilterKeywords, (int) settings.directional.filter - 1
             );
@@ -237,7 +290,8 @@ namespace TaoTie
             var shadowSettings =
                 new ShadowDrawingSettings(cullingResults, light.visibleLightIndex,
                     BatchCullingProjectionType.Orthographic
-                ) {
+                )
+                {
                     useRenderingLayerMaskTest = true
                 };
             int cascadeCount = settings.directional.cascadeCount;
@@ -258,7 +312,9 @@ namespace TaoTie
                 shadowSettings.splitData = splitData;
                 if (index == 0)
                 {
-                    SetCascadeData(i, splitData.cullingSphere, tileSize);
+                    directionalShadowCascades[i] = new DirectionalShadowCascade(
+                        splitData.cullingSphere,
+                        tileSize, settings.directional.filter);
                 }
 
                 int tileIndex = tileOffset + i;
@@ -280,12 +336,9 @@ namespace TaoTie
             int atlasSize = (int) settings.other.atlasSize;
             atlasSizes.z = atlasSize;
             atlasSizes.w = 1f / atlasSize;
-            buffer.GetTemporaryRT(
-                otherShadowAtlasId, atlasSize, atlasSize,
-                32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap
-            );
+
             buffer.SetRenderTarget(
-                otherShadowAtlasId,
+                otherAtlas,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store
             );
             buffer.ClearRenderTarget(true, false, Color.clear);
@@ -311,9 +364,11 @@ namespace TaoTie
                     i += 1;
                 }
             }
-            
-            buffer.SetGlobalMatrixArray(otherShadowMatricesId, otherShadowMatrices);
-            buffer.SetGlobalVectorArray(otherShadowTilesId, otherShadowTiles);
+
+            buffer.SetBufferData(
+                otherShadowDataBuffer, otherShadowData,
+                0, 0, shadowedOtherLightCount);
+            buffer.SetGlobalBuffer(otherShadowDataId, otherShadowDataBuffer);
             SetKeywords(
                 otherFilterKeywords, (int) settings.other.filter - 1
             );
@@ -327,7 +382,8 @@ namespace TaoTie
             var shadowSettings = new ShadowDrawingSettings(
                 cullingResults, light.visibleLightIndex,
                 BatchCullingProjectionType.Orthographic
-            ){
+            )
+            {
                 useRenderingLayerMaskTest = true
             };
             cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(
@@ -340,10 +396,10 @@ namespace TaoTie
             float bias = light.normalBias * filterSize * 1.4142136f;
             Vector2 offset = SetTileViewport(index, split, tileSize);
             float tileScale = 1f / split;
-            SetOtherTileData(index, offset, tileScale, bias);
-            otherShadowMatrices[index] = ConvertToAtlasMatrix(
-                projectionMatrix * viewMatrix, offset, tileScale
-            );
+            otherShadowData[index] = new OtherShadowData(
+                offset, tileScale, bias, atlasSizes.w * 0.5f,
+                ConvertToAtlasMatrix(
+                    projectionMatrix * viewMatrix, offset, tileScale));
             buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
             buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
             ExecuteBuffer();
@@ -357,7 +413,8 @@ namespace TaoTie
             var shadowSettings = new ShadowDrawingSettings(
                 cullingResults, light.visibleLightIndex,
                 BatchCullingProjectionType.Orthographic
-            ){
+            )
+            {
                 useRenderingLayerMaskTest = true
             };
             float texelSize = 2f / tileSize;
@@ -381,10 +438,10 @@ namespace TaoTie
 
                 Vector2 offset = SetTileViewport(tileIndex, split, tileSize);
 
-                SetOtherTileData(tileIndex, offset, tileScale, bias);
-                otherShadowMatrices[tileIndex] = ConvertToAtlasMatrix(
-                    projectionMatrix * viewMatrix, offset, tileScale
-                );
+                otherShadowData[tileIndex] = new OtherShadowData(
+                    offset, tileScale, bias, atlasSizes.w * 0.5f,
+                    ConvertToAtlasMatrix(
+                        projectionMatrix * viewMatrix, offset, tileScale));
 
                 buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
                 buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
@@ -437,20 +494,6 @@ namespace TaoTie
             return data;
         }
 
-        void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
-        {
-            cascadeData[index].x = 1f / cullingSphere.w;
-            float texelSize = 2f * cullingSphere.w / tileSize;
-            float filterSize = texelSize * ((float) settings.directional.filter + 1f);
-            cullingSphere.w -= filterSize;
-            cullingSphere.w *= cullingSphere.w;
-            cascadeCullingSpheres[index] = cullingSphere;
-            cascadeData[index] = new Vector4(
-                1f / cullingSphere.w,
-                filterSize * 1.4142136f
-            );
-        }
-
         Vector2 SetTileViewport(int index, int split, float tileSize)
         {
             Vector2 offset = new Vector2(index % split, index / split);
@@ -485,41 +528,13 @@ namespace TaoTie
             return m;
         }
 
-        void SetOtherTileData(int index, Vector2 offset, float scale, float bias)
-        {
-            float border = atlasSizes.w * 0.5f;
-            Vector4 data;
-            data.x = offset.x * scale + border;
-            data.y = offset.y * scale + border;
-            data.z = scale - border - border;
-            data.w = bias;
-            otherShadowTiles[index] = data;
-        }
-
-        void SetKeywords(string[] keywords, int enabledIndex)
+        void SetKeywords(GlobalKeyword[] keywords, int enabledIndex)
         {
             for (int i = 0; i < keywords.Length; i++)
             {
-                if (i == enabledIndex)
-                {
-                    buffer.EnableShaderKeyword(keywords[i]);
-                }
-                else
-                {
-                    buffer.DisableShaderKeyword(keywords[i]);
-                }
+                buffer.SetKeyword(keywords[i], i == enabledIndex);
             }
         }
 
-        public void Cleanup()
-        {
-            buffer.ReleaseTemporaryRT(dirShadowAtlasId);
-            if (shadowedOtherLightCount > 0)
-            {
-                buffer.ReleaseTemporaryRT(otherShadowAtlasId);
-            }
-
-            ExecuteBuffer();
-        }
     }
 }

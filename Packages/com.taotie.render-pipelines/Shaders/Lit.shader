@@ -50,7 +50,7 @@
             Blend [_SrcBlend] [_DstBlend]
             ZWrite [_ZWrite]
             HLSLPROGRAM
-            #pragma target 3.5
+            #pragma target 4.5
             #pragma shader_feature _RECEIVE_SHADOWS
             #pragma shader_feature _CLIPPING
             #pragma shader_feature _PREMULTIPLY_ALPHA

@@ -8,7 +8,7 @@ namespace TaoTie
     public class SetupPass
     {
         static readonly ProfilingSampler sampler = new("Setup");
-        
+
         static readonly int attachmentSizeID = Shader.PropertyToID("_CameraBufferSize");
 
         bool useIntermediateAttachments;
@@ -29,11 +29,11 @@ namespace TaoTie
                     depthAttachment,
                     RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
+
             cmd.ClearRenderTarget(
                 clearFlags <= CameraClearFlags.Depth,
                 clearFlags <= CameraClearFlags.Color,
-                clearFlags == CameraClearFlags.Color ?
-                    camera.backgroundColor.linear : Color.clear
+                clearFlags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear
             );
             cmd.SetGlobalVector(attachmentSizeID, new Vector4(
                 1f / attachmentSize.x, 1f / attachmentSize.y,
@@ -43,7 +43,7 @@ namespace TaoTie
             cmd.Clear();
         }
 
-        public static CameraRendererTextures Record(RenderGraph renderGraph, bool useIntermediateAttachments, 
+        public static CameraRendererTextures Record(RenderGraph renderGraph, bool useIntermediateAttachments,
             bool copyColor, bool copyDepth, bool useHDR, Vector2Int attachmentSize, Camera camera)
         {
             using RenderGraphBuilder builder =
@@ -60,7 +60,9 @@ namespace TaoTie
                 {
                     pass.clearFlags = CameraClearFlags.Color;
                 }
-                var desc = new TextureDesc(attachmentSize.x, attachmentSize.y){
+
+                var desc = new TextureDesc(attachmentSize.x, attachmentSize.y)
+                {
                     colorFormat = SystemInfo.GetGraphicsFormat(
                         useHDR ? DefaultFormat.HDR : DefaultFormat.LDR),
                     name = "Color Attachment"
@@ -71,6 +73,7 @@ namespace TaoTie
                     desc.name = "Color Copy";
                     colorCopy = renderGraph.CreateTexture(desc);
                 }
+
                 desc.depthBufferBits = DepthBits.Depth32;
                 desc.name = "Depth Attachment";
                 depthAttachment = pass.depthAttachment = builder.WriteTexture(renderGraph.CreateTexture(desc));
@@ -83,14 +86,14 @@ namespace TaoTie
             else
             {
                 colorAttachment = depthAttachment =
-                pass.colorAttachment = pass.depthAttachment =
-                    builder.WriteTexture(renderGraph.ImportBackbuffer(
-                        BuiltinRenderTextureType.CameraTarget));
+                    pass.colorAttachment = pass.depthAttachment =
+                        builder.WriteTexture(renderGraph.ImportBackbuffer(
+                            BuiltinRenderTextureType.CameraTarget));
             }
+
             builder.AllowPassCulling(false);
-            builder.SetRenderFunc<SetupPass>((pass, context) => pass.Render(context));
-            return new CameraRendererTextures(
-                colorAttachment, depthAttachment, colorCopy, depthCopy);
+            builder.SetRenderFunc<SetupPass>(static (pass, context) => pass.Render(context));
+            return new CameraRendererTextures(colorAttachment, depthAttachment, colorCopy, depthCopy);
         }
     }
 }

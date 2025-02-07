@@ -8,7 +8,7 @@ namespace TaoTie
         static readonly ProfilingSampler sampler = new("Final");
         CameraRendererCopier copier;
         TextureHandle colorAttachment;
-        
+
         void Render(RenderGraphContext context)
         {
             CommandBuffer buffer = context.cmd;
@@ -17,10 +17,8 @@ namespace TaoTie
             buffer.Clear();
         }
 
-        public static void Record(
-                RenderGraph renderGraph,
-                CameraRendererCopier copier,
-                in CameraRendererTextures textures)
+        public static void Record(RenderGraph renderGraph, CameraRendererCopier copier,
+            in CameraRendererTextures textures)
         {
             using RenderGraphBuilder builder =
                 renderGraph.AddRenderPass(sampler.name, out FinalPass pass, sampler);

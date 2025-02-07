@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using UnityEditor;
 
 namespace TaoTie
 {
@@ -7,14 +8,13 @@ namespace TaoTie
     public class PostFXSettings : ScriptableObject
     {
 
-        [SerializeField]
-        Shader shader = default;
+        [SerializeField] Shader shader = default;
 
-        [System.Serializable]
+        [Serializable]
         public struct BloomSettings
         {
             public bool ignoreRenderScale;
-            
+
             [Range(0f, 16f)] public int maxIterations;
 
             [Min(1f)] public int downscaleLimit;
@@ -40,8 +40,8 @@ namespace TaoTie
             [Range(0.05f, 0.95f)] public float scatter;
         }
 
-        [SerializeField]
-        BloomSettings bloom = new BloomSettings {
+        [SerializeField] BloomSettings bloom = new BloomSettings
+        {
             scatter = 0.7f
         };
 
@@ -66,84 +66,78 @@ namespace TaoTie
         {
             public float postExposure;
 
-            [Range(-100f, 100f)]
-            public float contrast;
+            [Range(-100f, 100f)] public float contrast;
 
-            [ColorUsage(false, true)]
-            public Color colorFilter;
+            [ColorUsage(false, true)] public Color colorFilter;
 
-            [Range(-180f, 180f)]
-            public float hueShift;
+            [Range(-180f, 180f)] public float hueShift;
 
-            [Range(-100f, 100f)]
-            public float saturation;
+            [Range(-100f, 100f)] public float saturation;
         }
 
-        [SerializeField]
-        ColorAdjustmentsSettings colorAdjustments = new ColorAdjustmentsSettings {
+        [SerializeField] ColorAdjustmentsSettings colorAdjustments = new ColorAdjustmentsSettings
+        {
             colorFilter = Color.white
         };
 
         public ColorAdjustmentsSettings ColorAdjustments => colorAdjustments;
-        
-        [Serializable]
-        public struct WhiteBalanceSettings {
 
-            [Range(-100f, 100f)]
-            public float temperature, tint;
+        [Serializable]
+        public struct WhiteBalanceSettings
+        {
+
+            [Range(-100f, 100f)] public float temperature, tint;
         }
 
-        [SerializeField]
-        WhiteBalanceSettings whiteBalance = default;
+        [SerializeField] WhiteBalanceSettings whiteBalance = default;
 
         public WhiteBalanceSettings WhiteBalance => whiteBalance;
-        
+
         [Serializable]
-        public struct SplitToningSettings {
+        public struct SplitToningSettings
+        {
 
-            [ColorUsage(false)]
-            public Color shadows, highlights;
+            [ColorUsage(false)] public Color shadows, highlights;
 
-            [Range(-100f, 100f)]
-            public float balance;
+            [Range(-100f, 100f)] public float balance;
         }
 
-        [SerializeField]
-        SplitToningSettings splitToning = new SplitToningSettings {
+        [SerializeField] SplitToningSettings splitToning = new SplitToningSettings
+        {
             shadows = Color.gray,
             highlights = Color.gray
         };
 
         public SplitToningSettings SplitToning => splitToning;
-        
+
         [Serializable]
-        public struct ChannelMixerSettings {
+        public struct ChannelMixerSettings
+        {
 
             public Vector3 red, green, blue;
         }
-	
-        [SerializeField]
-        ChannelMixerSettings channelMixer = new ChannelMixerSettings {
+
+        [SerializeField] ChannelMixerSettings channelMixer = new ChannelMixerSettings
+        {
             red = Vector3.right,
             green = Vector3.up,
             blue = Vector3.forward
         };
 
         public ChannelMixerSettings ChannelMixer => channelMixer;
-        
+
         [Serializable]
-        public struct ShadowsMidtonesHighlightsSettings {
+        public struct ShadowsMidtonesHighlightsSettings
+        {
 
-            [ColorUsage(false, true)]
-            public Color shadows, midtones, highlights;
+            [ColorUsage(false, true)] public Color shadows, midtones, highlights;
 
-            [Range(0f, 2f)]
-            public float shadowsStart, shadowsEnd, highlightsStart, highLightsEnd;
+            [Range(0f, 2f)] public float shadowsStart, shadowsEnd, highlightsStart, highLightsEnd;
         }
 
-        [SerializeField]
-        ShadowsMidtonesHighlightsSettings
-            shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings {
+        [SerializeField] ShadowsMidtonesHighlightsSettings
+            shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings
+            {
                 shadows = Color.white,
                 midtones = Color.white,
                 highlights = Color.white,
@@ -154,24 +148,38 @@ namespace TaoTie
 
         public ShadowsMidtonesHighlightsSettings ShadowsMidtonesHighlights =>
             shadowsMidtonesHighlights;
-        
-        [SerializeField]
-        ToneMappingSettings toneMapping = default;
+
+        [SerializeField] ToneMappingSettings toneMapping = default;
 
         public ToneMappingSettings ToneMapping => toneMapping;
-        
-        
-        [System.NonSerialized]
-        Material material;
 
-        public Material Material {
-            get {
-                if (material == null && shader != null) {
+
+        [System.NonSerialized] Material material;
+
+        public Material Material
+        {
+            get
+            {
+                if (material == null && shader != null)
+                {
                     material = new Material(shader);
                     material.hideFlags = HideFlags.HideAndDontSave;
                 }
+
                 return material;
             }
+        }
+
+        public static bool AreApplicableTo(Camera camera)
+        {
+#if UNITY_EDITOR
+            if (camera.cameraType == CameraType.SceneView &&
+                !SceneView.currentDrawingSceneView.sceneViewState.showImageEffects)
+            {
+                return false;
+            }
+#endif
+            return camera.cameraType <= CameraType.SceneView;
         }
     }
 }

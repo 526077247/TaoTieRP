@@ -9,7 +9,7 @@ namespace TaoTie
     {
 #if UNITY_EDITOR
         static readonly ProfilingSampler sampler = new("Gizmos");
-        
+
         bool requiresDepthCopy;
 
         CameraRendererCopier copier;
@@ -27,11 +27,12 @@ namespace TaoTie
                 renderContext.ExecuteCommandBuffer(buffer);
                 buffer.Clear();
             }
+
             renderContext.DrawGizmos(copier.Camera, GizmoSubset.PreImageEffects);
             renderContext.DrawGizmos(copier.Camera, GizmoSubset.PostImageEffects);
         }
 #endif
-        
+
         [Conditional("UNITY_EDITOR")]
         public static void Record(
                 RenderGraph renderGraph,
@@ -52,6 +53,7 @@ namespace TaoTie
                 {
                     pass.depthAttachment = builder.ReadTexture(textures.depthAttachment);
                 }
+
                 builder.SetRenderFunc<GizmosPass>((pass, context) => pass.Render(context));
             }
 #endif

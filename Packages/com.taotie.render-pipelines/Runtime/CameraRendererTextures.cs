@@ -5,8 +5,10 @@ namespace TaoTie
     public readonly ref struct CameraRendererTextures
     {
         public readonly TextureHandle
-            colorAttachment, depthAttachment,
-            colorCopy, depthCopy;
+            colorAttachment,
+            depthAttachment,
+            colorCopy,
+            depthCopy;
 
         public CameraRendererTextures(
             TextureHandle colorAttachment,

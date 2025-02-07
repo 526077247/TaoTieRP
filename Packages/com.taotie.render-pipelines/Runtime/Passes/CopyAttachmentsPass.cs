@@ -7,14 +7,15 @@ namespace TaoTie
     public class CopyAttachmentsPass
     {
         static readonly ProfilingSampler sampler = new("Copy Attachments");
+
         static readonly int
             colorCopyID = Shader.PropertyToID("_CameraColorTexture"),
             depthCopyID = Shader.PropertyToID("_CameraDepthTexture");
-        
+
         bool copyColor, copyDepth;
-	
+
         CameraRendererCopier copier;
-	
+
         TextureHandle colorAttachment, depthAttachment, colorCopy, depthCopy;
 
         void Render(RenderGraphContext context)
@@ -25,11 +26,13 @@ namespace TaoTie
                 copier.Copy(buffer, colorAttachment, colorCopy, false);
                 buffer.SetGlobalTexture(colorCopyID, colorCopy);
             }
+
             if (copyDepth)
             {
                 copier.Copy(buffer, depthAttachment, depthCopy, true);
                 buffer.SetGlobalTexture(depthCopyID, depthCopy);
             }
+
             if (CameraRendererCopier.RequiresRenderTargetResetAfterCopy)
             {
                 buffer.SetRenderTarget(
@@ -39,6 +42,7 @@ namespace TaoTie
                     RenderBufferLoadAction.Load, RenderBufferStoreAction.Store
                 );
             }
+
             context.renderContext.ExecuteCommandBuffer(buffer);
             buffer.Clear();
         }
@@ -62,10 +66,12 @@ namespace TaoTie
                 {
                     pass.colorCopy = builder.WriteTexture(textures.colorCopy);
                 }
+
                 if (copyDepth)
                 {
                     pass.depthCopy = builder.WriteTexture(textures.depthCopy);
                 }
+
                 builder.AllowPassCulling(true);
                 builder.SetRenderFunc<CopyAttachmentsPass>(
                     (pass, context) => pass.Render(context));

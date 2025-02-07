@@ -10,7 +10,7 @@ namespace TaoTie
     {
 
         partial void InitializeForEditor();
-        partial void DisposeForEditor ();
+        partial void DisposeForEditor();
 #if UNITY_EDITOR
 
         static Lightmapping.RequestLightsDelegate lightsDelegate =
@@ -55,13 +55,14 @@ namespace TaoTie
                     output[i] = lightData;
                 }
             };
-        
+
         partial void InitializeForEditor()
         {
             Lightmapping.SetDelegate(lightsDelegate);
         }
 
-        partial void DisposeForEditor () {
+        partial void DisposeForEditor()
+        {
             Lightmapping.ResetDelegate();
         }
 #endif

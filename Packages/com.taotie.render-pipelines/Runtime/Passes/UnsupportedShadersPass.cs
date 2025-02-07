@@ -9,7 +9,9 @@ namespace TaoTie
     public class UnsupportedShadersPass
     {
 #if UNITY_EDITOR
-        static ShaderTagId[] shaderTagIds  =
+        static readonly ProfilingSampler sampler = new("Unsupported Shaders");
+        
+        static ShaderTagId[] shaderTagIds =
         {
             new ShaderTagId("Always"),
             new ShaderTagId("ForwardBase"),
@@ -18,9 +20,9 @@ namespace TaoTie
             new ShaderTagId("VertexLMRGBM"),
             new ShaderTagId("VertexLM")
         };
-        
+
         static Material errorMaterial;
-        
+
         RendererListHandle list;
 
         void Render(RenderGraphContext context)
@@ -36,7 +38,7 @@ namespace TaoTie
         {
 #if UNITY_EDITOR
             using RenderGraphBuilder builder = renderGraph.AddRenderPass(
-                "Unsupported Shaders", out UnsupportedShadersPass pass);
+                sampler.name, out UnsupportedShadersPass pass, sampler);
             if (errorMaterial == null)
             {
                 errorMaterial = new(Shader.Find("Hidden/InternalErrorShader"));
@@ -48,7 +50,7 @@ namespace TaoTie
                     overrideMaterial = errorMaterial,
                     renderQueueRange = RenderQueueRange.all
                 }));
-            
+
             builder.SetRenderFunc<UnsupportedShadersPass>(
                 (pass, context) => pass.Render(context));
 #endif

@@ -13,22 +13,26 @@ namespace TaoTie
         [RenderingLayerMaskField] public int renderingLayerMask = -1;
 
         public bool maskLights = false;
-        
-        public enum RenderScaleMode { Inherit, Multiply, Override }
+
+        public enum RenderScaleMode
+        {
+            Inherit,
+            Multiply,
+            Override
+        }
 
         public RenderScaleMode renderScaleMode = RenderScaleMode.Inherit;
 
-        [Range(0.1f, 2f)]
-        public float renderScale = 1f;
+        [Range(0.1f, 2f)] public float renderScale = 1f;
 
         public bool overridePostFX = false;
 
         public PostFXSettings postFXSettings = default;
 
         public bool allowFXAA = false;
-        
+
         public bool keepAlpha = false;
-        
+
         [Serializable]
         public struct FinalBlendMode
         {
@@ -41,8 +45,9 @@ namespace TaoTie
             source = BlendMode.One,
             destination = BlendMode.Zero
         };
-        
-        public float GetRenderScale (float scale) {
+
+        public float GetRenderScale(float scale)
+        {
             return
                 renderScaleMode == RenderScaleMode.Inherit ? scale :
                 renderScaleMode == RenderScaleMode.Override ? renderScale :

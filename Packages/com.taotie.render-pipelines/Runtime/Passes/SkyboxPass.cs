@@ -25,10 +25,10 @@ namespace TaoTie
                 using RenderGraphBuilder builder = renderGraph.AddRenderPass(
                     sampler.name, out SkyboxPass pass, sampler);
                 pass.camera = camera;
-                
+
                 builder.ReadWriteTexture(textures.colorAttachment);
                 builder.ReadTexture(textures.depthAttachment);
-                
+
                 builder.SetRenderFunc<SkyboxPass>(
                     (pass, context) => pass.Render(context));
             }

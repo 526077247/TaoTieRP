@@ -6,9 +6,11 @@
 
         static string[] renderingLayerNames;
 
-        static TaoTieRenderPipelineAsset () {
+        static TaoTieRenderPipelineAsset()
+        {
             renderingLayerNames = new string[31];
-            for (int i = 0; i < renderingLayerNames.Length; i++) {
+            for (int i = 0; i < renderingLayerNames.Length; i++)
+            {
                 renderingLayerNames[i] = "Layer " + (i + 1);
             }
         }
