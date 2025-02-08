@@ -108,15 +108,15 @@ namespace TaoTie
             using (renderGraph.RecordAndExecute(renderGraphParameters))
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
-                LightResources lightResources = LightingPass.Record(
-                    renderGraph, cullingResults,bufferSize, settings.forwardPlus, shadowSettings,
-                    cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
+                ShadowTextures shadowTextures = LightingPass.Record(
+                    renderGraph, cullingResults,settings.forwardPlus, bufferSize,shadowSettings,
+                    cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
+                        -1);
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
                     useHDR, bufferSize, camera);
                 GeometryPass.Record(
-                    renderGraph, camera, cullingResults,
-                    cameraSettings.renderingLayerMask, true, textures, lightResources);
+                    renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
 
                 SkyboxPass.Record(renderGraph, camera, textures);
 
@@ -126,8 +126,7 @@ namespace TaoTie
                     renderGraph, useColorTexture, useDepthTexture, copier, textures);
 
                 GeometryPass.Record(
-                    renderGraph, camera, cullingResults,
-                    cameraSettings.renderingLayerMask, false, textures, lightResources);
+                    renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                 UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
                 if (hasActivePostFX)
                 {
@@ -144,7 +143,7 @@ namespace TaoTie
                 {
                     FinalPass.Record(renderGraph, copier, textures);
                 }
-                DebugPass.Record(renderGraph, settings, camera, lightResources);
+                DebugPass.Record(renderGraph, settings, camera);
                 GizmosPass.Record(renderGraph, copier, textures);
             }
 

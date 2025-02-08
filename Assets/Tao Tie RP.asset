@@ -28,22 +28,23 @@ MonoBehaviour:
         subpixelBlending: 0.75
         quality: 2
     useSRPBatcher: 1
-    useLightsPerObject: 0
+    forwardPlus:
+      tileSize: 64
+      maxLightsPerTile: 31
     shadows:
       maxDistance: 30
       distanceFade: 0.1
+      filterQuality: 1
       directional:
         atlasSize: 4096
-        filter: 2
         cascadeCount: 4
         cascadeRatio1: 0.3
         cascadeRatio2: 0.4
         cascadeRatio3: 0.5
         cascadeFade: 0.1
-        cascadeBlend: 1
+        softCascadeBlend: 0
       other:
         atlasSize: 1024
-        filter: 2
     postFXSettings: {fileID: 11400000, guid: d78384e16e845f340a75fe167b39b86d, type: 2}
     colorLUTResolution: 32
     cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}

@@ -6,13 +6,25 @@
 // w: Tile data size, as integer.
 float4 _ForwardPlusTileSettings;
 
-StructuredBuffer<int> _ForwardPlusTiles;
+#define MAX_TILES_COUNT 2048
+CBUFFER_START(_ForwardPlus)
+    int _ForwardPlusTileLength;
+    int4 _ForwardPlusTiles[MAX_TILES_COUNT];
+CBUFFER_END
+
 
 struct ForwardPlusTile
 {
     int2 coordinates;
 
     int index;
+
+    int GetForwardPlusTiles(int temp)
+    {
+        int offset = floor(temp * 0.25 + 0.1);
+        int type = round(temp - offset * 4);
+        return _ForwardPlusTiles[offset][type];
+    }
 	
     int GetTileDataSize()
     {
@@ -26,7 +38,7 @@ struct ForwardPlusTile
 
     int GetLightCount()
     {
-        return _ForwardPlusTiles[GetHeaderIndex()];
+        return GetForwardPlusTiles(GetHeaderIndex());
     }
 
     int GetFirstLightIndexInTile()
@@ -41,7 +53,7 @@ struct ForwardPlusTile
 
     int GetLightIndex(int lightIndexInTile)
     {
-        return _ForwardPlusTiles[lightIndexInTile];
+        return GetForwardPlusTiles(lightIndexInTile);
     }
 
     bool IsMinimumEdgePixel(float2 screenUV)
