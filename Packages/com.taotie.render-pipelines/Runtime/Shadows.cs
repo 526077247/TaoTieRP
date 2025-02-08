@@ -30,25 +30,13 @@ namespace TaoTie
         ShadowedOtherLight[] shadowedOtherLights =
             new ShadowedOtherLight[maxShadowedOtherLightCount];
 
-        static readonly GlobalKeyword[] directionalFilterKeywords =
-        {
-            GlobalKeyword.Create("_DIRECTIONAL_PCF3"),
-            GlobalKeyword.Create("_DIRECTIONAL_PCF5"),
-            GlobalKeyword.Create("_DIRECTIONAL_PCF7"),
+        static readonly GlobalKeyword[] filterQualityKeywords = {
+            GlobalKeyword.Create("_SHADOW_FILTER_MEDIUM"),
+            GlobalKeyword.Create("_SHADOW_FILTER_HIGH"),
         };
 
-        static readonly GlobalKeyword[] otherFilterKeywords =
-        {
-            GlobalKeyword.Create("_OTHER_PCF3"),
-            GlobalKeyword.Create("_OTHER_PCF5"),
-            GlobalKeyword.Create("_OTHER_PCF7"),
-        };
-
-        static readonly GlobalKeyword[] cascadeBlendKeywords =
-        {
-            GlobalKeyword.Create("_CASCADE_BLEND_SOFT"),
-            GlobalKeyword.Create("_CASCADE_BLEND_DITHER"),
-        };
+        static readonly GlobalKeyword softCascadeBlendKeyword =
+            GlobalKeyword.Create("_SOFT_CASCADE_BLEND");
 
         static readonly GlobalKeyword[] shadowMaskKeywords =
         {
@@ -218,7 +206,8 @@ namespace TaoTie
             {
                 RenderOtherShadows();
             }
-
+            SetKeywords(filterQualityKeywords, (int)settings.filterQuality - 1);
+            
             buffer.SetGlobalBuffer(
                 directionalShadowCascadesId, directionalShadowCascadesBuffer);
             buffer.SetGlobalBuffer(
@@ -273,13 +262,8 @@ namespace TaoTie
             buffer.SetBufferData(
                 directionalShadowMatricesBuffer, dirShadowMatrices,
                 0, 0, shadowedDirLightCount * settings.directional.cascadeCount);
-
-            SetKeywords(
-                directionalFilterKeywords, (int) settings.directional.filter - 1
-            );
-            SetKeywords(
-                cascadeBlendKeywords, (int) settings.directional.cascadeBlend - 1
-            );
+            
+            buffer.SetKeyword(softCascadeBlendKeyword, settings.directional.softCascadeBlend);
             buffer.EndSample("Directional Shadows");
             ExecuteBuffer();
         }
@@ -314,7 +298,7 @@ namespace TaoTie
                 {
                     directionalShadowCascades[i] = new DirectionalShadowCascade(
                         splitData.cullingSphere,
-                        tileSize, settings.directional.filter);
+                        tileSize, settings.DirectionalFilterSize);
                 }
 
                 int tileIndex = tileOffset + i;
@@ -369,9 +353,7 @@ namespace TaoTie
                 otherShadowDataBuffer, otherShadowData,
                 0, 0, shadowedOtherLightCount);
             buffer.SetGlobalBuffer(otherShadowDataId, otherShadowDataBuffer);
-            SetKeywords(
-                otherFilterKeywords, (int) settings.other.filter - 1
-            );
+
             buffer.EndSample("Other Shadows");
             ExecuteBuffer();
         }
@@ -392,7 +374,7 @@ namespace TaoTie
             );
             shadowSettings.splitData = splitData;
             float texelSize = 2f / (tileSize * projectionMatrix.m00);
-            float filterSize = texelSize * ((float) settings.other.filter + 1f);
+            float filterSize = texelSize * settings.OtherFilterSize;
             float bias = light.normalBias * filterSize * 1.4142136f;
             Vector2 offset = SetTileViewport(index, split, tileSize);
             float tileScale = 1f / split;
@@ -418,7 +400,7 @@ namespace TaoTie
                 useRenderingLayerMaskTest = true
             };
             float texelSize = 2f / tileSize;
-            float filterSize = texelSize * ((float) settings.other.filter + 1f);
+            float filterSize = texelSize * settings.OtherFilterSize;
             float bias = light.normalBias * filterSize * 1.4142136f;
             float tileScale = 1f / split;
             float fovBias =

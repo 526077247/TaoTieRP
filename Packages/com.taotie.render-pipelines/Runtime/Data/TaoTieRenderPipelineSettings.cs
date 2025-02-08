@@ -17,9 +17,9 @@ namespace TaoTie
             }
         };
 
-        public bool
-            useSRPBatcher = true,
-            useLightsPerObject = true;
+        public bool useSRPBatcher = true;
+
+        public ForwardPlusSettings forwardPlus;
 
         public ShadowSettings shadows;
 

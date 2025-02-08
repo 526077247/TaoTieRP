@@ -3,12 +3,8 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-
 namespace TaoTie
 {
-
-	using static PostFXStack;
-
 	public class BloomPass
 	{
 		const int maxBloomPyramidLevels = 16;
@@ -44,7 +40,7 @@ namespace TaoTie
 			buffer.SetGlobalVector(thresholdId, threshold);
 
 			stack.Draw(buffer, colorSource, pyramid[0],
-				bloom.fadeFireflies ? Pass.BloomPrefilterFireflies : Pass.BloomPrefilter);
+				bloom.fadeFireflies ? PostFXStack.Pass.BloomPrefilterFireflies : PostFXStack.Pass.BloomPrefilter);
 
 			int fromId = 0, toId = 2;
 			int i;
@@ -52,9 +48,9 @@ namespace TaoTie
 			{
 				int midId = toId - 1;
 				stack.Draw(buffer, pyramid[fromId], pyramid[midId],
-					Pass.BloomHorizontal);
+					PostFXStack.Pass.BloomHorizontal);
 				stack.Draw(buffer, pyramid[midId], pyramid[toId],
-					Pass.BloomVertical);
+					PostFXStack.Pass.BloomVertical);
 				fromId = toId;
 				toId += 2;
 			}
@@ -62,18 +58,18 @@ namespace TaoTie
 			buffer.SetGlobalFloat(
 				bicubicUpsamplingId, bloom.bicubicUpsampling ? 1f : 0f);
 
-			Pass combinePass, finalPass;
+			PostFXStack.Pass combinePass, finalPass;
 			float finalIntensity;
 			if (bloom.mode == PostFXSettings.BloomSettings.Mode.Additive)
 			{
-				combinePass = finalPass = Pass.BloomAdd;
+				combinePass = finalPass = PostFXStack.Pass.BloomAdd;
 				buffer.SetGlobalFloat(intensityId, 1f);
 				finalIntensity = bloom.intensity;
 			}
 			else
 			{
-				combinePass = Pass.BloomScatter;
-				finalPass = Pass.BloomScatterFinal;
+				combinePass = PostFXStack.Pass.BloomScatter;
+				finalPass = PostFXStack.Pass.BloomScatterFinal;
 				buffer.SetGlobalFloat(intensityId, bloom.scatter);
 				finalIntensity = Mathf.Min(bloom.intensity, 1f);
 			}
@@ -83,7 +79,7 @@ namespace TaoTie
 				toId -= 5;
 				for (i -= 1; i > 0; i--)
 				{
-					buffer.SetGlobalTexture(fxSource2Id, pyramid[toId + 1]);
+					buffer.SetGlobalTexture(PostFXStack.fxSource2Id, pyramid[toId + 1]);
 					stack.Draw(buffer, pyramid[fromId], pyramid[toId], combinePass);
 					fromId = toId;
 					toId -= 2;
@@ -91,7 +87,7 @@ namespace TaoTie
 			}
 
 			buffer.SetGlobalFloat(intensityId, finalIntensity);
-			buffer.SetGlobalTexture(fxSource2Id, colorSource);
+			buffer.SetGlobalTexture(PostFXStack.fxSource2Id, colorSource);
 			stack.Draw(buffer, pyramid[fromId], bloomResult, finalPass);
 		}
 

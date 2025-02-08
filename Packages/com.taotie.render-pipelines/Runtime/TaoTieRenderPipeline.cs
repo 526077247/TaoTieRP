@@ -5,47 +5,42 @@ using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 namespace TaoTie
 {
-    public partial class TaoTieRenderPipeline: RenderPipeline 
+    public partial class TaoTieRenderPipeline : RenderPipeline
     {
-        readonly bool useLightsPerObject;
-        ShadowSettings shadowSettings;
-        PostFXSettings postFXSettings;
-        CameraBufferSettings cameraBufferSettings;
-        int colorLUTResolution;
-        
+        readonly TaoTieRenderPipelineSettings settings;
+
         readonly RenderGraph renderGraph = new("TaoTie SRP Render Graph");
-        public TaoTieRenderPipeline(CameraBufferSettings cameraBufferSettings, bool useSRPBatcher, 
-            bool useLightsPerObject, ShadowSettings shadowSettings,
-            PostFXSettings postFXSettings, int colorLUTResolution, Shader cameraRendererShader)
+
+        public TaoTieRenderPipeline(TaoTieRenderPipelineSettings settings)
         {
-            this.colorLUTResolution = colorLUTResolution;
-            this.cameraBufferSettings = cameraBufferSettings;
-            this.shadowSettings = shadowSettings;
-            this.postFXSettings = postFXSettings;
-            this.useLightsPerObject = useLightsPerObject;
-            GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+            this.settings = settings;
+            GraphicsSettings.useScriptableRenderPipelineBatching =
+                settings.useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
             InitializeForEditor();
-            renderer = new CameraRenderer(cameraRendererShader);
+            renderer = new(settings.cameraRendererShader, settings.cameraDebuggerShader);
         }
 
         private CameraRenderer renderer;
-        
-        protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
+
+        protected override void Render(ScriptableRenderContext context, Camera[] cameras)
+        {
+        }
 
         protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
         {
             base.Render(context, cameras);
-            
-            for (int i = 0; i < cameras.Count; i++) {
-                renderer.Render(renderGraph, context, cameras[i],cameraBufferSettings,useLightsPerObject,
-                    shadowSettings, postFXSettings, colorLUTResolution);
+
+            for (int i = 0; i < cameras.Count; i++)
+            {
+                renderer.Render(renderGraph, context, cameras[i], settings);
             }
-            
+
             renderGraph.EndFrame();
         }
-        
-        protected override void Dispose (bool disposing) {
+
+        protected override void Dispose(bool disposing)
+        {
             base.Dispose(disposing);
             DisposeForEditor();
             renderer.Dispose();

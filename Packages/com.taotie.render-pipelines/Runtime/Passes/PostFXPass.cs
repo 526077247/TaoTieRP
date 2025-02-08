@@ -5,8 +5,6 @@ using UnityEngine.Rendering;
 
 namespace TaoTie
 {
-	using static PostFXStack;
-
 	public class PostFXPass
 	{
 		static readonly ProfilingSampler
@@ -55,23 +53,23 @@ namespace TaoTie
 		void Render(RenderGraphContext context)
 		{
 			CommandBuffer buffer = context.cmd;
-			buffer.SetGlobalFloat(finalSrcBlendId, 1f);
-			buffer.SetGlobalFloat(finalDstBlendId, 0f);
+			buffer.SetGlobalFloat(PostFXStack.finalSrcBlendId, 1f);
+			buffer.SetGlobalFloat(PostFXStack.finalDstBlendId, 0f);
 
 			RenderTargetIdentifier finalSource;
-			Pass finalPass;
+			PostFXStack.Pass finalPass;
 			if (stack.BufferSettings.fxaa.enabled)
 			{
 				finalSource = colorGradingResult;
-				finalPass = keepAlpha ? Pass.FXAA : Pass.FXAAWithLuma;
+				finalPass = keepAlpha ? PostFXStack.Pass.FXAA : PostFXStack.Pass.FXAAWithLuma;
 				ConfigureFXAA(buffer);
 				stack.Draw(buffer, colorSource, finalSource,
-					keepAlpha ? Pass.ApplyColorGrading : Pass.ApplyColorGradingWithLuma);
+					keepAlpha ? PostFXStack.Pass.ApplyColorGrading : PostFXStack.Pass.ApplyColorGradingWithLuma);
 			}
 			else
 			{
 				finalSource = colorSource;
-				finalPass = Pass.ApplyColorGrading;
+				finalPass = PostFXStack.Pass.ApplyColorGrading;
 			}
 
 			if (scaleMode == ScaleMode.None)
@@ -83,7 +81,7 @@ namespace TaoTie
 				stack.Draw(buffer, finalSource, scaledResult, finalPass);
 				buffer.SetGlobalFloat(copyBicubicId,
 					scaleMode == ScaleMode.Bicubic ? 1f : 0f);
-				stack.DrawFinal(buffer, scaledResult, Pass.FinalRescale);
+				stack.DrawFinal(buffer, scaledResult, PostFXStack.Pass.FinalRescale);
 			}
 
 			context.renderContext.ExecuteCommandBuffer(buffer);

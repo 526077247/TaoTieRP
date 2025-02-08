@@ -11,19 +11,22 @@ namespace TaoTie
 
         static CameraSettings defaultCameraSettings = new CameraSettings();
 
-        Lighting lighting = new Lighting();
         PostFXStack postFXStack = new PostFXStack();
 
         Material material;
-        Texture2D missingTexture;
 
-
-        public CameraRenderer(Shader shader) => material = CoreUtils.CreateEngineMaterial(shader);
-
-        public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera, 
-            CameraBufferSettings bufferSettings, bool useLightsPerObject,
-            ShadowSettings shadowSettings, PostFXSettings postFXSettings, int colorLUTResolution)
+        public CameraRenderer(Shader shader, Shader cameraDebuggerShader)
         {
+            material = CoreUtils.CreateEngineMaterial(shader);
+            CameraDebugger.Initialize(cameraDebuggerShader);
+        }
+
+        public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera,
+            TaoTieRenderPipelineSettings settings)
+        {
+            CameraBufferSettings bufferSettings = settings.cameraBuffer;
+            PostFXSettings postFXSettings = settings.postFXSettings;
+            ShadowSettings shadowSettings = settings.shadows;
 
             ProfilingSampler cameraSampler;
             CameraSettings cameraSettings;
@@ -37,6 +40,7 @@ namespace TaoTie
                 cameraSampler = ProfilingSampler.Get(camera.cameraType);
                 cameraSettings = defaultCameraSettings;
             }
+
             bool useColorTexture, useDepthTexture;
             if (camera.cameraType == CameraType.Reflection)
             {
@@ -54,6 +58,9 @@ namespace TaoTie
             {
                 postFXSettings = cameraSettings.postFXSettings;
             }
+
+            bool hasActivePostFX =
+                postFXSettings != null && PostFXSettings.AreApplicableTo(camera);
             float renderScale = cameraSettings.GetRenderScale(bufferSettings.renderScale);
             bool useScaledRendering = renderScale < 0.99f || renderScale > 1.01f;
 #if UNITY_EDITOR
@@ -68,29 +75,27 @@ namespace TaoTie
             {
                 return;
             }
+
             scriptableCullingParameters.shadowDistance =
                 Mathf.Min(shadowSettings.maxDistance, camera.farClipPlane);
             CullingResults cullingResults = context.Cull(ref scriptableCullingParameters);
 
             bool useHDR = bufferSettings.allowHDR && camera.allowHDR;
             Vector2Int bufferSize = default;
-            if (useScaledRendering) {
+            if (useScaledRendering)
+            {
                 renderScale = Mathf.Clamp(renderScale, renderScaleMin, renderScaleMax);
-                bufferSize.x = (int)(camera.pixelWidth * renderScale);
-                bufferSize.y = (int)(camera.pixelHeight * renderScale);
+                bufferSize.x = (int) (camera.pixelWidth * renderScale);
+                bufferSize.y = (int) (camera.pixelHeight * renderScale);
             }
-            else {
+            else
+            {
                 bufferSize.x = camera.pixelWidth;
                 bufferSize.y = camera.pixelHeight;
             }
-            
-            bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
-            postFXStack.Setup(camera,bufferSize, postFXSettings, cameraSettings.keepAlpha, useHDR, colorLUTResolution, 
-                cameraSettings.finalBlendMode, bufferSettings.bicubicRescaling, bufferSettings.fxaa);
 
-            bool useIntermediateBuffer = useScaledRendering ||
-                                         useColorTexture || useDepthTexture || postFXStack.IsActive;
-            
+            bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
+
             var renderGraphParameters = new RenderGraphParameters
             {
                 commandBuffer = CommandBufferPool.Get(),
@@ -100,43 +105,49 @@ namespace TaoTie
                 scriptableRenderContext = context
             };
 
-            using (renderGraph.RecordAndExecute(renderGraphParameters)) 
+            using (renderGraph.RecordAndExecute(renderGraphParameters))
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
-                LightingPass.Record(
-                    renderGraph, lighting,
-                    cullingResults, shadowSettings, useLightsPerObject,
+                LightResources lightResources = LightingPass.Record(
+                    renderGraph, cullingResults,bufferSize, settings.forwardPlus, shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
                 CameraRendererTextures textures = SetupPass.Record(
-                    renderGraph, useIntermediateBuffer, useColorTexture, useDepthTexture,
+                    renderGraph, useColorTexture, useDepthTexture,
                     useHDR, bufferSize, camera);
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults,
-                    useLightsPerObject, cameraSettings.renderingLayerMask, true, textures);
+                    cameraSettings.renderingLayerMask, true, textures, lightResources);
 
                 SkyboxPass.Record(renderGraph, camera, textures);
 
                 var copier = new CameraRendererCopier(material, camera, cameraSettings.finalBlendMode);
-                
+
                 CopyAttachmentsPass.Record(
                     renderGraph, useColorTexture, useDepthTexture, copier, textures);
 
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults,
-                    useLightsPerObject, cameraSettings.renderingLayerMask, false, textures);
+                    cameraSettings.renderingLayerMask, false, textures, lightResources);
                 UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
-                if (postFXStack.IsActive)
+                if (hasActivePostFX)
                 {
-                    PostFXPass.Record(renderGraph, postFXStack, textures);
+                    postFXStack.BufferSettings = bufferSettings;
+                    postFXStack.BufferSize = bufferSize;
+                    postFXStack.Camera = camera;
+                    postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
+                    postFXStack.Settings = postFXSettings;
+                    PostFXPass.Record(
+                        renderGraph, postFXStack, (int) settings.colorLUTResolution,
+                        cameraSettings.keepAlpha, textures);
                 }
-                else if (useIntermediateBuffer)
+                else
                 {
                     FinalPass.Record(renderGraph, copier, textures);
                 }
-                GizmosPass.Record(renderGraph, useIntermediateBuffer, copier, textures);
+                DebugPass.Record(renderGraph, settings, camera, lightResources);
+                GizmosPass.Record(renderGraph, copier, textures);
             }
 
-            lighting.Cleanup();
             context.ExecuteCommandBuffer(renderGraphParameters.commandBuffer);
             context.Submit();
             CommandBufferPool.Release(renderGraphParameters.commandBuffer);
@@ -145,6 +156,7 @@ namespace TaoTie
         public void Dispose()
         {
             CoreUtils.Destroy(material);
+            CameraDebugger.Cleanup();
         }
     }
 }

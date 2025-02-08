@@ -3,6 +3,8 @@
     "version": "1.0.0",
     "displayName": "TaoTie RP",
     "dependencies": {
-        "com.unity.render-pipelines.core": "14.0.10"
+        "com.unity.render-pipelines.core": "14.0.10",
+        "com.unity.burst": "1.8.19",
+        "com.unity.mathematics": "1.2.6"
       }
 }

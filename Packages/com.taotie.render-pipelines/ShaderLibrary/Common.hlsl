@@ -37,6 +37,7 @@ float OrthographicDepthBufferToLinear (float rawDepth) {
 }
 
 #include "Fragment.hlsl"
+#include "ForwardPlus.hlsl"
 
 float DistanceSquared(float3 pA, float3 pB) {
     return dot(pA - pB, pA - pB);

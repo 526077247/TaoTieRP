@@ -5,9 +5,6 @@ using UnityEngine.Rendering;
 
 namespace TaoTie
 {
-	using static PostFXSettings;
-	using static PostFXStack;
-
 	public class ColorLUTPass
 	{
 		static readonly ProfilingSampler sampler = new("Color LUT");
@@ -42,7 +39,7 @@ namespace TaoTie
 		void ConfigureColorAdjustments(
 			CommandBuffer buffer, PostFXSettings settings)
 		{
-			ColorAdjustmentsSettings colorAdjustments = settings.ColorAdjustments;
+			PostFXSettings.ColorAdjustmentsSettings colorAdjustments = settings.ColorAdjustments;
 			buffer.SetGlobalVector(colorAdjustmentsId, new Vector4(
 				Mathf.Pow(2f, colorAdjustments.postExposure),
 				colorAdjustments.contrast * 0.01f + 1f,
@@ -54,7 +51,7 @@ namespace TaoTie
 
 		void ConfigureWhiteBalance(CommandBuffer buffer, PostFXSettings settings)
 		{
-			WhiteBalanceSettings whiteBalance = settings.WhiteBalance;
+			PostFXSettings.WhiteBalanceSettings whiteBalance = settings.WhiteBalance;
 			buffer.SetGlobalVector(whiteBalanceId,
 				ColorUtils.ColorBalanceToLMSCoeffs(
 					whiteBalance.temperature, whiteBalance.tint));
@@ -62,7 +59,7 @@ namespace TaoTie
 
 		void ConfigureSplitToning(CommandBuffer buffer, PostFXSettings settings)
 		{
-			SplitToningSettings splitToning = settings.SplitToning;
+			PostFXSettings.SplitToningSettings splitToning = settings.SplitToning;
 			Color splitColor = splitToning.shadows;
 			splitColor.a = splitToning.balance * 0.01f;
 			buffer.SetGlobalColor(splitToningShadowsId, splitColor);
@@ -71,7 +68,7 @@ namespace TaoTie
 
 		void ConfigureChannelMixer(CommandBuffer buffer, PostFXSettings settings)
 		{
-			ChannelMixerSettings channelMixer = settings.ChannelMixer;
+			PostFXSettings.ChannelMixerSettings channelMixer = settings.ChannelMixer;
 			buffer.SetGlobalVector(channelMixerRedId, channelMixer.red);
 			buffer.SetGlobalVector(channelMixerGreenId, channelMixer.green);
 			buffer.SetGlobalVector(channelMixerBlueId, channelMixer.blue);
@@ -80,7 +77,7 @@ namespace TaoTie
 		void ConfigureShadowsMidtonesHighlights(
 			CommandBuffer buffer, PostFXSettings settings)
 		{
-			ShadowsMidtonesHighlightsSettings smh =
+			PostFXSettings.ShadowsMidtonesHighlightsSettings smh =
 				settings.ShadowsMidtonesHighlights;
 			buffer.SetGlobalColor(smhShadowsId, smh.shadows.linear);
 			buffer.SetGlobalColor(smhMidtonesId, smh.midtones.linear);
@@ -109,10 +106,10 @@ namespace TaoTie
 				0.5f / lutWidth, 0.5f / lutHeight,
 				lutHeight / (lutHeight - 1f)));
 
-			ToneMappingSettings.Mode mode = settings.ToneMapping.mode;
-			Pass pass = Pass.ColorGradingNone + (int) mode;
+			PostFXSettings.ToneMappingSettings.Mode mode = settings.ToneMapping.mode;
+			PostFXStack.Pass pass = PostFXStack.Pass.ColorGradingNone + (int) mode;
 			buffer.SetGlobalFloat(colorGradingLUTInLogId,
-				stack.BufferSettings.allowHDR && pass != Pass.ColorGradingNone ? 1f : 0f);
+				stack.BufferSettings.allowHDR && pass != PostFXStack.Pass.ColorGradingNone ? 1f : 0f);
 			stack.Draw(buffer, colorLUT, pass);
 			buffer.SetGlobalVector(colorGradingLUTParametersId,
 				new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f));

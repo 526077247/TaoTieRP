@@ -2,26 +2,21 @@
 #define TAOTIE_SHADOWS_INCLUDED
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
-#if defined(_DIRECTIONAL_PCF3)
-    #define DIRECTIONAL_FILTER_SAMPLES 4
-    #define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
-#elif defined(_DIRECTIONAL_PCF5)
-    #define DIRECTIONAL_FILTER_SAMPLES 9
-    #define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_5x5
-#elif defined(_DIRECTIONAL_PCF7)
+#if defined(_SHADOW_FILTER_HIGH)
     #define DIRECTIONAL_FILTER_SAMPLES 16
     #define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_7x7
-#endif
-
-#if defined(_OTHER_PCF3)
-    #define OTHER_FILTER_SAMPLES 4
-    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
-#elif defined(_OTHER_PCF5)
-    #define OTHER_FILTER_SAMPLES 9
-    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_5x5
-#elif defined(_OTHER_PCF7)
     #define OTHER_FILTER_SAMPLES 16
     #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_7x7
+#elif defined(_SHADOW_FILTER_MEDIUM)
+    #define DIRECTIONAL_FILTER_SAMPLES 9
+    #define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_5x5
+    #define OTHER_FILTER_SAMPLES 9
+    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_5x5
+#else
+    #define DIRECTIONAL_FILTER_SAMPLES 4
+    #define DIRECTIONAL_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
+    #define OTHER_FILTER_SAMPLES 4
+    #define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
 #endif
 
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
@@ -106,12 +101,10 @@ ShadowData GetShadowData (Surface surfaceWS) {
     if (i == _CascadeCount && _CascadeCount > 0) {
         data.strength = 0.0;
     }
-#if defined(_CASCADE_BLEND_DITHER)
+#if !defined(_SOFT_CASCADE_BLEND)
     else if (data.cascadeBlend < surfaceWS.dither) {
     	i += 1;
     }
-#endif
-#if !defined(_CASCADE_BLEND_SOFT)
     data.cascadeBlend = 1.0;
 #endif
     data.cascadeIndex = i;

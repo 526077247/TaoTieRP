@@ -15,10 +15,10 @@ namespace TaoTie
             public DirectionalShadowCascade(
                 Vector4 cullingSphere,
                 float tileSize,
-                ShadowSettings.FilterMode filterMode)
+                float filterSize)
             {
                 float texelSize = 2f * cullingSphere.w / tileSize;
-                float filterSize = texelSize * ((float) filterMode + 1f);
+                filterSize *= texelSize;
                 cullingSphere.w -= filterSize;
                 cullingSphere.w *= cullingSphere.w;
                 this.cullingSphere = cullingSphere;
