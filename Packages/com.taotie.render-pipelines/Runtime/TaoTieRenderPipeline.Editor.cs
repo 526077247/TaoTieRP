@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
 using LightType = UnityEngine.LightType;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
 
     public partial class TaoTieRenderPipeline

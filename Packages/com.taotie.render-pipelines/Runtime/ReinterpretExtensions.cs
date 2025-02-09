@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public static class ReinterpretExtensions
     {

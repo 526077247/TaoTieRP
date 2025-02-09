@@ -1,14 +1,17 @@
 ﻿using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
-public readonly ref struct ShadowTextures
+namespace TaoTie.RenderPipelines
 {
-    public readonly TextureHandle directionalAtlas, otherAtlas;
-
-    public ShadowTextures(
-        TextureHandle directionalAtlas,
-        TextureHandle otherAtlas)
+    public readonly ref struct ShadowTextures
     {
-        this.directionalAtlas = directionalAtlas;
-        this.otherAtlas = otherAtlas;
+        public readonly TextureHandle directionalAtlas, otherAtlas;
+
+        public ShadowTextures(
+            TextureHandle directionalAtlas,
+            TextureHandle otherAtlas)
+        {
+            this.directionalAtlas = directionalAtlas;
+            this.otherAtlas = otherAtlas;
+        }
     }
 }

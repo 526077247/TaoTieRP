@@ -1,4 +1,4 @@
-﻿namespace TaoTie
+﻿namespace TaoTie.RenderPipelines
 {
     public partial class TaoTieRenderPipelineAsset
     {

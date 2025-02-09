@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public class SetupPass
     {

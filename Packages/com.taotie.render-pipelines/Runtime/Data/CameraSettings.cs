@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     [Serializable]
     public class CameraSettings

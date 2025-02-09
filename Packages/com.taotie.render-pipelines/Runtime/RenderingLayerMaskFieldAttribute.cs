@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public class RenderingLayerMaskFieldAttribute : PropertyAttribute
     {

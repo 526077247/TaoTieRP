@@ -1,6 +1,6 @@
 ﻿using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public readonly ref struct CameraRendererTextures
     {

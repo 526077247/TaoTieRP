@@ -1,6 +1,6 @@
 {
-    "name": "RenderPipelines.TaoTie.Editor",
-    "rootNamespace": "",
+    "name": "TaoTie.RenderPipelines.Editor",
+    "rootNamespace": "TaoTie.RenderPipelines.Editor",
     "references": [
         "GUID:ab586f12068739749b40c5fa389e15fa"
     ],

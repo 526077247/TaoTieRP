@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public class PostFXStack
     {

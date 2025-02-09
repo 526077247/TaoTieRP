@@ -2,7 +2,7 @@
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public class SkyboxPass
     {

@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RendererUtils;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
 	public class GeometryPass
 	{

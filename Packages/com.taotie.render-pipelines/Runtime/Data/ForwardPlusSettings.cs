@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     [System.Serializable]
     public struct ForwardPlusSettings

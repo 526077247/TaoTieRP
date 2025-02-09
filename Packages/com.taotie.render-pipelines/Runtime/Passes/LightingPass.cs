@@ -2,12 +2,10 @@
 using UnityEngine;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
-using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
-
 	public class LightingPass
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");

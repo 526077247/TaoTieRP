@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines.Editor
 {
     [CustomPropertyDrawer(typeof(RenderingLayerMaskFieldAttribute))]
     public class RenderingLayerMaskDrawer : PropertyDrawer {

@@ -2,7 +2,7 @@
 using System;
 using UnityEditor;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     [CreateAssetMenu(menuName = "Rendering/TaoTie Post FX Settings")]
     public class PostFXSettings : ScriptableObject

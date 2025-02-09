@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine.Rendering;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines.Editor
 {
     [CanEditMultipleObjects]
     [CustomEditorForRenderPipeline(typeof(Light), typeof(TaoTieRenderPipelineAsset))]

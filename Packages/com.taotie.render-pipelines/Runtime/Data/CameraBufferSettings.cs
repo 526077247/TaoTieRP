@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     [Serializable]
     public struct CameraBufferSettings

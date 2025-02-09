@@ -65,5 +65,5 @@ Shader "TaoTie RP/Unlit"
 			ENDHLSL
 		}
     }
-    CustomEditor "TaoTie.TaoTieShaderGUI"
+    CustomEditor "TaoTie.RenderPipelines.Editor.TaoTieShaderGUI"
 }

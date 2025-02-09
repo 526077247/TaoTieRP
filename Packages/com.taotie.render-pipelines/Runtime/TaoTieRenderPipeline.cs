@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
-namespace TaoTie
+namespace TaoTie.RenderPipelines
 {
     public partial class TaoTieRenderPipeline : RenderPipeline
     {

@@ -104,5 +104,5 @@
 			ENDHLSL
 		}
     }
-    CustomEditor "TaoTie.TaoTieShaderGUI"
+    CustomEditor "TaoTie.RenderPipelines.Editor.TaoTieShaderGUI"
 }
