@@ -9,6 +9,18 @@ float3 GetLighting (Surface surface,BRDF brdf, Light light) {
     return IncomingLight(surface, light) * DirectBRDF(surface, brdf, light);
 }
 
+float3 IncomingDirLight (Surface surface, Light light) {
+    #if defined(NPR_ON)
+    return saturate(ceil(dot(surface.normal, light.direction)+1.0)*0.5) * light.color;
+    #else
+    return saturate(dot(surface.normal, light.direction) * light.attenuation) * light.color;
+    #endif
+}
+
+float3 GetDirLighting (Surface surface,BRDF brdf, Light light) {
+    return IncomingDirLight(surface, light) * DirectBRDF(surface, brdf, light);
+}
+
 bool RenderingLayersOverlap (Surface surface, Light light) {
     return (surface.renderingLayerMask & light.renderingLayerMask) != 0;
 }
@@ -20,7 +32,7 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
     for (int i = 0; i < GetDirectionalLightCount(); i++) {
         Light light = GetDirectionalLight(i, surfaceWS, shadowData);
         if (RenderingLayersOverlap(surfaceWS, light)) {
-            color += GetLighting(surfaceWS, brdf, light);
+            color += GetDirLighting(surfaceWS, brdf, light);
         }
     }
     

@@ -38,7 +38,6 @@ RenderSettings:
   m_ReflectionIntensity: 0
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 0}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -98,8 +97,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_LightingSettings: {fileID: 4890085278179872738, guid: 6266b4a7b23d54dbeac03ebb46c9c3da,
-    type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: 6266b4a7b23d54dbeac03ebb46c9c3da, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -1722,6 +1720,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &544838619
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 17565861601961334, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_Name
+      value: Girl_Keqing
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 5.11
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000009536743
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 25.457
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.22614124
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.9740945
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -206.14
+      objectReference: {fileID: 0}
+    - target: {fileID: 825769113795510220, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4bce982f674a9b04e99b517ece29484b, type: 3}
 --- !u!1 &560691782
 GameObject:
   m_ObjectHideFlags: 0
@@ -2221,7 +2276,7 @@ Light:
   m_Type: 1
   m_Shape: 0
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 0.1
+  m_Intensity: 0.83
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.802082
@@ -3406,8 +3461,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.26999432, y: 0.33953944, z: -0.10206446, w: -0.89520884}
-  m_LocalPosition: {x: 34.83243, y: 21.334398, z: -32.763058}
+  m_LocalRotation: {x: -0.012165749, y: 0.97982836, z: -0.18926288, w: -0.062991485}
+  m_LocalPosition: {x: 5.39711, y: 1.8362517, z: 27.358582}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5721,7 +5776,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 0
   smoothness: 0.5
   emissionColor: {r: 0, g: 0, b: 0, a: 1}
@@ -7783,3 +7838,4 @@ SceneRoots:
   - {fileID: 2071948594}
   - {fileID: 1862678335}
   - {fileID: 392594151}
+  - {fileID: 544838619}

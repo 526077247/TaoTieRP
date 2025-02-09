@@ -45,4 +45,7 @@ float4 unity_OrthoParams;
 float4 _ProjectionParams;
 float4 _ScreenParams;
 float4 _ZBufferParams;
+
+float4x4 unity_CameraProjection;
+float4x4 unity_CameraInvProjection;
 #endif

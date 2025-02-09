@@ -1,16 +1,18 @@
-﻿#ifndef TAOTIE_LIT_INPUT_INCLUDED
-#define TAOTIE_LIT_INPUT_INCLUDED
+﻿#ifndef TAOTIE_NPRLIT_INPUT_INCLUDED
+#define TAOTIE_NPRLIT_INPUT_INCLUDED
 
 #define INPUT_PROP(name) UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, name)
 
 TEXTURE2D(_BaseMap);
+SAMPLER(sampler_BaseMap);
 TEXTURE2D(_MaskMap);
 TEXTURE2D(_EmissionMap);
-SAMPLER(sampler_BaseMap);
 TEXTURE2D(_DetailMap);
-TEXTURE2D(_DetailNormalMap);
 SAMPLER(sampler_DetailMap);
+TEXTURE2D(_DetailNormalMap);
 TEXTURE2D(_NormalMap);
+TEXTURE2D(_LightMap);
+SAMPLER(sampler_LightMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
@@ -27,6 +29,8 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float, _DetailSmoothness)
     UNITY_DEFINE_INSTANCED_PROP(float, _DetailNormalScale)
     UNITY_DEFINE_INSTANCED_PROP(float, _NormalScale)
+    UNITY_DEFINE_INSTANCED_PROP(half, _OutlineWidth)
+    UNITY_DEFINE_INSTANCED_PROP(half4, _OutlineColor)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 struct InputConfig {
@@ -35,6 +39,7 @@ struct InputConfig {
     float2 detailUV;
     bool useMask;
     bool useDetail;
+    bool useLightMap;
 };
 
 InputConfig GetInputConfig (float4 positionSS,float2 baseUV, float2 detailUV = 0.0) {
@@ -44,6 +49,7 @@ InputConfig GetInputConfig (float4 positionSS,float2 baseUV, float2 detailUV = 0
     c.detailUV = detailUV;
     c.useMask = false;
     c.useDetail = false;
+    c.useLightMap = false;
     return c;
 }
 
@@ -63,6 +69,13 @@ float4 GetDetail (InputConfig c) {
         return map * 2.0 - 1.0;
     }
     return 0.0;
+}
+
+float4 GetLightMap (InputConfig c) {
+    if (c.useLightMap){
+        return SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, c.baseUV);
+    }
+    return 1.0;
 }
 
 float4 GetMask (InputConfig c) {
@@ -122,7 +135,7 @@ float GetSmoothness (InputConfig c) {
 
     if (c.useDetail) {
         float detail = GetDetail(c).b * INPUT_PROP(_DetailSmoothness);
-        float mask = GetMask(c).b;
+        float mask = GetMask(c).b * GetLightMap(c).r;
         smoothness =
             lerp(smoothness, ceil(clamp(detail,0.0,1.0)), abs(detail) * mask);
     }

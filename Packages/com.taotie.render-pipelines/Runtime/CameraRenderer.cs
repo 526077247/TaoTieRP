@@ -117,6 +117,8 @@ namespace TaoTie.RenderPipelines
                     useHDR, bufferSize, camera);
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
+                OutLinePass.Record(
+                    renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
 
                 SkyboxPass.Record(renderGraph, camera, textures);
 
