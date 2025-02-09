@@ -53,9 +53,7 @@ namespace TaoTie
 		Vector2Int tileCount;
 		int TileCount => tileCount.x * tileCount.y;
 		
-		NativeArray<float4> lightBounds;
-		NativeArray<int> tileData;
-		JobHandle forwardPlusJobHandle;
+		Vector4[] lightBounds = new Vector4[maxOtherLightCount];
 
 		private Vector4[] tileDataArray;
 		private int tileDataArrayLength = -1;
@@ -72,9 +70,7 @@ namespace TaoTie
 			maxLightsPerTile = forwardPlusSettings.maxLightsPerTile <= 0 ?
 				31 : forwardPlusSettings.maxLightsPerTile;
 			tileDataSize = maxLightsPerTile + 1;
-			lightBounds = new NativeArray<float4>(
-				maxOtherLightCount, Allocator.TempJob,
-				NativeArrayOptions.UninitializedMemory);
+			
 			float tileScreenPixelSize = forwardPlusSettings.tileSize <= 0 ?
 				64f : (float)forwardPlusSettings.tileSize;
 			tileScreenPixelSize *= Mathf.Pow(2,
@@ -97,7 +93,6 @@ namespace TaoTie
 			dirLightCount = otherLightCount = 0;
 			for (i = 0; i < visibleLights.Length; i++)
 			{
-				int newIndex = -1;
 				VisibleLight visibleLight = visibleLights[i];
 				Light light = visibleLight.light;
 				if ((light.renderingLayerMask & renderingLayerMask) != 0)
@@ -115,7 +110,6 @@ namespace TaoTie
 						case LightType.Point:
 							if (otherLightCount < maxOtherLightCount)
 							{
-								newIndex = otherLightCount;
 								SetupForwardPlus(otherLightCount, ref visibleLight);
 								SetupPointLight(
 									otherLightCount++, i, ref visibleLight, light);
@@ -125,7 +119,6 @@ namespace TaoTie
 						case LightType.Spot:
 							if (otherLightCount < maxOtherLightCount)
 							{
-								newIndex = otherLightCount;
 								SetupForwardPlus(otherLightCount, ref visibleLight);
 								SetupSpotLight(
 									otherLightCount++, i, ref visibleLight, light);
@@ -135,21 +128,22 @@ namespace TaoTie
 					}
 				}
 			}
-			
-			tileData = new NativeArray<int>(
-				TileCount * tileDataSize, Allocator.TempJob);
-			forwardPlusJobHandle = new ForwardPlusTilesJob
+
+			var tileScreenUVSize = math.float2(
+				1f / screenUVToTileCoordinates.x,
+				1f / screenUVToTileCoordinates.y);
+			var tileCount = TileCount;
+			var total = tileCount * tileDataSize;
+			if (total / 4 + 1 != tileDataArrayLength)
 			{
-				lightBounds = lightBounds,
-				tileData = tileData,
-				otherLightCount = otherLightCount,
-				tileScreenUVSize = math.float2(
-					1f / screenUVToTileCoordinates.x,
-					1f / screenUVToTileCoordinates.y),
-				maxLightsPerTile = requiredMaxLightsPerTile,
-				tilesPerRow = tileCount.x,
-				tileDataSize = tileDataSize
-			}.ScheduleParallel(TileCount, tileCount.x, default);
+				tileDataArrayLength = total / 4 + 1;
+				tileDataArray = new Vector4[tileDataArrayLength];
+			}
+
+			for (int j = 0; j < tileCount; j++)
+			{
+				ExecuteTile(j, this.tileCount.x, tileScreenUVSize);
+			}
 		}
 
 		void Render(RenderGraphContext context)
@@ -181,17 +175,7 @@ namespace TaoTie
 			}
 
 			shadows.Render(context);
-
-			forwardPlusJobHandle.Complete();
-			if (tileData.Length/4 + 1 != tileDataArrayLength)
-			{
-				tileDataArrayLength = tileData.Length/4 + 1;
-				tileDataArray = new Vector4[tileDataArrayLength];
-			}
-			for (int i = 0; i < tileData.Length; i++)
-			{
-				tileDataArray[i/4][i%4] = tileData[i];
-			}
+			
 
 			buffer.SetGlobalVectorArray(tilesId, tileDataArray);
 			buffer.SetGlobalVector(tileSettingsId, new Vector4(
@@ -201,8 +185,6 @@ namespace TaoTie
 			
 			context.renderContext.ExecuteCommandBuffer(buffer);
 			buffer.Clear();
-			lightBounds.Dispose();
-			tileData.Dispose();
 		}
 
 		void SetupDirectionalLight(
@@ -274,6 +256,33 @@ namespace TaoTie
 		{
 			Rect r = visibleLight.screenRect;
 			lightBounds[lightIndex] = math.float4(r.xMin, r.yMin, r.xMax, r.yMax);
+		}
+		
+		void ExecuteTile(int tileIndex,int tilesPerRow, float2 tileScreenUVSize)
+		{
+			int y = tileIndex / tilesPerRow;
+			int x = tileIndex - y * tilesPerRow;
+			var bounds = math.float4(x, y, x + 1, y + 1) * tileScreenUVSize.xyxy;
+
+			int headerIndex = tileIndex * tileDataSize;
+			int dataIndex = headerIndex;
+			int lightsInTileCount = 0;
+
+			for (int i = 0; i < otherLightCount; i++)
+			{
+				float4 b = lightBounds[i];
+				if (math.all(math.float4(b.xy, bounds.xy) <= math.float4(bounds.zw, b.zw)))
+				{
+					++dataIndex;
+					
+					tileDataArray[dataIndex/4][dataIndex%4] = i;
+					if (++lightsInTileCount >= maxLightsPerTile)
+					{
+						break;
+					}
+				}
+			}
+			tileDataArray[headerIndex/4][headerIndex%4] = lightsInTileCount;
 		}
 	}
 }

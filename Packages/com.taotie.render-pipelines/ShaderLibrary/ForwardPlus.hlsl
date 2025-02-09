@@ -6,7 +6,7 @@
 // w: Tile data size, as integer.
 float4 _ForwardPlusTileSettings;
 
-#define MAX_TILES_COUNT 2048
+#define MAX_TILES_COUNT 4095
 CBUFFER_START(_ForwardPlus)
     int _ForwardPlusTileLength;
     int4 _ForwardPlusTiles[MAX_TILES_COUNT];
