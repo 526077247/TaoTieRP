@@ -16,11 +16,14 @@ Material:
   - _RAMP_MAP
   - _RECEIVE_SHADOWS
   m_InvalidKeywords:
+  - CLIP
+  - ON
   - _CELLSHADING
   - _DEPTHSHADOW
   - _GGX
   - _IS_FILTER_LIGHTCOLOR_ON
   - _LIGHTMAP_ON
+  - _RECEIVESHADOWS_ON
   - _RENDERENVSETTING
   - _SHADOWS_ON
   - _USEHALFLAMBERT_ON
@@ -212,12 +215,17 @@ Material:
     - _group1: 1
     - _groupAdditionLight: 1
     - _groupClearCoat: 1
+    - _groupClip: 0
+    - _groupClipping: 0
+    - _groupDetails: 0
     - _groupEmission: 0
     - _groupEnvironment: 1
+    - _groupNormalMap: 0
     - _groupOutline: 1
     - _groupRim: 1
     - _groupShadingMask: 0
     - _groupShadowSetting: 1
+    - _groupShadows: 0
     - _groupSpecular: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

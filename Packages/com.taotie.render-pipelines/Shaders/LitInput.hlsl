@@ -102,6 +102,14 @@ float4 GetLightMap (InputConfig c) {
     return SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, c.baseUV);
 }
 
+float2 GetFaceShadow(InputConfig c)
+{
+    float2 faceShadowUV = float2(1.0 - c.baseUV.x, c.baseUV.y);
+    float faceShadow_left = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, c.baseUV).r;
+    float faceShadow_right = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, faceShadowUV).r;
+    return float2(faceShadow_left,faceShadow_right);
+}
+
 float3 GetNormalTS (InputConfig c) {
     float4 map = SAMPLE_TEXTURE2D(_NormalMap, sampler_BaseMap, c.baseUV);
     float scale = INPUT_PROP(_NormalScale);

@@ -20,15 +20,37 @@ float2 GetRampUV(float shadow, float RampMap)
 }
 
 float3 IncomingDirLight (Surface surface, Light light) {
-    half3 lightColor = light.color;
-    float lambert = saturate(ceil(dot(surface.normal, light.direction)* light.attenuation) * 0.5 + 0.5 + surface.lightMap.r);
+    half3 lightColor = light.color * light.attenuation;
+    float shadow = 0.0;
+    #if !defined(_SHADOW_FACE_ON)
+    float lambert = ceil(dot(surface.normal, light.direction)) * 0.5 + 0.5;
+    shadow = saturate(lambert  + surface.lightMap.r);
     #if defined(_RAMP_MAP)
-    float2 rampUV = GetRampUV(lambert, surface.lightMap.a);
+    float2 rampUV = GetRampUV(shadow, surface.lightMap.a);
     half3 rampColor = SAMPLE_TEXTURE2D(_RampMap, sampler_RampMap, rampUV);
     lightColor = (rampColor + lightColor) * 0.5;
     #endif
-    return lambert * lightColor * saturate(surface.lightMap.g * 4.0 + 0.1);
+    shadow = shadow * smoothstep(-0.1, 0.2, surface.lightMap.g);
+    float noAOMask = step(0.9, surface.lightMap.g);
+    shadow = lerp(shadow, 1.0, noAOMask);
+    
+    #else
+    
+    float3 forwardDirWS = normalize(TransformObjectToWorldDir(float3(0.0,0.0,1.0)));
+    float3 rightDirWS = normalize(TransformObjectToWorldDir(float3(1.0,0.0,0.0)));
+    float FdotL = dot(forwardDirWS, light.direction);
+    float RdotL = dot(rightDirWS, light.direction);
+    
+    float shadowTex = RdotL > 0 ? surface.faceShadow.y : surface.faceShadow.x;
+    
+    float faceShadowThreshold = RdotL > 0 ? (1 - acos(RdotL) / PI * 2) : (acos(RdotL) / PI * 2 - 1);
+    float shadowBehind = step(0, FdotL);
+    float shadowFront = step(faceShadowThreshold, shadowTex);
+    shadow = 5.0;
+    #endif
+    return shadow * lightColor;
 }
+
 
 float3 GetDirLighting (Surface surface,BRDF brdf, Light light) {
     return IncomingDirLight(surface, light) * DirectBRDF(surface, brdf, light);

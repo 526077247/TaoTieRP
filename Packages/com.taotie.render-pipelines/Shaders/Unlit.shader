@@ -2,10 +2,25 @@ Shader "TaoTie RP/Unlit"
 {
     Properties
     {
-        _BaseMap("Texture", 2D) = "white" {}
-        [HDR] _BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
-        _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
-        [Toggle(_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+		[Main(Base, _, off, off)]
+		_group ("Base", float) = 0
+		[Space()]
+		[Tex(Base, _BaseColor)]_BaseMap("Texture", 2D) = "white" {}
+		[HideInInspector][HDR]_BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
+
+		[Main(Clipping, _, off, off)]
+		_groupClipping ("Clipping", float) = 0
+		[Space()]
+		[SubToggle(Clipping,_CLIPPING)] _Clipping ("Alpha Clipping", Float) = 0
+		[Sub(Clipping._CLIPPING)] _Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
+    	
+    	[Main(Outline, _, off, off)]
+        _groupOutline ("OutlineSettings", float) = 1
+		[Space()]
+		[SubToggle(Outline, _OUTLINE)] _Outline("Use Outline", Float) = 0.0
+		[Sub(Outline._OUTLINE)] _OutlineColor ("Outline Color", Color) = (0,0,0,0)
+        [Sub(Outline._OUTLINE)] _OutlineWidth ("Outline Width", Range(0, 10)) = 1
+    	[Space(50)]
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
         [Enum(Off, 0, On, 1)] _ZWrite ("Z Write", Float) = 1
@@ -65,5 +80,5 @@ Shader "TaoTie RP/Unlit"
 			ENDHLSL
 		}
     }
-    CustomEditor "TaoTie.RenderPipelines.Editor.TaoTieShaderGUI"
+    CustomEditor "LWGUI.LWGUI"
 }

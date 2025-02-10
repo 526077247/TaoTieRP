@@ -27,11 +27,15 @@ Material:
   m_ValidKeywords:
   - _OUTLINE
   - _RECEIVE_SHADOWS
+  - _SHADOW_FACE_ON
   m_InvalidKeywords:
+  - CLIP
+  - ON
   - _DEPTHOFFSETSHADOWREVERSEX_ON
   - _DEPTHSHADOW
   - _GGX
   - _IS_FILTER_LIGHTCOLOR_ON
+  - _RECEIVESHADOWS_ON
   - _SDFDIRECTIONREVERSAL_ON
   - _SDFFACE
   - _SHADOWS_ON
@@ -91,12 +95,16 @@ Material:
         m_Texture: {fileID: 2800000, guid: b199365a0c3cfa84fa9f99df72742363, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _FaceShadow:
+        m_Texture: {fileID: 2800000, guid: 7f2d951970164bd46abc97ac6ae41f89, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _LightMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 3ed051cee36deb74fa7e6358543e0ef8, type: 3}
+        m_Texture: {fileID: 2800000, guid: 67ee738a0a8907d498e7252df1bd8c8e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
@@ -119,8 +127,12 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _RampMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SDFFaceTex:
-        m_Texture: {fileID: 2800000, guid: b199365a0c3cfa84fa9f99df72742363, type: 3}
+        m_Texture: {fileID: 2800000, guid: 2fc5caa260815fe488ad65b33068fe48, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ShadingMap01:
@@ -180,6 +192,7 @@ Material:
     - _DstBlend: 0
     - _EmissionColorAlbedoWeight: 0
     - _EnvironmentReflections: 1
+    - _FaceOn: 1
     - _Fresnel: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.31622776
@@ -204,6 +217,7 @@ Material:
     - _RECEIVE_SHADOWS_OFF: 1
     - _RampMapUOffset: 0
     - _RampMapVOffset: 0.5
+    - _RampToggle: 0
     - _ReceiveShadows: 1
     - _RimDirectionLightContribution: 1
     - _RimSoftness: 0.01
@@ -248,14 +262,19 @@ Material:
     - _group1: 1
     - _groupAdditionLight: 1
     - _groupClearCoat: 1
+    - _groupClip: 0
+    - _groupClipping: 0
+    - _groupDetails: 0
     - _groupDissolveSetting: 0
     - _groupEmission: 0
     - _groupEnvironment: 1
     - _groupLightDirectionOffset: 0
+    - _groupNormalMap: 0
     - _groupOutline: 1
     - _groupRim: 1
     - _groupShadingMask: 0
     - _groupShadowSetting: 1
+    - _groupShadows: 0
     - _groupSpecular: 1
     - _groupSurface: 1
     m_Colors:
