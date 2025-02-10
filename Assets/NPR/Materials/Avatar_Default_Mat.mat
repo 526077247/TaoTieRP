@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Avatar_Default_Mat
-  m_Shader: {fileID: 4800000, guid: 96bf76eb756a4821a7b0b554e45d9177, type: 3}
+  m_Shader: {fileID: 4800000, guid: fe17be7efff344feb317f2eab5baf08f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
@@ -116,6 +116,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AOWeight: 1
     - _AlphaClip: 0
     - _Blend: 0
     - _BumpMapKeyword: 0
@@ -153,6 +154,7 @@ Material:
     - _GlossyReflections: 1
     - _Is_Filter_LightColor: 1
     - _LightIntensityClamp: 1
+    - _LightMapToggle: 0
     - _MaskMapToggle: 0
     - _Metallic: 0
     - _Mode: 0

@@ -9,12 +9,25 @@ float3 GetLighting (Surface surface,BRDF brdf, Light light) {
     return IncomingLight(surface, light) * DirectBRDF(surface, brdf, light);
 }
 
-float3 IncomingDirLight (Surface surface, Light light) {
-    #if defined(NPR_ON)
-    return saturate(ceil(dot(surface.normal, light.direction)+1.0)*0.5) * light.color;
-    #else
-    return saturate(dot(surface.normal, light.direction) * light.attenuation) * light.color;
+float2 GetRampUV(float shadow, float RampMap)
+{
+    float rampU = shadow;
+    float rampV = RampMap * 0.45;
+    #ifdef SHADOW_FACE_ON
+    rampV = 0.1;
     #endif
+    return float2(rampU, rampV);
+}
+
+float3 IncomingDirLight (Surface surface, Light light) {
+    half3 lightColor = light.color;
+    float lambert = saturate(ceil(dot(surface.normal, light.direction)* light.attenuation) * 0.5 + 0.5 + surface.lightMap.r);
+    #if defined(_RAMP_MAP)
+    float2 rampUV = GetRampUV(lambert, surface.lightMap.a);
+    half3 rampColor = SAMPLE_TEXTURE2D(_RampMap, sampler_RampMap, rampUV);
+    lightColor = (rampColor + lightColor) * 0.5;
+    #endif
+    return lambert * lightColor * saturate(surface.lightMap.g * 4.0 + 0.1);
 }
 
 float3 GetDirLighting (Surface surface,BRDF brdf, Light light) {

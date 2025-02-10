@@ -37,6 +37,15 @@
 
 		[HideInInspector] _MainTex("Texture for Lightmap", 2D) = "white" {}
 		[HideInInspector] _Color("Color for Lightmap", Color) = (0.5, 0.5, 0.5, 1.0)
+		
+		[NoScaleOffset] _LightMap("Light Map", 2D) = "bump" {}
+		
+		[Toggle(_RAMP_MAP)] _RampToggle ("Ramp Map", Float) = 0
+		[NoScaleOffset] _RampMap("Ramp", 2D) = "white" {}
+		
+		[Toggle(_OUTLINE)] _Outline("Use Outline", Float) = 0.0
+		_OutlineColor ("Outline Color", Color) = (0,0,0,0)
+        _OutlineWidth ("Outline Width", Range(0, 10)) = 1
 	}
 	
 	SubShader {
@@ -61,6 +70,8 @@
 			#pragma shader_feature _MASK_MAP
 			#pragma shader_feature _NORMAL_MAP
 			#pragma shader_feature _DETAIL_MAP
+			#pragma shader_feature _OUTLINE
+			#pragma shader_feature _RAMP_MAP
 			#pragma multi_compile _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
 			#pragma multi_compile _ _SOFT_CASCADE_BLEND
 			#pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
@@ -103,6 +114,25 @@
 			#include "MetaPass.hlsl"
 			ENDHLSL
 		}
+		
+		Pass
+        {
+            Name "OutLine"
+            Tags {"LightMode" = "Outline" }
+            Cull Front
+            ZWrite[_ZWrite]
+            BlendOp Add, Max
+            ZTest LEqual
+            Offset 1, 1
+
+            HLSLPROGRAM
+            #pragma multi_compile _ _OUTLINE
+            #pragma vertex NormalOutLineVertex
+            #pragma fragment NormalOutlineFragment
+            
+            #include "../ShaderLibrary/NormalOutline.hlsl"
+            ENDHLSL
+        }
     }
     CustomEditor "TaoTie.RenderPipelines.Editor.TaoTieShaderGUI"
 }

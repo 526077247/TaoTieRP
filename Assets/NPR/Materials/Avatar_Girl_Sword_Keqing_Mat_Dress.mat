@@ -8,18 +8,19 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Avatar_Girl_Sword_Keqing_Mat_Dress
-  m_Shader: {fileID: 4800000, guid: 96bf76eb756a4821a7b0b554e45d9177, type: 3}
+  m_Shader: {fileID: 4800000, guid: fe17be7efff344feb317f2eab5baf08f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _LIGHTMAP_ON
   - _OUTLINE
+  - _RAMP_MAP
   - _RECEIVE_SHADOWS
   m_InvalidKeywords:
   - _CELLSHADING
   - _DEPTHSHADOW
   - _GGX
   - _IS_FILTER_LIGHTCOLOR_ON
+  - _LIGHTMAP_ON
   - _RENDERENVSETTING
   - _SHADOWS_ON
   - _USEHALFLAMBERT_ON
@@ -95,6 +96,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RampMap:
+        m_Texture: {fileID: 2800000, guid: fa369a4c1dbacb14ca155e6303837f07, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ShadingMap01:
@@ -173,6 +178,7 @@ Material:
     - _RECEIVE_SHADOWS_OFF: 1
     - _RampMapUOffset: 0
     - _RampMapVOffset: 0.5
+    - _RampToggle: 1
     - _ReceiveShadows: 1
     - _RimDirectionLightContribution: 1
     - _RimSoftness: 0.01
