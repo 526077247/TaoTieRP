@@ -29,8 +29,8 @@ MonoBehaviour:
         quality: 2
     useSRPBatcher: 1
     forwardPlus:
-      tileSize: 64
-      maxLightsPerTile: 31
+      tileSize: 32
+      maxLightsPerTile: 128
     shadows:
       maxDistance: 30
       distanceFade: 0.1

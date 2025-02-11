@@ -33,20 +33,13 @@ float3 IncomingDirLight (Surface surface, Light light) {
     shadow = shadow * smoothstep(-0.1, 0.2, surface.lightMap.g);
     float noAOMask = step(0.9, surface.lightMap.g);
     shadow = lerp(shadow, 1.0, noAOMask);
-    
     #else
-    
-    float3 forwardDirWS = normalize(TransformObjectToWorldDir(float3(0.0,0.0,1.0)));
-    float3 rightDirWS = normalize(TransformObjectToWorldDir(float3(1.0,0.0,0.0)));
-    float FdotL = dot(forwardDirWS, light.direction);
-    float RdotL = dot(rightDirWS, light.direction);
-    
-    float shadowTex = RdotL > 0 ? surface.faceShadow.y : surface.faceShadow.x;
-    
-    float faceShadowThreshold = RdotL > 0 ? (1 - acos(RdotL) / PI * 2) : (acos(RdotL) / PI * 2 - 1);
-    float shadowBehind = step(0, FdotL);
-    float shadowFront = step(faceShadowThreshold, shadowTex);
-    shadow = 5.0;
+    float2 Front = normalize(TransformObjectToWorldDir(float3(0.0, 1.0, 0.0)).xz);
+    float2 Left = normalize(TransformObjectToWorldDir(float3(0.0, 0.0, 1.0)).xz);
+    float ctrl = 1.0 - saturate(dot(Front, light.direction.xz) * 0.5 + 0.5);
+    float ilm = dot(light.direction.xz, Left) > 0 ? surface.faceShadow.x : surface.faceShadow.y;
+    shadow = ceil(saturate(abs(ctrl - ilm))) * 0.5 + 0.5;
+    lightColor = (surface.color + lightColor) * 0.5;
     #endif
     return shadow * lightColor;
 }

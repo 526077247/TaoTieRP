@@ -158,6 +158,7 @@ Material:
     - _DstBlend: 0
     - _EmissionColorAlbedoWeight: 0
     - _EnvironmentReflections: 1
+    - _FaceOn: 0
     - _Fresnel: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.31622776
