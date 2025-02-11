@@ -195,6 +195,7 @@ Material:
     - _DstBlend: 0
     - _EmissionColorAlbedoWeight: 0
     - _EnvironmentReflections: 1
+    - _FaceOn: 0
     - _Fresnel: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.1
@@ -208,7 +209,7 @@ Material:
     - _Mode: 0
     - _NormalMapToggle: 1
     - _NormalScale: 1
-    - _Occlusion: 1
+    - _Occlusion: 0
     - _OcclusionStrength: 1
     - _Outline: 1
     - _OutlineWidth: 0.25
@@ -225,7 +226,7 @@ Material:
     - _RimThreshold: 0.2
     - _Shadows: 0
     - _Shininess: 1
-    - _Smoothness: 0.518
+    - _Smoothness: 0.2
     - _SmoothnessTextureChannel: 0
     - _SpaceScreenVariant: 0.5
     - _SpecularAA: 0
@@ -281,7 +282,7 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DarkColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     - _EmissionChannel: {r: 0, g: 0, b: 1, a: 0}
-    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _EmissionColor: {r: 0.4245283, g: 0, b: 0.018660482, a: 1}
     - _HighColor: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
     - _PBRMetallicChannel: {r: 1, g: 0, b: 0, a: 0}
