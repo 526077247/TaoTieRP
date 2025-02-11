@@ -10,7 +10,7 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCount = 128;
+		private const int maxDirLightCount = 4, maxOtherLightCount = 128, maxTileCount = 1280;
 
 		static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
@@ -18,6 +18,7 @@ namespace TaoTie.RenderPipelines
 			dirLightDirectionsAndMasksId = Shader.PropertyToID("_DirectionalLightDirectionsAndMasks"),
 			dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData"),
 			tilesId = Shader.PropertyToID("_ForwardPlusTiles"),
+			tilesLightId = Shader.PropertyToID("_ForwardPlusTileLights"),
 			tileSettingsId = Shader.PropertyToID("_ForwardPlusTileSettings");
 
 		static readonly Vector4[]
@@ -52,10 +53,10 @@ namespace TaoTie.RenderPipelines
 		int TileCount => tileCount.x * tileCount.y;
 		
 		Vector4[] lightBounds = new Vector4[maxOtherLightCount];
-
-		private Vector4[] tileDataArray;
-		private int tileDataArrayLength = -1;
-		int maxLightsPerTile, tileDataSize;
+		private float[] tileDataArray = new float[maxTileCount+1];
+		private Vector4[] tileLightArray = new Vector4[maxTileCount];
+		
+		private int maxLightsPerTile;
 		
 		public void Setup(
 			CullingResults cullingResults, Vector2Int attachmentSize, 
@@ -66,8 +67,8 @@ namespace TaoTie.RenderPipelines
 			shadows.Setup(cullingResults, shadowSettings);
 			
 			maxLightsPerTile = forwardPlusSettings.maxLightsPerTile <= 0 ?
-				31 : forwardPlusSettings.maxLightsPerTile;
-			tileDataSize = maxLightsPerTile + 1;
+				32 : forwardPlusSettings.maxLightsPerTile;
+
 			
 			float tileScreenPixelSize = forwardPlusSettings.tileSize <= 0 ?
 				64f : (float)forwardPlusSettings.tileSize;
@@ -84,9 +85,6 @@ namespace TaoTie.RenderPipelines
 		void SetupLights(int renderingLayerMask)
 		{
 			NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
-			int requiredMaxLightsPerTile = Mathf.Min(
-				maxLightsPerTile, visibleLights.Length);
-			tileDataSize = requiredMaxLightsPerTile + 1;
 			int i;
 			dirLightCount = otherLightCount = 0;
 			for (i = 0; i < visibleLights.Length; i++)
@@ -131,11 +129,12 @@ namespace TaoTie.RenderPipelines
 				1f / screenUVToTileCoordinates.x,
 				1f / screenUVToTileCoordinates.y);
 			var tileCount = TileCount;
-			var total = tileCount * tileDataSize;
-			if (total / 4 + 1 != tileDataArrayLength)
+			if (tileCount > maxTileCount)
 			{
-				tileDataArrayLength = total / 4 + 1;
-				tileDataArray = new Vector4[tileDataArrayLength];
+				tileCount = maxTileCount;
+				tileDataArray = new float[TileCount + 1];
+				tileLightArray = new Vector4[TileCount];
+				Debug.LogError("请增加tileSize tileCount = " + TileCount);
 			}
 
 			for (int j = 0; j < tileCount; j++)
@@ -175,11 +174,12 @@ namespace TaoTie.RenderPipelines
 			shadows.Render(context);
 			
 
-			buffer.SetGlobalVectorArray(tilesId, tileDataArray);
+			buffer.SetGlobalVectorArray(tilesLightId, tileLightArray);
+			buffer.SetGlobalFloatArray(tilesId, tileDataArray);
 			buffer.SetGlobalVector(tileSettingsId, new Vector4(
 				screenUVToTileCoordinates.x, screenUVToTileCoordinates.y,
 				tileCount.x.ReinterpretAsFloat(),
-				tileDataSize.ReinterpretAsFloat()));
+				maxLightsPerTile.ReinterpretAsFloat()));
 			
 			context.renderContext.ExecuteCommandBuffer(buffer);
 			buffer.Clear();
@@ -262,7 +262,8 @@ namespace TaoTie.RenderPipelines
 			int x = tileIndex - y * tilesPerRow;
 			var bounds = math.float4(x, y, x + 1, y + 1) * tileScreenUVSize.xyxy;
 
-			int headerIndex = tileIndex * tileDataSize;
+			int headerIndex = (int)tileDataArray[tileIndex];
+
 			int dataIndex = headerIndex;
 			int lightsInTileCount = 0;
 
@@ -271,16 +272,23 @@ namespace TaoTie.RenderPipelines
 				float4 b = lightBounds[i];
 				if (math.all(math.float4(b.xy, bounds.xy) <= math.float4(bounds.zw, b.zw)))
 				{
-					++dataIndex;
-					
-					tileDataArray[dataIndex/4][dataIndex%4] = i;
-					if (++lightsInTileCount >= maxLightsPerTile)
+					if (dataIndex / 4 > tileLightArray.Length)
+					{
+						Debug.LogError("请增加tileSize");
+						break;
+					}
+					tileLightArray[dataIndex/4][dataIndex%4] = i;
+					if (lightsInTileCount + 1 >= maxLightsPerTile)
 					{
 						break;
 					}
+
+					lightsInTileCount++;
+					dataIndex++;
 				}
 			}
-			tileDataArray[headerIndex/4][headerIndex%4] = lightsInTileCount;
+			
+			tileDataArray[tileIndex + 1] = headerIndex + lightsInTileCount;
 		}
 	}
 }

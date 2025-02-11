@@ -6,10 +6,11 @@
 // w: Tile data size, as integer.
 float4 _ForwardPlusTileSettings;
 
-#define MAX_TILES_COUNT 4095
+#define MAX_TILES_COUNT 1280
 CBUFFER_START(_ForwardPlus)
     int _ForwardPlusTileLength;
-    int4 _ForwardPlusTiles[MAX_TILES_COUNT];
+    int4 _ForwardPlusTileLights[MAX_TILES_COUNT];
+    int _ForwardPlusTiles[MAX_TILES_COUNT+1];
 CBUFFER_END
 
 
@@ -23,7 +24,7 @@ struct ForwardPlusTile
     {
         int offset = floor(temp * 0.25 + 0.1);
         int type = round(temp - offset * 4);
-        return _ForwardPlusTiles[offset][type];
+        return _ForwardPlusTileLights[offset][type];
     }
 	
     int GetTileDataSize()
@@ -33,22 +34,22 @@ struct ForwardPlusTile
 
     int GetHeaderIndex()
     {
-        return index * GetTileDataSize();
+        return _ForwardPlusTiles[index];
     }
 
     int GetLightCount()
     {
-        return GetForwardPlusTiles(GetHeaderIndex());
+        return _ForwardPlusTiles[index+1] - _ForwardPlusTiles[index];
     }
 
     int GetFirstLightIndexInTile()
     {
-        return GetHeaderIndex() + 1;
+        return GetHeaderIndex();
     }
 
     int GetLastLightIndexInTile()
     {
-        return GetHeaderIndex() + GetLightCount();
+        return GetHeaderIndex() + GetLightCount() - 1;
     }
 
     int GetLightIndex(int lightIndexInTile)
@@ -64,7 +65,7 @@ struct ForwardPlusTile
 
     int GetMaxLightsPerTile()
     {
-        return GetTileDataSize() - 1;
+        return GetTileDataSize();
     }
 
     int2 GetScreenSize()

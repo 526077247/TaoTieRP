@@ -7,14 +7,14 @@ namespace TaoTie.RenderPipelines
     {
         public enum TileSize
         {
-            Default, Small = 64, Mid = 128, Large = 256
+            Default, Small = 32, Normal = 64, Mid = 128, Large = 256
         }
 
-        [Tooltip("Tile size in pixels per dimension, default is Small.")]
+        [Tooltip("Tile size in pixels per dimension, default is Normal.")]
         public TileSize tileSize;
         
-        [Range(0, 31)]
-        [Tooltip("Maximum allowed lights per tile, 0 means default, which is 31.")]
+        [Range(0, 128)]
+        [Tooltip("Maximum allowed lights per tile, 0 means default, which is 32.")]
         public int maxLightsPerTile;
     }
 }
