@@ -10,7 +10,7 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCount = 128, maxTileCount = 1280;
+		private const int maxDirLightCount = 4, maxOtherLightCount = 128;
 
 		static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
@@ -53,8 +53,8 @@ namespace TaoTie.RenderPipelines
 		int TileCount => tileCount.x * tileCount.y;
 		
 		Vector4[] lightBounds = new Vector4[maxOtherLightCount];
-		private float[] tileDataArray = new float[maxTileCount+1];
-		private Vector4[] tileLightArray = new Vector4[maxTileCount];
+		private float[] tileDataArray = new float[TaoTieRenderConst.MAX_TILE_COUNT+1];
+		private Vector4[] tileLightArray = new Vector4[TaoTieRenderConst.MAX_TILE_COUNT];
 		
 		private int maxLightsPerTile;
 		
@@ -129,9 +129,9 @@ namespace TaoTie.RenderPipelines
 				1f / screenUVToTileCoordinates.x,
 				1f / screenUVToTileCoordinates.y);
 			var tileCount = TileCount;
-			if (tileCount > maxTileCount)
+			if (tileCount > TaoTieRenderConst.MAX_TILE_COUNT)
 			{
-				tileCount = maxTileCount;
+				tileCount = TaoTieRenderConst.MAX_TILE_COUNT;
 				tileDataArray = new float[TileCount + 1];
 				tileLightArray = new Vector4[TileCount];
 				Debug.LogError("请增加tileSize tileCount = " + TileCount);

@@ -8,25 +8,51 @@ namespace TaoTie.RenderPipelines
     public class PostFXSettings : ScriptableObject
     {
 
+        [HideInInspector]
         [SerializeField] Shader shader = default;
 
         [Serializable]
         public struct BloomSettings
         {
-            public bool ignoreRenderScale;
-
             [Range(0f, 16f)] public int maxIterations;
-
-            [Min(1f)] public int downscaleLimit;
-
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
+            public bool ignoreRenderScale;
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.MinValue(1)]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#else
+            [Min(1f)] 
+#endif
+           
+            public int downscaleLimit;
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
             public bool bicubicUpsampling;
 
-            [Min(0f)] public float threshold;
-
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.MinValue(0)]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#else
+            [Min(0f)] 
+#endif
+            public float threshold;
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
             [Range(0f, 1f)] public float thresholdKnee;
-
-            [Min(0f)] public float intensity;
-
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.MinValue(0)]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#else
+            [Min(0f)] 
+#endif
+            public float intensity;
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
             public bool fadeFireflies;
 
             public enum Mode
@@ -34,9 +60,13 @@ namespace TaoTie.RenderPipelines
                 Additive,
                 Scattering
             }
-
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
             public Mode mode;
-
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
+#endif
             [Range(0.05f, 0.95f)] public float scatter;
         }
 
@@ -160,6 +190,14 @@ namespace TaoTie.RenderPipelines
         {
             get
             {
+                if (shader == null)
+                {
+                    shader = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
+                    if (shader == null)
+                    {
+                        Debug.LogError("Hidden/TaoTie RP/Post FX Stack shader not found!");
+                    }
+                }
                 if (material == null && shader != null)
                 {
                     material = new Material(shader);

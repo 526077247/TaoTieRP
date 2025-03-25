@@ -1,12 +1,11 @@
 ﻿#ifndef TAOTIE_FORWARD_PLUS_INCLUDED
 #define TAOTIE_FORWARD_PLUS_INCLUDED
-
+#include "ForwardPlusSetting.hlsl"
 // xy: Screen UV to tile coordinates.
 // z: Tiles per row, as integer.
 // w: Tile data size, as integer.
 float4 _ForwardPlusTileSettings;
 
-#define MAX_TILES_COUNT 1280
 CBUFFER_START(_ForwardPlus)
     int _ForwardPlusTileLength;
     int4 _ForwardPlusTileLights[MAX_TILES_COUNT];

@@ -97,13 +97,16 @@ namespace TaoTie.RenderPipelines
 			in CameraRendererTextures textures)
 		{
 			PostFXSettings.BloomSettings bloom = stack.Settings.Bloom;
+			if (bloom.maxIterations == 0 ||
+			    bloom.intensity <= 0f)
+			{
+				return textures.colorAttachment;
+			}
 			Vector2Int size = (bloom.ignoreRenderScale
 				? new Vector2Int(stack.Camera.pixelWidth, stack.Camera.pixelHeight)
 				: stack.BufferSize) / 2;
 
-			if (bloom.maxIterations == 0 ||
-			    bloom.intensity <= 0f ||
-			    size.y < bloom.downscaleLimit * 2 ||
+			if (size.y < bloom.downscaleLimit * 2 ||
 			    size.x < bloom.downscaleLimit * 2)
 			{
 				return textures.colorAttachment;

@@ -7,11 +7,29 @@ namespace TaoTie.RenderPipelines
     {
         public enum MapSize
         {
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("256")]
+#endif
             _256 = 256,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("512")]
+#endif
             _512 = 512,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("1024")]
+#endif
             _1024 = 1024,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("2048")]
+#endif
             _2048 = 2048,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("4096")]
+#endif
             _4096 = 4096,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("8192")]
+#endif
             _8192 = 8192
         }
 
@@ -23,7 +41,12 @@ namespace TaoTie.RenderPipelines
             PCF7x7
         }
 
-        [Min(0.001f)] public float maxDistance = 100f;
+#if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.MinValue(0.001f)]
+#else
+        [Min(0.001f)] 
+#endif
+        public float maxDistance = 100f;
 
         [Range(0.001f, 1f)] public float distanceFade = 0.1f;
 

@@ -10,6 +10,7 @@ namespace TaoTie.RenderPipelines.Editor
         public static void Draw (
             Rect position, SerializedProperty property, GUIContent label
         ) {
+            if(GraphicsSettings.currentRenderPipeline==null) return;
             //SerializedProperty property = settings.renderingLayerMask;
             EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
             EditorGUI.BeginChangeCheck();

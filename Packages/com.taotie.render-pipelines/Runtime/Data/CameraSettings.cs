@@ -27,6 +27,9 @@ namespace TaoTie.RenderPipelines
 
         public bool overridePostFX = false;
 
+        #if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.ShowIf(nameof(overridePostFX))]
+        #endif
         public PostFXSettings postFXSettings = default;
 
         public bool allowFXAA = false;

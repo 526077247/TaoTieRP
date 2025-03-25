@@ -27,13 +27,23 @@ namespace TaoTie.RenderPipelines
 
         public enum ColorLUTResolution
         {
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("16")]
+#endif
             _16 = 16,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("32")]
+#endif
             _32 = 32,
+#if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("64")]
+#endif
             _64 = 64
         }
 
         public ColorLUTResolution colorLUTResolution = ColorLUTResolution._32;
 
+        [HideInInspector]
         public Shader cameraRendererShader, cameraDebuggerShader;
     }
 }
