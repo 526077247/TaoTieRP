@@ -19,8 +19,6 @@ namespace TaoTie.RenderPipelines
 
         public bool useSRPBatcher = true;
 
-        public ForwardPlusSettings forwardPlus;
-
         public ShadowSettings shadows;
 
         public PostFXSettings postFXSettings;

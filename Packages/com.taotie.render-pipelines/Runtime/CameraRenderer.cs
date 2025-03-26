@@ -109,7 +109,7 @@ namespace TaoTie.RenderPipelines
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
                 ShadowTextures shadowTextures = LightingPass.Record(
-                    renderGraph, cullingResults,settings.forwardPlus, bufferSize,shadowSettings,
+                    renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
                         -1);
                 CameraRendererTextures textures = SetupPass.Record(

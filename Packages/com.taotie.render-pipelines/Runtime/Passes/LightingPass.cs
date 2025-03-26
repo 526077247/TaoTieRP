@@ -10,7 +10,7 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCount = 128;
+		private const int maxDirLightCount = 4, maxOtherLightCount = 256;
 
 		static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
@@ -60,33 +60,38 @@ namespace TaoTie.RenderPipelines
 		
 		public void Setup(
 			CullingResults cullingResults, Vector2Int attachmentSize, 
-			ForwardPlusSettings forwardPlusSettings, ShadowSettings shadowSettings,
-			int renderingLayerMask)
+			ShadowSettings shadowSettings, int renderingLayerMask)
 		{
 			this.cullingResults = cullingResults;
 			shadows.Setup(cullingResults, shadowSettings);
-			
-			maxLightsPerTile = forwardPlusSettings.maxLightsPerTile <= 0 ?
-				32 : forwardPlusSettings.maxLightsPerTile;
 
-			
-			float tileScreenPixelSize = forwardPlusSettings.tileSize <= 0 ?
-				64f : (float)forwardPlusSettings.tileSize;
+			maxLightsPerTile = shadowSettings.other.maxLightsPerTile;
+
+			float tileScreenPixelSize = (float) ShadowSettings.Other.TileSize.Off;
+			if (maxLightsPerTile > 0)
+			{
+				tileScreenPixelSize =
+					shadowSettings.other.tileSize <= 0 ? 64f : (float) shadowSettings.other.tileSize;
+			}
 			tileScreenPixelSize *= Mathf.Pow(2,
-				Mathf.FloorToInt(Mathf.Sqrt((attachmentSize.x / 1366f) * (attachmentSize.y / 768f))-0.1f));
+				Mathf.FloorToInt(Mathf.Sqrt((attachmentSize.x / 1366f) * (attachmentSize.y / 768f)) - 0.1f));
 			screenUVToTileCoordinates.x = attachmentSize.x / tileScreenPixelSize;
 			screenUVToTileCoordinates.y = attachmentSize.y / tileScreenPixelSize;
 			tileCount.x = Mathf.CeilToInt(screenUVToTileCoordinates.x);
 			tileCount.y = Mathf.CeilToInt(screenUVToTileCoordinates.y);
-
-			SetupLights(renderingLayerMask);
+			SetupLights(renderingLayerMask,shadowSettings);
 		}
 
-		void SetupLights(int renderingLayerMask)
+		void SetupLights(int renderingLayerMask,ShadowSettings shadowSettings)
 		{
 			NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
 			int i;
 			dirLightCount = otherLightCount = 0;
+			var max = maxLightsPerTile * TileCount;
+			if (maxOtherLightCount < max)
+			{
+				max = maxOtherLightCount;
+			}
 			for (i = 0; i < visibleLights.Length; i++)
 			{
 				VisibleLight visibleLight = visibleLights[i];
@@ -96,7 +101,7 @@ namespace TaoTie.RenderPipelines
 					switch (visibleLight.lightType)
 					{
 						case LightType.Directional:
-							if (dirLightCount < maxDirLightCount)
+							if (dirLightCount < maxDirLightCount && dirLightCount< shadowSettings.directional.maxLightCount)
 							{
 								SetupDirectionalLight(
 									dirLightCount++, i, ref visibleLight, light);
@@ -104,7 +109,7 @@ namespace TaoTie.RenderPipelines
 
 							break;
 						case LightType.Point:
-							if (otherLightCount < maxOtherLightCount)
+							if (otherLightCount < max)
 							{
 								SetupForwardPlus(otherLightCount, ref visibleLight);
 								SetupPointLight(
@@ -113,7 +118,7 @@ namespace TaoTie.RenderPipelines
 
 							break;
 						case LightType.Spot:
-							if (otherLightCount < maxOtherLightCount)
+							if (otherLightCount < max)
 							{
 								SetupForwardPlus(otherLightCount, ref visibleLight);
 								SetupSpotLight(
@@ -237,12 +242,12 @@ namespace TaoTie.RenderPipelines
 
 		public static ShadowTextures Record(
 			RenderGraph renderGraph,
-			CullingResults cullingResults,ForwardPlusSettings forwardPlusSettings,Vector2Int attachmentSize, ShadowSettings shadowSettings,
+			CullingResults cullingResults,Vector2Int attachmentSize, ShadowSettings shadowSettings,
 			int renderingLayerMask)
 		{
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				sampler.name, out LightingPass pass, sampler);
-			pass.Setup(cullingResults, attachmentSize,forwardPlusSettings, shadowSettings,
+			pass.Setup(cullingResults, attachmentSize,shadowSettings,
 				 renderingLayerMask);
 			builder.SetRenderFunc<LightingPass>(
 				static (pass, context) => pass.Render(context));
@@ -278,7 +283,7 @@ namespace TaoTie.RenderPipelines
 						break;
 					}
 					tileLightArray[dataIndex/4][dataIndex%4] = i;
-					if (lightsInTileCount + 1 >= maxLightsPerTile)
+					if (lightsInTileCount + 1 > maxLightsPerTile)
 					{
 						break;
 					}
