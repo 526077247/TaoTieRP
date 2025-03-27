@@ -27,8 +27,8 @@ Varyings ShadowCasterPassVertex (Attributes input) {
         output.positionCS_SS.z =
             min(output.positionCS_SS.z, output.positionCS_SS.w * UNITY_NEAR_CLIP_VALUE);
         #else
-        output.positionCS.z =
-            max(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
+        output.positionCS_SS.z =
+            max(output.positionCS_SS.z, output.positionCS_SS.w * UNITY_NEAR_CLIP_VALUE);
         #endif
     }
     output.baseUV = TransformBaseUV(input.baseUV);
