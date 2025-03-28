@@ -22,7 +22,9 @@ namespace TaoTie.RenderPipelines
         }
 
         public RenderScaleMode renderScaleMode = RenderScaleMode.Inherit;
-
+#if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.ShowIf("@"+nameof(renderScaleMode)+"!=RenderScaleMode.Inherit")]
+#endif
         [Range(0.1f, 2f)] public float renderScale = 1f;
 
         public bool overridePostFX = false;
