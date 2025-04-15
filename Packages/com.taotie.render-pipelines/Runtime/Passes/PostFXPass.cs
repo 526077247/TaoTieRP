@@ -12,7 +12,6 @@ namespace TaoTie.RenderPipelines
 			finalSampler = new("Final Post FX");
 
 		static readonly int
-			copyBicubicId = Shader.PropertyToID("_CopyBicubic"),
 			fxaaConfigId = Shader.PropertyToID("_FXAAConfig");
 
 		static readonly GlobalKeyword
@@ -79,9 +78,8 @@ namespace TaoTie.RenderPipelines
 			else
 			{
 				stack.Draw(buffer, finalSource, scaledResult, finalPass);
-				buffer.SetGlobalFloat(copyBicubicId,
-					scaleMode == ScaleMode.Bicubic ? 1f : 0f);
-				stack.DrawFinal(buffer, scaledResult, PostFXStack.Pass.FinalRescale);
+				stack.DrawFinal(buffer, scaledResult,
+					scaleMode == ScaleMode.Bicubic ? PostFXStack.Pass.FinalRescale : PostFXStack.Pass.Copy);
 			}
 
 			context.renderContext.ExecuteCommandBuffer(buffer);

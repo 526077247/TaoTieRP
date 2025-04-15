@@ -34,9 +34,9 @@ namespace TaoTie.RenderPipelines
         #endif
         public PostFXSettings postFXSettings = default;
 
-        public bool allowFXAA = false;
+        public bool allowFXAA = true;
 
-        public bool keepAlpha = false;
+        public bool keepAlpha = true;
 
         [Serializable]
         public struct FinalBlendMode

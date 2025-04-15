@@ -136,9 +136,8 @@
 			
 			HLSLPROGRAM
 				#pragma target 3.5
-				#pragma fragment FinalPassFragmentRescale
 				#pragma vertex DefaultPassVertex
-				#pragma fragment CopyPassFragment
+				#pragma fragment FinalPassFragmentRescale
 			ENDHLSL
 		}
 		Pass {
