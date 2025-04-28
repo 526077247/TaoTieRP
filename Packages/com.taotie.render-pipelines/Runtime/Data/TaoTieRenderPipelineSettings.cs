@@ -26,6 +26,10 @@ namespace TaoTie.RenderPipelines
         public enum ColorLUTResolution
         {
 #if ODIN_INSPECTOR
+            [Sirenix.OdinInspector.LabelText("Off")]
+#endif
+            Off = 0,
+#if ODIN_INSPECTOR
             [Sirenix.OdinInspector.LabelText("16")]
 #endif
             _16 = 16,

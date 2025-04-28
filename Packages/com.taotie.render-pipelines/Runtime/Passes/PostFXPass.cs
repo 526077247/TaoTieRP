@@ -24,6 +24,7 @@ namespace TaoTie.RenderPipelines
 		PostFXStack stack;
 
 		bool keepAlpha;
+		int colorLUTResolution;
 
 		enum ScaleMode
 		{
@@ -62,13 +63,20 @@ namespace TaoTie.RenderPipelines
 				finalSource = colorGradingResult;
 				finalPass = keepAlpha ? PostFXStack.Pass.FXAA : PostFXStack.Pass.FXAAWithLuma;
 				ConfigureFXAA(buffer);
-				stack.Draw(buffer, colorSource, finalSource,
+				if (colorLUTResolution > 0)
+				{
+					stack.Draw(buffer, colorSource, finalSource,
 					keepAlpha ? PostFXStack.Pass.ApplyColorGrading : PostFXStack.Pass.ApplyColorGradingWithLuma);
+				}
+				else
+				{
+					stack.Draw(buffer, colorSource, finalSource,PostFXStack.Pass.Copy);
+				}
 			}
 			else
 			{
 				finalSource = colorSource;
-				finalPass = PostFXStack.Pass.ApplyColorGrading;
+				finalPass = colorLUTResolution > 0?PostFXStack.Pass.ApplyColorGrading: PostFXStack.Pass.Copy;
 			}
 
 			if (scaleMode == ScaleMode.None)
@@ -95,18 +103,20 @@ namespace TaoTie.RenderPipelines
 		{
 			using var _ = new RenderGraphProfilingScope(renderGraph, groupSampler);
 
-			TextureHandle colorSource = BloomPass.Record(
-				renderGraph, stack, textures);
-
-			TextureHandle colorLUT = ColorLUTPass.Record(
-				renderGraph, stack, colorLUTResolution);
+			TextureHandle colorSource = BloomPass.Record(renderGraph, stack, textures);
+			
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				finalSampler.name, out PostFXPass pass, finalSampler);
 			pass.keepAlpha = keepAlpha;
 			pass.stack = stack;
 			pass.colorSource = builder.ReadTexture(colorSource);
-			builder.ReadTexture(colorLUT);
+			pass.colorLUTResolution = colorLUTResolution;
+			if (colorLUTResolution > 0)
+			{
+				TextureHandle colorLUT = ColorLUTPass.Record(renderGraph, stack, colorLUTResolution);
+				builder.ReadTexture(colorLUT);
+			}
 
 			if (stack.BufferSize.x == stack.Camera.pixelWidth)
 			{
