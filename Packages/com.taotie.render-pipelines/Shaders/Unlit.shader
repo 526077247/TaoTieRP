@@ -79,6 +79,24 @@ Shader "TaoTie RP/Unlit"
 			#include "MetaPass.hlsl"
 			ENDHLSL
 		}
+    	Pass
+        {
+            Name "OutLine"
+            Tags {"LightMode" = "Outline" }
+            Cull Front
+            ZWrite[_ZWrite]
+            BlendOp Add, Max
+            ZTest LEqual
+            Offset 1, 1
+
+            HLSLPROGRAM
+            #pragma multi_compile _ _OUTLINE
+            #pragma vertex NormalOutLineVertex
+            #pragma fragment NormalOutlineFragment
+            
+            #include "../ShaderLibrary/NormalOutline.hlsl"
+            ENDHLSL
+        }
     }
     CustomEditor "LWGUI.LWGUI"
 }

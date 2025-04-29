@@ -92,7 +92,6 @@
 			#pragma shader_feature _MASK_MAP
 			#pragma shader_feature _NORMAL_MAP
 			#pragma shader_feature _DETAIL_MAP
-			#pragma shader_feature _OUTLINE
 			#pragma shader_feature _RAMP_MAP
 			#pragma shader_feature _SHADOW_FACE_ON
 			#pragma multi_compile _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
