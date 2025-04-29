@@ -52,5 +52,7 @@ namespace TaoTie.RenderPipelines
         }
 
         public FXAA fxaa;
+
+        public bool outLine;
     }
 }
