@@ -2,45 +2,50 @@
 #define TAOTIE_POST_FX_PASSES_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
 
-TEXTURE2D(_PostFXSource);
-TEXTURE2D(_PostFXSource2);
+Texture2D<float4> _PostFXSource;
+Texture2D<float4> _PostFXSource2;
 
-struct Varyings {
-    float4 positionCS : SV_POSITION;
-    float2 screenUV : VAR_SCREEN_UV;
+struct VSInput
+{
+    float3 positionOS : POSITION;
+    float2 uv : TEXCOORD0;
 };
 
-float4 GetSource(float2 screenUV) {
-    return SAMPLE_TEXTURE2D_LOD(_PostFXSource, sampler_linear_clamp, screenUV, 0);
+struct PSOutput
+{
+    float4 color : SV_TARGET;
+};
+
+struct Varyings
+{
+    float4 positionCS : SV_POSITION;
+    float2 screenUV : TEXCOORD0;
+};
+
+float4 GetSource(float2 screenUV)
+{
+    return _PostFXSource.SampleLevel(_Sampler_ClampU_ClampV_Point, screenUV, 0);
 }
 
-float4 GetSource2(float2 screenUV) {
-    return SAMPLE_TEXTURE2D_LOD(_PostFXSource2, sampler_linear_clamp, screenUV, 0);
+float4 GetSource2(float2 screenUV)
+{
+    return _PostFXSource2.SampleLevel(_Sampler_ClampU_ClampV_Point, screenUV, 0);
 }
 
-float4 CopyPassFragment (Varyings input) : SV_TARGET {
-    return GetSource(input.screenUV);
+void CopyPassFragment (Varyings input, out PSOutput o)
+{
+    o = (PSOutput)0;
+    o.color = GetSource(input.screenUV);
 }
 
-Varyings DefaultPassVertex (uint vertexID : SV_VertexID) {
+Varyings DefaultPassVertex (VSInput i)
+{
     Varyings output;
-    output.positionCS = float4(
-        vertexID <= 1 ? -1.0 : 3.0,
-        vertexID == 1 ? 3.0 : -1.0,
-        0.0, 1.0
-    );
-    output.screenUV = float2(
-        vertexID <= 1 ? 0.0 : 2.0,
-        vertexID == 1 ? 2.0 : 0.0
-    );
-    if (_ProjectionParams.x < 0.0) {
-        output.screenUV.y = 1.0 - output.screenUV.y;
-    }
+    output.positionCS = mul(UNITY_MATRIX_VP, float4(i.positionOS, 1.f));
+    output.screenUV = i.uv;
     return output;
 }
-
 
 float4 _PostFXSource_TexelSize;
 
@@ -48,7 +53,8 @@ float4 GetSourceTexelSize () {
     return _PostFXSource_TexelSize;
 }
 
-float4 BloomHorizontalPassFragment (Varyings input) : SV_TARGET {
+float4 BloomHorizontalPassFragment (Varyings input) : SV_TARGET
+{
     float3 color = 0.0;
     float offsets[] = {
         -3.23076923, -1.38461538, 0.0, 1.38461538, 3.23076923
@@ -78,9 +84,51 @@ float4 BloomVerticalPassFragment (Varyings input) : SV_TARGET {
     return float4(color, 1.0);
 }
 
+real2 BSpline3MiddleLeft(real2 x)
+{
+    return 0.16666667 + x * (0.5 + x * (0.5 - x * 0.5));
+}
+
+real2 BSpline3MiddleRight(real2 x)
+{
+    return 0.66666667 + x * (-1.0 + 0.5 * x) * x;
+}
+
+real2 BSpline3Rightmost(real2 x)
+{
+    return 0.16666667 + x * (-0.5 + x * (0.5 - x * 0.16666667));
+}
+
+void BicubicFilter(float2 fracCoord, out float2 weights[2], out float2 offsets[2])
+{
+    float2 r  = BSpline3Rightmost(fracCoord);
+    float2 mr = BSpline3MiddleRight(fracCoord);
+    float2 ml = BSpline3MiddleLeft(fracCoord);
+    float2 l  = 1.0 - mr - ml - r;
+
+    weights[0] = r + mr;
+    weights[1] = ml + l;
+    offsets[0] = -1.0 + mr * rcp(weights[0]);
+    offsets[1] =  1.0 + l * rcp(weights[1]);
+}
+
+float4 SampleTexture2DBicubic(Texture2D<float4> tex, float2 coord, float4 texSize, float2 maxCoord, uint unused /* needed to match signature of texarray version below */)
+{
+    float2 xy = coord * texSize.xy + 0.5;
+    float2 ic = floor(xy);
+    float2 fc = frac(xy);
+
+    float2 weights[2], offsets[2];
+    BicubicFilter(fc, weights, offsets);
+
+    return weights[0].y * (weights[0].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
+                           weights[1].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)) +
+           weights[1].y * (weights[0].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
+                           weights[1].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0));
+}
+
 float4 GetSourceBicubic (float2 screenUV) {
-    return SampleTexture2DBicubic(
-        TEXTURE2D_ARGS(_PostFXSource, sampler_linear_clamp), screenUV,
+    return SampleTexture2DBicubic(_PostFXSource, screenUV,
         _PostFXSource_TexelSize.zwxy, 1.0, 0.0
     );
 }
@@ -88,7 +136,8 @@ float4 GetSourceBicubic (float2 screenUV) {
 bool _BloomBicubicUpsampling;
 float _BloomIntensity;
 
-float4 BloomAddPassFragment (Varyings input) : SV_TARGET {
+float4 BloomAddPassFragment (Varyings input) : SV_TARGET
+{
     float3 lowRes;
     if (_BloomBicubicUpsampling) {
         lowRes = GetSourceBicubic(input.screenUV).rgb;
@@ -112,7 +161,8 @@ float3 ApplyBloomThreshold (float3 color) {
     return color * contribution;
 }
 
-float4 BloomPrefilterPassFragment (Varyings input) : SV_TARGET {
+float4 BloomPrefilterPassFragment (Varyings input) : SV_TARGET
+{
     float3 color = ApplyBloomThreshold(GetSource(input.screenUV).rgb);
     return float4(color, 1.0);
 }
@@ -302,6 +352,9 @@ float4 FinalPassFragmentRescale (Varyings input) : SV_TARGET {
 float4 ApplyColorGradingWithLumaPassFragment (Varyings input) : SV_TARGET {
     float4 color = GetSource(input.screenUV);
     color.rgb = ApplyColorGradingLUT(color.rgb);
+    #if UNITY_COLORSPACE_GAMMA
+    color = LinearToSRGB(color);
+    #endif
     color.a = sqrt(Luminance(color.rgb));
     return color;
 }

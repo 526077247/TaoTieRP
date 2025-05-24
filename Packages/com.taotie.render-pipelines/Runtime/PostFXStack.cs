@@ -48,8 +48,7 @@ namespace TaoTie.RenderPipelines
         {
             buffer.SetRenderTarget(
                 to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            buffer.DrawProcedural(Matrix4x4.identity, Settings.Material, (int) pass,
-                MeshTopology.Triangles, 3);
+            buffer.Blit(null, to, Settings.Material, (int) pass);
         }
 
         public void Draw(
@@ -61,8 +60,8 @@ namespace TaoTie.RenderPipelines
             buffer.SetGlobalTexture(fxSourceId, from);
             buffer.SetRenderTarget(
                 to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            buffer.DrawProcedural(Matrix4x4.identity, Settings.Material, (int) pass,
-                MeshTopology.Triangles, 3);
+            
+            buffer.Blit(from, to, Settings.Material, (int) pass);
         }
 
         public void DrawFinal(
@@ -82,8 +81,8 @@ namespace TaoTie.RenderPipelines
                     : RenderBufferLoadAction.Load,
                 RenderBufferStoreAction.Store);
             buffer.SetViewport(Camera.pixelRect);
-            buffer.DrawProcedural(Matrix4x4.identity, Settings.Material, (int) pass,
-                MeshTopology.Triangles, 3);
+            
+            buffer.Blit(from, BuiltinRenderTextureType.CameraTarget, Settings.Material, (int) pass);
         }
     }
 }

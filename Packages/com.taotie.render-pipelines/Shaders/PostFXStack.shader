@@ -6,7 +6,7 @@
 		ZWrite Off
 		
 		HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
+		#include "ShaderLibrary/Common.hlsl"
 		#include "PostFXStackPasses.hlsl"
 		ENDHLSL
 
@@ -14,7 +14,6 @@
 			Name "Copy"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
 				#pragma vertex DefaultPassVertex
 				#pragma fragment CopyPassFragment
 			ENDHLSL
@@ -23,7 +22,7 @@
 			Name "Bloom Horizontal"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomHorizontalPassFragment
 			ENDHLSL
@@ -32,7 +31,7 @@
 			Name "Bloom Vertical"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomVerticalPassFragment
 			ENDHLSL
@@ -41,7 +40,7 @@
 			Name "Bloom Add"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomAddPassFragment
 			ENDHLSL
@@ -50,7 +49,7 @@
 			Name "Bloom Prefilter"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomPrefilterPassFragment
 			ENDHLSL
@@ -59,7 +58,7 @@
 			Name "Bloom PrefilterFireflies"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomPrefilterFirefliesPassFragment
 			ENDHLSL
@@ -69,7 +68,7 @@
 			Name "Bloom Scatter"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomScatterPassFragment
 			ENDHLSL
@@ -79,7 +78,7 @@
 			Name "Bloom ScatterFinal"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment BloomScatterFinalPassFragment
 			ENDHLSL
@@ -88,7 +87,7 @@
 			Name "ColorGrading None"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ColorGradingNonePassFragment
 			ENDHLSL
@@ -97,7 +96,7 @@
 			Name "ColorGrading ACES"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ColorGradingACESPassFragment
 			ENDHLSL
@@ -106,7 +105,7 @@
 			Name "ColorGrading Neutral"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ColorGradingNeutralPassFragment
 			ENDHLSL
@@ -115,7 +114,7 @@
 			Name "ColorGrading Reinhard"
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ColorGradingReinhardPassFragment
 			ENDHLSL
@@ -124,7 +123,7 @@
 			Name "Apply Color Grading"
 			Blend [_FinalSrcBlend] [_FinalDstBlend], One OneMinusSrcAlpha
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ApplyColorGradingPassFragment
 			ENDHLSL
@@ -135,7 +134,7 @@
 			Blend [_FinalSrcBlend] [_FinalDstBlend]
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FinalPassFragmentRescale
 			ENDHLSL
@@ -146,7 +145,7 @@
 			Blend [_FinalSrcBlend] [_FinalDstBlend]
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma multi_compile _ FXAA_QUALITY_MEDIUM FXAA_QUALITY_LOW
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FXAAPassFragment
@@ -157,7 +156,7 @@
 			Name "Apply Color Grading With Luma"
 
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ApplyColorGradingWithLumaPassFragment
 			ENDHLSL
@@ -168,7 +167,7 @@
 			Blend [_FinalSrcBlend] [_FinalDstBlend]
 			
 			HLSLPROGRAM
-				#pragma target 3.5
+				
 				#pragma multi_compile _ FXAA_QUALITY_MEDIUM FXAA_QUALITY_LOW
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FXAAPassFragment

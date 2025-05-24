@@ -28,7 +28,7 @@ Shader "TaoTie RP/Unlit"
     SubShader
     {
         HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
+		#include "ShaderLibrary/Common.hlsl"
 		#include "UnlitInput.hlsl"
 		ENDHLSL
         
@@ -57,7 +57,6 @@ Shader "TaoTie RP/Unlit"
 			ColorMask 0
 
 			HLSLPROGRAM
-			#pragma target 3.5
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
 			#pragma multi_compile_instancing
 			#pragma vertex ShadowCasterPassVertex
@@ -73,7 +72,6 @@ Shader "TaoTie RP/Unlit"
 			Cull Off
 
 			HLSLPROGRAM
-			#pragma target 3.5
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
 			#include "MetaPass.hlsl"
@@ -94,7 +92,7 @@ Shader "TaoTie RP/Unlit"
             #pragma vertex NormalOutLineVertex
             #pragma fragment NormalOutlineFragment
             
-            #include "../ShaderLibrary/NormalOutline.hlsl"
+            #include "ShaderLibrary/NormalOutline.hlsl"
             ENDHLSL
         }
     }

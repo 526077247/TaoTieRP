@@ -46,7 +46,7 @@
     SubShader
     {
         HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
+		#include "ShaderLibrary/Common.hlsl"
 		#include "UnlitInput.hlsl"
 		ENDHLSL
         
@@ -81,7 +81,7 @@
 			ColorMask 0
 
 			HLSLPROGRAM
-			#pragma target 3.5
+			
 			#pragma shader_feature _VERTEX_COLORS
 			#pragma shader_feature _FLIPBOOK_BLENDING
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER

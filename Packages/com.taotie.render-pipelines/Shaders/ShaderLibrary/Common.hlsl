@@ -1,6 +1,9 @@
 ﻿#ifndef TAOTIE_COMMON_INCLUDED
 #define TAOTIE_COMMON_INCLUDED
 
+SamplerState _Sampler_ClampU_ClampV_Linear;
+SamplerState _Sampler_ClampU_ClampV_Point;
+
 #define UNITY_MATRIX_M unity_ObjectToWorld
 #define UNITY_MATRIX_I_M unity_WorldToObject
 #define UNITY_MATRIX_V unity_MatrixV

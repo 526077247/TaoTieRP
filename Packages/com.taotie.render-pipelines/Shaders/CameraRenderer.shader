@@ -6,7 +6,7 @@
 		ZWrite Off
 		
 		HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
+		#include "ShaderLibrary/Common.hlsl"
 		#include "CameraRendererPasses.hlsl"
 		ENDHLSL
 
@@ -16,7 +16,6 @@
 			Blend [_CameraSrcBlend] [_CameraDstBlend]
 			
 			HLSLPROGRAM
-				#pragma target 3.5
 				#pragma vertex DefaultPassVertex
 				#pragma fragment CopyPassFragment
 			ENDHLSL
@@ -28,7 +27,6 @@
 			ZWrite On
 			
 			HLSLPROGRAM
-				#pragma target 3.5
 				#pragma vertex DefaultPassVertex
 				#pragma fragment CopyDepthPassFragment
 			ENDHLSL

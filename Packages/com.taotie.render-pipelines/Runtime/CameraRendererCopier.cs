@@ -59,9 +59,7 @@ namespace TaoTie.RenderPipelines
 			buffer.SetRenderTarget(
 				to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
 			buffer.SetViewport(camera.pixelRect);
-			buffer.DrawProcedural(
-				Matrix4x4.identity, material, isDepth ? 1 : 0,
-				MeshTopology.Triangles, 3);
+			buffer.Blit(from, to, material, isDepth ? 1 : 0);
 		}
 
 		public readonly void CopyToCameraTarget(
@@ -78,8 +76,7 @@ namespace TaoTie.RenderPipelines
 					: RenderBufferLoadAction.Load,
 				RenderBufferStoreAction.Store);
 			buffer.SetViewport(camera.pixelRect);
-			buffer.DrawProcedural(
-				Matrix4x4.identity, material, 0, MeshTopology.Triangles, 3);
+			buffer.Blit(from, BuiltinRenderTextureType.CameraTarget, material, 0);
 			buffer.SetGlobalFloat(srcBlendID, 1f);
 			buffer.SetGlobalFloat(dstBlendID, 0f);
 		}

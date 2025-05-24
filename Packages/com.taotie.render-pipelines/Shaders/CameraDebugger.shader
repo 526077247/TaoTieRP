@@ -7,7 +7,7 @@
 		ZWrite Off
 		
 		HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
+		#include "ShaderLibrary/Common.hlsl"
 		#include "CameraDebuggerPasses.hlsl"
 		ENDHLSL
 
