@@ -27,7 +27,7 @@
 			ZWrite On
 			
 			HLSLPROGRAM
-				#pragma vertex DefaultPassVertex
+				#pragma vertex DepthCopyPassVertex
 				#pragma fragment CopyDepthPassFragment
 			ENDHLSL
 		}

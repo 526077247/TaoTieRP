@@ -25,6 +25,14 @@ Varyings DefaultPassVertex (VSInput i)
     return output;
 }
 
+Varyings DepthCopyPassVertex (VSInput i)
+{
+    Varyings output;
+    output.positionCS = mul(UNITY_MATRIX_VP, float4(i.positionOS, 1.f));
+    output.screenUV = i.uv;
+    return output;
+}
+
 float4 CopyPassFragment (Varyings input) : SV_TARGET {
     return _SourceTexture.SampleLevel(_Sampler_ClampU_ClampV_Linear, input.screenUV, 0);
 }

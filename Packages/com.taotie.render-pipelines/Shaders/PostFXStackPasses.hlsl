@@ -331,17 +331,24 @@ float4 ColorGradingReinhardPassFragment (Varyings input) : SV_TARGET {
 
 TEXTURE2D(_ColorGradingLUT);
 
-float3 ApplyColorGradingLUT (float3 color) {
+float3 ApplyColorGradingLUT (float3 color, float dither = 0.0) {
     return ApplyLut2D(
         TEXTURE2D_ARGS(_ColorGradingLUT, sampler_linear_clamp),
-        saturate(_ColorGradingLUTInLogC ? LinearToLogC(color) : color),
+        saturate((_ColorGradingLUTInLogC ? LinearToLogC(color) : color) + dither),
         _ColorGradingLUTParameters.xyz
     );
 }
 
 float4 ApplyColorGradingPassFragment (Varyings input) : SV_TARGET {
     float4 color = GetSource(input.screenUV);
-    color.rgb = ApplyColorGradingLUT(color.rgb);
+    #if UNITY_COLORSPACE_GAMMA
+    color = FastSRGBToLinear(color);
+    #endif
+    float dither = (InterleavedGradientNoise(input.positionCS.xy, 0) - 0.5) / 255.0;
+    color.rgb = ApplyColorGradingLUT(color.rgb, dither);
+    #if UNITY_COLORSPACE_GAMMA
+    color = FastLinearToSRGB(color);
+    #endif
     return color;
 }
 
@@ -351,9 +358,13 @@ float4 FinalPassFragmentRescale (Varyings input) : SV_TARGET {
 
 float4 ApplyColorGradingWithLumaPassFragment (Varyings input) : SV_TARGET {
     float4 color = GetSource(input.screenUV);
-    color.rgb = ApplyColorGradingLUT(color.rgb);
     #if UNITY_COLORSPACE_GAMMA
-    color = LinearToSRGB(color);
+    color = FastSRGBToLinear(color);
+    #endif
+    float dither = (InterleavedGradientNoise(input.positionCS.xy, 0) - 0.5) / 255.0;
+    color.rgb = ApplyColorGradingLUT(color.rgb, dither);
+    #if UNITY_COLORSPACE_GAMMA
+    color = FastLinearToSRGB(color);
     #endif
     color.a = sqrt(Luminance(color.rgb));
     return color;

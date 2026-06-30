@@ -33,14 +33,6 @@ namespace TaoTie.RenderPipelines
             _8192 = 8192
         }
 
-        public enum FilterMode
-        {
-            PCF2x2,
-            PCF3x3,
-            PCF5x5,
-            PCF7x7
-        }
-
 #if ODIN_INSPECTOR
         [Sirenix.OdinInspector.MinValue(0.001f)]
 #else

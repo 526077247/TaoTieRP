@@ -217,7 +217,7 @@ namespace TaoTie.RenderPipelines
                 return false;
             }
 #endif
-            return camera.cameraType <= CameraType.SceneView;
+            return true;
         }
     }
 }
