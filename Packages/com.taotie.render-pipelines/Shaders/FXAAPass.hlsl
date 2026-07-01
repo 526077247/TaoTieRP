@@ -218,6 +218,8 @@ float4 FXAAPassFragment (Varyings input) : SV_TARGET {
 
         rgbyM = GetSource(posF);
     }
+    float dither = (InterleavedGradientNoise(input.positionCS.xy, 0) - 0.5) / 255.0;
+    rgbyM.rgb += dither;
     return rgbyM;
 }
 

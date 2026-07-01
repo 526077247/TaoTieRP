@@ -1,54 +1,47 @@
-﻿#ifndef TAOTIE_FORWARD_PLUS_INCLUDED
+#ifndef TAOTIE_FORWARD_PLUS_INCLUDED
 #define TAOTIE_FORWARD_PLUS_INCLUDED
-#include "ForwardPlusSetting.hlsl"
+
 // xy: Screen UV to tile coordinates.
 // z: Tiles per row, as integer.
-// w: Tile data size, as integer.
+// w: Tile data size (maxLightsPerTile), as integer.
 float4 _ForwardPlusTileSettings;
 
-CBUFFER_START(_ForwardPlus)
-    int _ForwardPlusTileLength;
-    int4 _ForwardPlusTileLights[MAX_TILES_COUNT];
-    int _ForwardPlusTiles[MAX_TILES_COUNT+1];
-CBUFFER_END
+TEXTURE2D(_ForwardPlusTileLightsTex);
+TEXTURE2D(_ForwardPlusTilesTex);
 
+float4 _ForwardPlusLightTexSize;
+
+int2 FpLightTexCoord(int index)
+{
+    return int2(index % (int)_ForwardPlusLightTexSize.x, index / (int)_ForwardPlusLightTexSize.x);
+}
 
 struct ForwardPlusTile
 {
     int2 coordinates;
 
     int index;
+    int headerIndex;
+    int lightCount;
 
     int GetForwardPlusTiles(int temp)
     {
-        int offset = floor(temp * 0.25 + 0.1);
-        int type = round(temp - offset * 4);
-        return _ForwardPlusTileLights[offset][type];
+        return (int)_ForwardPlusTileLightsTex.Load(int3(FpLightTexCoord(temp), 0)).r;
     }
-	
+
     int GetTileDataSize()
     {
-        return asint(_ForwardPlusTileSettings.w);
-    }
-
-    int GetHeaderIndex()
-    {
-        return _ForwardPlusTiles[index];
-    }
-
-    int GetLightCount()
-    {
-        return _ForwardPlusTiles[index+1] - _ForwardPlusTiles[index];
+        return (int)_ForwardPlusTileSettings.w;
     }
 
     int GetFirstLightIndexInTile()
     {
-        return GetHeaderIndex();
+        return headerIndex;
     }
 
     int GetLastLightIndexInTile()
     {
-        return GetHeaderIndex() + GetLightCount() - 1;
+        return headerIndex + lightCount - 1;
     }
 
     int GetLightIndex(int lightIndexInTile)
@@ -77,7 +70,10 @@ ForwardPlusTile GetForwardPlusTile(float2 screenUV)
 {
     ForwardPlusTile tile;
     tile.coordinates = int2(screenUV * _ForwardPlusTileSettings.xy);
-    tile.index = tile.coordinates.y * asint(_ForwardPlusTileSettings.z) +
+    float4 data = _ForwardPlusTilesTex.Load(int3(tile.coordinates, 0));
+    tile.headerIndex = (int)data.r;
+    tile.lightCount = (int)data.g;
+    tile.index = tile.coordinates.y * (int)_ForwardPlusTileSettings.z +
         tile.coordinates.x;
     return tile;
 }

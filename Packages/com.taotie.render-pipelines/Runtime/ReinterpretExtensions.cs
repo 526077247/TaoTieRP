@@ -19,5 +19,11 @@ namespace TaoTie.RenderPipelines
             converter.intValue = value;
             return converter.floatValue;
         }
+
+        public static int ReinterpretAsInt (this float value) {
+            IntFloat converter = default;
+            converter.floatValue = value;
+            return converter.intValue;
+        }
     }
 }

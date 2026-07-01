@@ -85,17 +85,16 @@
 			ZWrite [_ZWrite]
 
 			HLSLPROGRAM
-			#pragma shader_feature _CLIPPING
-			#pragma shader_feature _RECEIVE_SHADOWS
-			#pragma shader_feature _PREMULTIPLY_ALPHA
-			#pragma shader_feature _MASK_MAP
-			#pragma shader_feature _NORMAL_MAP
-			#pragma shader_feature _DETAIL_MAP
-			#pragma shader_feature _RAMP_MAP
-			#pragma shader_feature _SHADOW_FACE_ON
-			#pragma multi_compile _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
-			#pragma multi_compile _ _SOFT_CASCADE_BLEND
-			#pragma multi_compile _ _SHADOW_MASK_ALWAYS _SHADOW_MASK_DISTANCE
+			#pragma shader_feature_local _CLIPPING
+			#pragma shader_feature_local _PREMULTIPLY_ALPHA
+			#pragma shader_feature_local _MASK_MAP
+			#pragma shader_feature_local _NORMAL_MAP
+			#pragma shader_feature_local _DETAIL_MAP
+			#pragma shader_feature_local _RAMP_MAP
+			#pragma shader_feature_local _SHADOW_FACE_ON
+			#pragma multi_compile_local _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
+			#pragma multi_compile_local _ _SHADOW_MASK
+			#pragma multi_compile _ _TAOTIE_FORWARD_PLUS
 			#pragma multi_compile _ LIGHTMAP_ON
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_instancing

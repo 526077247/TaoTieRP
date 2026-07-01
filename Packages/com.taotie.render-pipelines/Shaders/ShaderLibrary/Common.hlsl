@@ -19,7 +19,7 @@ SamplerState _Sampler_ClampU_ClampV_Point;
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "UnityInput.hlsl"
 
-#if defined(_SHADOW_MASK_ALWAYS) || defined(_SHADOW_MASK_DISTANCE)
+#if defined(_SHADOW_MASK)
     #define SHADOWS_SHADOWMASK
 #endif
 
@@ -42,7 +42,10 @@ float OrthographicDepthBufferToLinear (float rawDepth) {
 }
 
 #include "Fragment.hlsl"
-#include "ForwardPlus.hlsl"
+#if defined(_TAOTIE_FORWARD_PLUS) && (!defined(SHADER_API_GLES) || defined(SHADER_API_GLES3))
+    #include "ForwardPlus.hlsl"
+    #define TAOTIE_FORWARD_PLUS 1
+#endif
 
 float DistanceSquared(float3 pA, float3 pB) {
     return dot(pA - pB, pA - pB);

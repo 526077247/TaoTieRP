@@ -2,7 +2,11 @@
 #define TAOTIE_LIGHT_INCLUDED
 
 #define MAX_DIRECTIONAL_LIGHT_COUNT 4
-#define MAX_OTHER_LIGHT_COUNT 256
+#if defined(TAOTIE_FORWARD_PLUS)
+    #define MAX_OTHER_LIGHT_COUNT 256
+#else
+    #define MAX_OTHER_LIGHT_COUNT 8
+#endif
 
 CBUFFER_START(_CustomLight)
 	int _DirectionalLightCount;

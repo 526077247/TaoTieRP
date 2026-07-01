@@ -36,7 +36,10 @@ float4 GetSource2(float2 screenUV)
 void CopyPassFragment (Varyings input, out PSOutput o)
 {
     o = (PSOutput)0;
-    o.color = GetSource(input.screenUV);
+    float3 color = GetSource(input.screenUV).rgb;
+    float dither = InterleavedGradientNoise(input.positionCS.xy, 0);
+    color += (dither - 0.5) / 255.0;
+    o.color = float4(color, GetSource(input.screenUV).a);
 }
 
 Varyings DefaultPassVertex (VSInput i)
@@ -349,11 +352,15 @@ float4 ApplyColorGradingPassFragment (Varyings input) : SV_TARGET {
     #if UNITY_COLORSPACE_GAMMA
     color = FastLinearToSRGB(color);
     #endif
+    color.rgb += dither;
     return color;
 }
 
 float4 FinalPassFragmentRescale (Varyings input) : SV_TARGET {
-    return GetSourceBicubic(input.screenUV);
+    float4 color = GetSourceBicubic(input.screenUV);
+    float dither = (InterleavedGradientNoise(input.positionCS.xy, 0) - 0.5) / 255.0;
+    color.rgb += dither;
+    return color;
 }
 
 float4 ApplyColorGradingWithLumaPassFragment (Varyings input) : SV_TARGET {
@@ -366,6 +373,7 @@ float4 ApplyColorGradingWithLumaPassFragment (Varyings input) : SV_TARGET {
     #if UNITY_COLORSPACE_GAMMA
     color = FastLinearToSRGB(color);
     #endif
+    color.rgb += dither;
     color.a = sqrt(Luminance(color.rgb));
     return color;
 }

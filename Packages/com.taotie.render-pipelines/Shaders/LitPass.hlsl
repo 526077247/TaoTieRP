@@ -91,6 +91,7 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	surface.fresnelStrength = GetFresnel(config);
 	surface.dither = InterleavedGradientNoise(config.fragment.positionSS, 0);
 	surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
+	surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
 	surface.lightMap = GetLightMap(config);
 	surface.faceShadow = GetFaceShadow(config);
 	#if defined(_PREMULTIPLY_ALPHA)

@@ -28,7 +28,9 @@ namespace TaoTie.RenderPipelines
 			smhRangeId = Shader.PropertyToID("_SMHRange");
 
 		static readonly GraphicsFormat colorFormat =
-			SystemInfo.GetGraphicsFormat(DefaultFormat.HDR);
+			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
+				? GraphicsFormat.R16G16B16A16_SFloat
+				: GraphicsFormat.R8G8B8A8_UNorm;
 
 		PostFXStack stack;
 
@@ -131,6 +133,7 @@ namespace TaoTie.RenderPipelines
 			var desc = new TextureDesc(lutWidth, lutHeight)
 			{
 				colorFormat = colorFormat,
+				filterMode = FilterMode.Bilinear,
 				name = "Color LUT"
 			};
 			pass.colorLUT = builder.WriteTexture(renderGraph.CreateTexture(desc));

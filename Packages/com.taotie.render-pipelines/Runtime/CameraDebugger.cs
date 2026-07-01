@@ -54,6 +54,9 @@ namespace TaoTie.RenderPipelines
         public static void Render(RenderGraphContext context)
         {
             CommandBuffer buffer = context.cmd;
+            buffer.SetRenderTarget(
+                BuiltinRenderTextureType.CameraTarget,
+                RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
             buffer.SetGlobalFloat(opacityID, opacity);
             buffer.DrawProcedural(
                 Matrix4x4.identity, material, 0, MeshTopology.Triangles, 3);

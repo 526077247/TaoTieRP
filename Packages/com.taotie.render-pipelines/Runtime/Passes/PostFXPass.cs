@@ -19,7 +19,11 @@ namespace TaoTie.RenderPipelines
 			fxaaMediumKeyword = GlobalKeyword.Create("FXAA_QUALITY_MEDIUM");
 
 		static readonly GraphicsFormat colorFormat =
-			SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
+				? GraphicsFormat.R16G16B16A16_SFloat
+				: GraphicsFormat.R8G8B8A8_UNorm;
+
+		GraphicsFormat format;
 
 		PostFXStack stack;
 
@@ -137,9 +141,10 @@ namespace TaoTie.RenderPipelines
 			bool applyFXAA = stack.BufferSettings.fxaa.enabled;
 			if (applyFXAA || pass.scaleMode != ScaleMode.None)
 			{
+				pass.format = colorFormat;
 				var desc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
 				{
-					colorFormat = colorFormat
+					colorFormat = pass.format
 				};
 				if (applyFXAA)
 				{

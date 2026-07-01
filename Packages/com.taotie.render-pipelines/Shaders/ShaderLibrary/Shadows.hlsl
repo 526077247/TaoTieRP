@@ -38,6 +38,8 @@ CBUFFER_START(_CustomShadows)
 	float4 _OtherShadowTiles[MAX_SHADOWED_OTHER_LIGHT_COUNT];
 	float4 _ShadowAtlasSize;
 	float4 _ShadowDistanceFade;
+	float _SoftCascadeBlend;
+	float _ShadowMaskMode;
 CBUFFER_END
 
 struct ShadowMask {
@@ -100,7 +102,8 @@ ShadowData GetShadowData (Surface surfaceWS) {
 		surfaceWS.depth, _ShadowDistanceFade.x, _ShadowDistanceFade.y
 	);
 	int i;
-	for (i = 0; i < _CascadeCount; i++) {
+	for (i = 0; i < MAX_CASCADE_COUNT; i++) {
+		if (i >= _CascadeCount) break;
 		float4 sphere = _CascadeCullingSpheres[i];
 		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
 		if (distanceSqr < sphere.w) {
@@ -120,12 +123,12 @@ ShadowData GetShadowData (Surface surfaceWS) {
 	if (i == _CascadeCount && _CascadeCount > 0) {
 		data.strength = 0.0;
 	}
-	#if !defined(_SOFT_CASCADE_BLEND)
-		else if (data.cascadeBlend < surfaceWS.dither) {
-			i += 1;
-		}
+	else if (_SoftCascadeBlend < 0.5 && data.cascadeBlend < surfaceWS.dither) {
+		i += 1;
+	}
+	if (_SoftCascadeBlend < 0.5) {
 		data.cascadeBlend = 1.0;
-	#endif
+	}
 	data.cascadeIndex = i;
 	return data;
 }
@@ -188,9 +191,9 @@ float GetCascadedShadow (
 float GetDirectionalShadowAttenuation (
 	DirectionalShadowData directional, ShadowData global, Surface surfaceWS
 ) {
-	#if !defined(_RECEIVE_SHADOWS)
+	if (!surfaceWS.receiveShadows) {
 		return 1.0;
-	#endif
+	}
 
 	float shadow;
 	if (directional.strength * global.strength <= 0.0) {
@@ -277,9 +280,9 @@ float GetOtherShadow (
 float GetOtherShadowAttenuation (
 	OtherShadowData other, ShadowData global, Surface surfaceWS
 ) {
-	#if !defined(_RECEIVE_SHADOWS)
+	if (!surfaceWS.receiveShadows) {
 		return 1.0;
-	#endif
+	}
 	
 	float shadow;
 	if (other.strength * global.strength <= 0.0) {

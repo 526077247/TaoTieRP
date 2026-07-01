@@ -108,10 +108,19 @@ namespace TaoTie.RenderPipelines
             using (renderGraph.RecordAndExecute(renderGraphParameters))
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
+
+                bool useForwardPlus = settings.shadows.renderingMode switch
+                {
+                    ShadowSettings.RenderingMode.Auto =>
+                        SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2,
+                    ShadowSettings.RenderingMode.ForwardPlus => true,
+                    ShadowSettings.RenderingMode.Forward => false,
+                    _ => true
+                };
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
-                        -1);
+                        -1, useForwardPlus);
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
                     useHDR, bufferSize, camera);

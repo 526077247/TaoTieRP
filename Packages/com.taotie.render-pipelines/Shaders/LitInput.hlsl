@@ -33,6 +33,7 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float, _NormalScale)
     UNITY_DEFINE_INSTANCED_PROP(half, _OutlineWidth)
     UNITY_DEFINE_INSTANCED_PROP(half4, _OutlineColor)
+    UNITY_DEFINE_INSTANCED_PROP(float, _ReceiveShadows)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 struct InputConfig {

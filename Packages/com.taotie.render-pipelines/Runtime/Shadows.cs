@@ -16,13 +16,8 @@ namespace TaoTie.RenderPipelines
 			GlobalKeyword.Create("_SHADOW_FILTER_HIGH"),
 		};
 
-		static readonly GlobalKeyword softCascadeBlendKeyword =
-			GlobalKeyword.Create("_SOFT_CASCADE_BLEND");
-		static readonly GlobalKeyword[] shadowMaskKeywords =
-		{
-			GlobalKeyword.Create("_SHADOW_MASK_ALWAYS"),
-			GlobalKeyword.Create("_SHADOW_MASK_DISTANCE"),
-		};
+		static readonly GlobalKeyword shadowMaskKeyword =
+			GlobalKeyword.Create("_SHADOW_MASK");
 
 		static readonly int
 			dirShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas"),
@@ -35,7 +30,9 @@ namespace TaoTie.RenderPipelines
 			cascadeDataId = Shader.PropertyToID("_CascadeData"),
 			shadowAtlastSizeId = Shader.PropertyToID("_ShadowAtlasSize"),
 			shadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade"),
-			shadowPancakingId = Shader.PropertyToID("_ShadowPancaking");
+			shadowPancakingId = Shader.PropertyToID("_ShadowPancaking"),
+			softCascadeBlendId = Shader.PropertyToID("_SoftCascadeBlend"),
+			shadowMaskModeId = Shader.PropertyToID("_ShadowMaskMode");
 
 		static readonly Vector4[]
 			cascadeCullingSpheres = new Vector4[maxCascades],
@@ -174,10 +171,14 @@ namespace TaoTie.RenderPipelines
 			RenderGraph renderGraph,
 			RenderGraphBuilder builder)
 		{
+			DepthBits shadowDepth = SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2
+				? DepthBits.Depth16
+				: DepthBits.Depth32;
+
 			int atlasSize = (int) settings.directional.atlasSize;
 			var desc = new TextureDesc(atlasSize, atlasSize)
 			{
-				depthBufferBits = DepthBits.Depth32,
+				depthBufferBits = shadowDepth,
 				isShadowMap = true,
 				name = "Directional Shadow Atlas"
 			};
@@ -212,8 +213,13 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalTexture(dirShadowAtlasId, directionalAtlas);
 			buffer.SetGlobalTexture(otherShadowAtlasId, otherAtlas);
 
-			SetKeywords(shadowMaskKeywords,
-				useShadowMask ? QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1 : -1);
+			buffer.SetKeyword(shadowMaskKeyword, useShadowMask);
+			buffer.SetGlobalFloat(shadowMaskModeId,
+				useShadowMask
+					? (QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 1f : 2f)
+					: 0f);
+			buffer.SetGlobalFloat(softCascadeBlendId,
+				settings.directional.softCascadeBlend ? 1f : 0f);
 			buffer.SetGlobalInt(cascadeCountId, shadowedDirLightCount > 0 ? settings.directional.cascadeCount : 0);
 			float f = 1f - settings.directional.cascadeFade;
 			buffer.SetGlobalVector(shadowDistanceFadeId, new Vector4(
@@ -249,10 +255,7 @@ namespace TaoTie.RenderPipelines
 				cascadeCullingSpheresId, cascadeCullingSpheres);
 			buffer.SetGlobalVectorArray(cascadeDataId, cascadeData);
 			buffer.SetGlobalMatrixArray(dirShadowMatricesId, dirShadowMatrices);
-			
-			buffer.SetKeyword(
-				softCascadeBlendKeyword, settings.directional.softCascadeBlend);
-				
+
 			buffer.EndSample("Directional Shadows");
 			ExecuteBuffer();
 		}

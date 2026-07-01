@@ -17,6 +17,20 @@ namespace TaoTie.RenderPipelines
             GraphicsSettings.useScriptableRenderPipelineBatching =
                 settings.useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
+
+            bool useForwardPlus = settings.shadows.renderingMode switch
+            {
+                ShadowSettings.RenderingMode.Auto =>
+                    SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2,
+                ShadowSettings.RenderingMode.ForwardPlus => true,
+                ShadowSettings.RenderingMode.Forward => false,
+                _ => true
+            };
+            if (useForwardPlus)
+                Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
+            else
+                Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
+
             InitializeForEditor();
             renderer = new(settings.cameraRendererShader, settings.cameraDebuggerShader);
         }

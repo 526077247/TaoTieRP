@@ -32,6 +32,7 @@ Varyings DefaultPassVertex(uint vertexID : SV_VertexID)
 
 float4 ForwardPlusTilesPassFragment(Varyings input) : SV_TARGET
 {
+    #if defined(TAOTIE_FORWARD_PLUS)
     ForwardPlusTile tile = GetForwardPlusTile(input.screenUV);
     float3 color;
     if (tile.IsMinimumEdgePixel(input.screenUV))
@@ -42,9 +43,12 @@ float4 ForwardPlusTilesPassFragment(Varyings input) : SV_TARGET
     {
         color = OverlayHeatMap(
             input.screenUV * _CameraBufferSize.zw, tile.GetScreenSize(),
-            tile.GetLightCount(), tile.GetMaxLightsPerTile(), 1.0).rgb;
+            tile.lightCount, tile.GetMaxLightsPerTile(), 1.0).rgb;
     }
     return float4(color, _DebugOpacity);
+    #else
+    return float4(0.0, 0.0, 0.0, 0.0);
+    #endif
 }
 
 #endif
