@@ -250,10 +250,20 @@ namespace TaoTie.RenderPipelines
 			buffer.Clear();
 		}
 
+		static Color GetFinalColor(ref VisibleLight visibleLight)
+		{
+			Color color = visibleLight.finalColor;
+			if (QualitySettings.activeColorSpace == ColorSpace.Gamma)
+			{
+				color = color.linear;
+			}
+			return color;
+		}
+
 		void SetupDirectionalLight(
 			int index, int visibleIndex, ref VisibleLight visibleLight, Light light)
 		{
-			dirLightColors[index] = visibleLight.finalColor;
+			dirLightColors[index] = GetFinalColor(ref visibleLight);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
 			dirAndMask.w = light.renderingLayerMask.ReinterpretAsFloat();
 			dirLightDirectionsAndMasks[index] = dirAndMask;
@@ -264,7 +274,7 @@ namespace TaoTie.RenderPipelines
 		void SetupPointLight(
 			int index, int visibleIndex, ref VisibleLight visibleLight, Light light)
 		{
-			otherLightColors[index] = visibleLight.finalColor;
+			otherLightColors[index] = GetFinalColor(ref visibleLight);
 			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
@@ -280,7 +290,7 @@ namespace TaoTie.RenderPipelines
 		void SetupSpotLight(
 			int index, int visibleIndex, ref VisibleLight visibleLight, Light light)
 		{
-			otherLightColors[index] = visibleLight.finalColor;
+			otherLightColors[index] = GetFinalColor(ref visibleLight);
 			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);

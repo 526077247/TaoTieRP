@@ -26,6 +26,7 @@ SamplerState _Sampler_ClampU_ClampV_Point;
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
 SAMPLER(sampler_linear_clamp);
 SAMPLER(sampler_point_clamp);

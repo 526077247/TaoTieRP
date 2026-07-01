@@ -84,6 +84,9 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	surface.viewDirection = normalize(_WorldSpaceCameraPos - input.positionWS);
 	surface.depth = -TransformWorldToView(input.positionWS).z;
 	surface.color = base.rgb;
+	#if UNITY_COLORSPACE_GAMMA
+		surface.color = SRGBToLinear(surface.color);
+	#endif
 	surface.alpha = base.a;
 	surface.metallic = GetMetallic(config);
 	surface.occlusion = GetOcclusion(config);
@@ -100,8 +103,18 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 		BRDF brdf = GetBRDF(surface);
 	#endif
 	GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
+	#if UNITY_COLORSPACE_GAMMA
+		#if !defined(LIGHTMAP_ON)
+			gi.diffuse = SRGBToLinear(gi.diffuse);
+		#endif
+	#endif
 	float3 color = GetLighting(config.fragment, surface, brdf, gi);
-	color += GetEmission(config) * surface.lightMap.a;
+	#if UNITY_COLORSPACE_GAMMA
+		color += SRGBToLinear(GetEmission(config)) * surface.lightMap.a;
+		color = LinearToSRGB(color);
+	#else
+		color += GetEmission(config) * surface.lightMap.a;
+	#endif
 	return float4(color, GetFinalAlpha(surface.alpha));
 }
 
