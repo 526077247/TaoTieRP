@@ -21,14 +21,12 @@ MonoBehaviour:
       copyDepthReflection: 0
       renderScale: 1
       bicubicRescaling: 1
-      fxaa:
-        enabled: 1
-        fixedThreshold: 0.0312
-        relativeThreshold: 0.063
-        subpixelBlending: 0.75
-        quality: 2
+      msaa: 2
+      fxaa: 1
+      outLine: 0
     useSRPBatcher: 1
     shadows:
+      renderingMode: 0
       maxDistance: 30
       distanceFade: 0.1
       filterQuality: 1

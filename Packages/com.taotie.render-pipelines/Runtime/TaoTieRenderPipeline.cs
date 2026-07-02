@@ -44,7 +44,12 @@ namespace TaoTie.RenderPipelines
         protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
         {
             base.Render(context, cameras);
-            
+
+#if UNITY_EDITOR
+            if (UnityEditor.BuildPipeline.isBuildingPlayer)
+                return;
+#endif
+
             for (int i = 0; i < cameras.Count; i++)
             {
                 renderer.Render(renderGraph, context, cameras[i], settings);

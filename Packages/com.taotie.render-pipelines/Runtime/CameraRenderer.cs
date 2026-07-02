@@ -94,7 +94,7 @@ namespace TaoTie.RenderPipelines
                 bufferSize.y = camera.pixelHeight;
             }
 
-            bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
+            bufferSettings.fxaa &= cameraSettings.allowFXAA;
 
             MSAASamples msaaSamples = cameraSettings.allowMSAA ? bufferSettings.msaa : MSAASamples.None;
             if (camera.cameraType == CameraType.SceneView || camera.cameraType == CameraType.Preview)
@@ -159,7 +159,7 @@ namespace TaoTie.RenderPipelines
                     postFXStack.Settings = postFXSettings;
                     PostFXPass.Record(
                         renderGraph, postFXStack, (int) settings.colorLUTResolution,
-                        cameraSettings.keepAlpha, textures);
+                        textures);
                 }
                 else
                 {

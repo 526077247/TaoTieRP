@@ -23,38 +23,9 @@ namespace TaoTie.RenderPipelines
 
         public BicubicRescalingMode bicubicRescaling;
 
-        [Serializable]
-        public struct FXAA
-        {
-            public bool enabled;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf(nameof(enabled))]
-#endif
-            [Range(0.0312f, 0.0833f)] public float fixedThreshold;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf(nameof(enabled))]
-#endif
-            [Range(0.063f, 0.333f)] public float relativeThreshold;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf(nameof(enabled))]
-#endif
-            [Range(0f, 1f)] public float subpixelBlending;
-
-            public enum Quality
-            {
-                Low,
-                Medium,
-                High
-            }
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf(nameof(enabled))]
-#endif
-            public Quality quality;
-        }
-
         public MSAASamples msaa;
 
-        public FXAA fxaa;
+        public bool fxaa;
 
         public bool outLine;
     }

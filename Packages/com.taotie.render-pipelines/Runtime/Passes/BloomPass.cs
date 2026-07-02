@@ -20,6 +20,11 @@ namespace TaoTie.RenderPipelines
 		readonly TextureHandle[] pyramid =
 			new TextureHandle[2 * maxBloomPyramidLevels + 1];
 
+		readonly Vector2Int[] pyramidSizes =
+			new Vector2Int[2 * maxBloomPyramidLevels + 1];
+
+		Vector2Int sourceSize;
+
 		TextureHandle colorSource, bloomResult;
 
 		PostFXStack stack;
@@ -39,6 +44,7 @@ namespace TaoTie.RenderPipelines
 			threshold.y -= threshold.x;
 			buffer.SetGlobalVector(thresholdId, threshold);
 
+			stack.SourceSize = sourceSize;
 			stack.Draw(buffer, colorSource, pyramid[0],
 				bloom.fadeFireflies ? PostFXStack.Pass.BloomPrefilterFireflies : PostFXStack.Pass.BloomPrefilter);
 
@@ -47,8 +53,10 @@ namespace TaoTie.RenderPipelines
 			for (i = 0; i < stepCount; i++)
 			{
 				int midId = toId - 1;
+				stack.SourceSize = pyramidSizes[fromId];
 				stack.Draw(buffer, pyramid[fromId], pyramid[midId],
 					PostFXStack.Pass.BloomHorizontal);
+				stack.SourceSize = pyramidSizes[midId];
 				stack.Draw(buffer, pyramid[midId], pyramid[toId],
 					PostFXStack.Pass.BloomVertical);
 				fromId = toId;
@@ -80,6 +88,7 @@ namespace TaoTie.RenderPipelines
 				for (i -= 1; i > 0; i--)
 				{
 					buffer.SetGlobalTexture(PostFXStack.fxSource2Id, pyramid[toId + 1]);
+					stack.SourceSize = pyramidSizes[fromId];
 					stack.Draw(buffer, pyramid[fromId], pyramid[toId], combinePass);
 					fromId = toId;
 					toId -= 2;
@@ -88,6 +97,7 @@ namespace TaoTie.RenderPipelines
 
 			buffer.SetGlobalFloat(intensityId, finalIntensity);
 			buffer.SetGlobalTexture(PostFXStack.fxSource2Id, colorSource);
+			stack.SourceSize = pyramidSizes[fromId];
 			stack.Draw(buffer, pyramid[fromId], bloomResult, finalPass);
 		}
 
@@ -102,9 +112,11 @@ namespace TaoTie.RenderPipelines
 			{
 				return textures.resolvedColorAttachment;
 			}
-			Vector2Int size = (bloom.ignoreRenderScale
+
+			Vector2Int sourceSize = bloom.ignoreRenderScale
 				? new Vector2Int(stack.Camera.pixelWidth, stack.Camera.pixelHeight)
-				: stack.BufferSize) / 2;
+				: stack.BufferSize;
+			Vector2Int size = sourceSize / 2;
 
 			if (size.y < bloom.downscaleLimit * 2 ||
 			    size.x < bloom.downscaleLimit * 2)
@@ -116,6 +128,7 @@ namespace TaoTie.RenderPipelines
 				sampler.name, out BloomPass pass, sampler);
 			pass.stack = stack;
 			pass.colorSource = builder.ReadTexture(textures.resolvedColorAttachment);
+			pass.sourceSize = sourceSize;
 
 			var desc = new TextureDesc(size.x, size.y)
 			{
@@ -124,7 +137,9 @@ namespace TaoTie.RenderPipelines
 				name = "Bloom Prefilter"
 			};
 			TextureHandle[] pyramid = pass.pyramid;
+			Vector2Int[] pyramidSizes = pass.pyramidSizes;
 			pyramid[0] = builder.CreateTransientTexture(desc);
+			pyramidSizes[0] = size;
 			size /= 2;
 
 			int pyramidIndex = 1;
@@ -140,8 +155,10 @@ namespace TaoTie.RenderPipelines
 				desc.height = size.y;
 				desc.name = "Bloom Pyramid H";
 				pyramid[pyramidIndex] = builder.CreateTransientTexture(desc);
+				pyramidSizes[pyramidIndex] = size;
 				desc.name = "Bloom Pyramid V";
 				pyramid[pyramidIndex + 1] = builder.CreateTransientTexture(desc);
+				pyramidSizes[pyramidIndex + 1] = size;
 				size /= 2;
 			}
 

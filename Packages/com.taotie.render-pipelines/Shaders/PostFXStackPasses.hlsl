@@ -363,19 +363,4 @@ float4 FinalPassFragmentRescale (Varyings input) : SV_TARGET {
     return color;
 }
 
-float4 ApplyColorGradingWithLumaPassFragment (Varyings input) : SV_TARGET {
-    float4 color = GetSource(input.screenUV);
-    #if UNITY_COLORSPACE_GAMMA
-    color = FastSRGBToLinear(color);
-    #endif
-    float dither = (InterleavedGradientNoise(input.positionCS.xy, 0) - 0.5) / 255.0;
-    color.rgb = ApplyColorGradingLUT(color.rgb, dither);
-    #if UNITY_COLORSPACE_GAMMA
-    color = FastLinearToSRGB(color);
-    #endif
-    color.rgb += dither;
-    color.a = sqrt(Luminance(color.rgb));
-    return color;
-}
-
 #endif

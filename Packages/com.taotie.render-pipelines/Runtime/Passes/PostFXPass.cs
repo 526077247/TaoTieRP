@@ -11,13 +11,6 @@ namespace TaoTie.RenderPipelines
 			groupSampler = new("Post FX"),
 			finalSampler = new("Final Post FX");
 
-		static readonly int
-			fxaaConfigId = Shader.PropertyToID("_FXAAConfig");
-
-		static readonly GlobalKeyword
-			fxaaLowKeyword = GlobalKeyword.Create("FXAA_QUALITY_LOW"),
-			fxaaMediumKeyword = GlobalKeyword.Create("FXAA_QUALITY_MEDIUM");
-
 		static readonly GraphicsFormat colorFormat =
 			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
 				? GraphicsFormat.R16G16B16A16_SFloat
@@ -27,7 +20,6 @@ namespace TaoTie.RenderPipelines
 
 		PostFXStack stack;
 
-		bool keepAlpha;
 		int colorLUTResolution;
 
 		enum ScaleMode
@@ -41,40 +33,27 @@ namespace TaoTie.RenderPipelines
 
 		TextureHandle colorSource, colorGradingResult, scaledResult;
 
-		void ConfigureFXAA(CommandBuffer buffer)
-		{
-			CameraBufferSettings.FXAA fxaa = stack.BufferSettings.fxaa;
-			buffer.SetKeyword(fxaaLowKeyword, fxaa.quality ==
-			                                  CameraBufferSettings.FXAA.Quality.Low);
-			buffer.SetKeyword(fxaaMediumKeyword, fxaa.quality ==
-			                                     CameraBufferSettings.FXAA.Quality.Medium);
-			buffer.SetGlobalVector(fxaaConfigId, new Vector4(
-				fxaa.fixedThreshold,
-				fxaa.relativeThreshold,
-				fxaa.subpixelBlending));
-		}
-
 		void Render(RenderGraphContext context)
 		{
 			CommandBuffer buffer = context.cmd;
 			buffer.SetGlobalFloat(PostFXStack.finalSrcBlendId, 1f);
 			buffer.SetGlobalFloat(PostFXStack.finalDstBlendId, 0f);
+			stack.SourceSize = stack.BufferSize;
 
 			RenderTargetIdentifier finalSource;
 			PostFXStack.Pass finalPass;
-			if (stack.BufferSettings.fxaa.enabled)
+			if (stack.BufferSettings.fxaa)
 			{
 				finalSource = colorGradingResult;
-				finalPass = keepAlpha ? PostFXStack.Pass.FXAA : PostFXStack.Pass.FXAAWithLuma;
-				ConfigureFXAA(buffer);
+				finalPass = PostFXStack.Pass.FXAA;
 				if (colorLUTResolution > 0)
 				{
 					stack.Draw(buffer, colorSource, finalSource,
-					keepAlpha ? PostFXStack.Pass.ApplyColorGrading : PostFXStack.Pass.ApplyColorGradingWithLuma);
+						PostFXStack.Pass.ApplyColorGrading);
 				}
 				else
 				{
-					stack.Draw(buffer, colorSource, finalSource,PostFXStack.Pass.Copy);
+					stack.Draw(buffer, colorSource, finalSource, PostFXStack.Pass.Copy);
 				}
 			}
 			else
@@ -102,7 +81,6 @@ namespace TaoTie.RenderPipelines
 			RenderGraph renderGraph,
 			PostFXStack stack,
 			int colorLUTResolution,
-			bool keepAlpha,
 			in CameraRendererTextures textures)
 		{
 			using var _ = new RenderGraphProfilingScope(renderGraph, groupSampler);
@@ -112,7 +90,6 @@ namespace TaoTie.RenderPipelines
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				finalSampler.name, out PostFXPass pass, finalSampler);
-			pass.keepAlpha = keepAlpha;
 			pass.stack = stack;
 			pass.colorSource = builder.ReadTexture(colorSource);
 			pass.colorLUTResolution = colorLUTResolution;
@@ -138,7 +115,7 @@ namespace TaoTie.RenderPipelines
 						: ScaleMode.Linear;
 			}
 
-			bool applyFXAA = stack.BufferSettings.fxaa.enabled;
+			bool applyFXAA = stack.BufferSettings.fxaa;
 			if (applyFXAA || pass.scaleMode != ScaleMode.None)
 			{
 				pass.format = colorFormat;

@@ -146,32 +146,8 @@
 			
 			HLSLPROGRAM
 				
-				#pragma multi_compile _ FXAA_QUALITY_MEDIUM FXAA_QUALITY_LOW
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FXAAPassFragment
-				#include "FXAAPass.hlsl"
-			ENDHLSL
-		}
-		Pass {
-			Name "Apply Color Grading With Luma"
-
-			HLSLPROGRAM
-				
-				#pragma vertex DefaultPassVertex
-				#pragma fragment ApplyColorGradingWithLumaPassFragment
-			ENDHLSL
-		}
-		Pass {
-			Name "FXAA With Luma"
-
-			Blend [_FinalSrcBlend] [_FinalDstBlend]
-			
-			HLSLPROGRAM
-				
-				#pragma multi_compile _ FXAA_QUALITY_MEDIUM FXAA_QUALITY_LOW
-				#pragma vertex DefaultPassVertex
-				#pragma fragment FXAAPassFragment
-				#define FXAA_ALPHA_CONTAINS_LUMA
 				#include "FXAAPass.hlsl"
 			ENDHLSL
 		}

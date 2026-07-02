@@ -62,12 +62,31 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
     shadowData.shadowMask = gi.shadowMask;
     float3 color = IndirectBRDF(surfaceWS, brdf, gi.diffuse, gi.specular);
     int dirLightCount = GetDirectionalLightCount();
-    for (int i = 0; i < MAX_DIRECTIONAL_LIGHT_COUNT; i++) {
-        if (i < dirLightCount) {
-            Light light = GetDirectionalLight(i, surfaceWS, shadowData);
-            if (RenderingLayersOverlap(surfaceWS, light)) {
-                color += GetDirLighting(surfaceWS, brdf, light);
-            }
+    // Manually unrolled with constant indices for WebGL1/GLES2:
+    // function parameters are not constant-index-expressions, so the loop
+    // variable cannot be used to index uniform arrays inside GetDirectionalLight.
+    if (0 < dirLightCount) {
+        Light light = GetDirectionalLight(0, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetDirLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (1 < dirLightCount) {
+        Light light = GetDirectionalLight(1, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetDirLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (2 < dirLightCount) {
+        Light light = GetDirectionalLight(2, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetDirLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (3 < dirLightCount) {
+        Light light = GetDirectionalLight(3, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetDirLighting(surfaceWS, brdf, light);
         }
     }
     
@@ -84,16 +103,54 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
         }
     }
     #else
+    // Manually unrolled with constant indices for WebGL1/GLES2.
     int otherLightCount = GetOtherLightCount();
-    for (int j = 0; j < MAX_OTHER_LIGHT_COUNT; j++)
-    {
-        if (j < otherLightCount)
-        {
-            Light light = GetOtherLight(j, surfaceWS, shadowData);
-            if (RenderingLayersOverlap(surfaceWS, light))
-            {
-                color += GetLighting(surfaceWS, brdf, light);
-            }
+    if (0 < otherLightCount) {
+        Light light = GetOtherLight(0, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (1 < otherLightCount) {
+        Light light = GetOtherLight(1, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (2 < otherLightCount) {
+        Light light = GetOtherLight(2, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (3 < otherLightCount) {
+        Light light = GetOtherLight(3, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (4 < otherLightCount) {
+        Light light = GetOtherLight(4, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (5 < otherLightCount) {
+        Light light = GetOtherLight(5, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (6 < otherLightCount) {
+        Light light = GetOtherLight(6, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    if (7 < otherLightCount) {
+        Light light = GetOtherLight(7, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
         }
     }
     #endif

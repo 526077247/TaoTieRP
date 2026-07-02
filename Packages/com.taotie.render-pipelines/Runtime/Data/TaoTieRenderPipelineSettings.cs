@@ -11,12 +11,6 @@ namespace TaoTie.RenderPipelines
             allowHDR = true,
             msaa = MSAASamples.None,
             renderScale = 1f,
-            fxaa = new()
-            {
-                fixedThreshold = 0.0833f,
-                relativeThreshold = 0.166f,
-                subpixelBlending = 0.75f
-            }
         };
 
         public bool useSRPBatcher = true;

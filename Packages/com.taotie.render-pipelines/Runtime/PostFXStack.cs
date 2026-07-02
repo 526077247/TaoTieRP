@@ -21,14 +21,13 @@ namespace TaoTie.RenderPipelines
             ColorGradingReinhard,
             ApplyColorGrading,
             FinalRescale,
-            FXAA,
-            ApplyColorGradingWithLuma,
-            FXAAWithLuma
+            FXAA
         }
 
         public static readonly int
             fxSourceId = Shader.PropertyToID("_PostFXSource"),
             fxSource2Id = Shader.PropertyToID("_PostFXSource2"),
+            fxSourceTexelSizeId = Shader.PropertyToID("_PostFXSource_TexelSize"),
             finalSrcBlendId = Shader.PropertyToID("_FinalSrcBlend"),
             finalDstBlendId = Shader.PropertyToID("_FinalDstBlend");
 
@@ -37,6 +36,8 @@ namespace TaoTie.RenderPipelines
         public CameraBufferSettings BufferSettings { get; set; }
 
         public Vector2Int BufferSize { get; set; }
+
+        public Vector2Int SourceSize { get; set; }
 
         public Camera Camera { get; set; }
 
@@ -58,6 +59,8 @@ namespace TaoTie.RenderPipelines
             Pass pass)
         {
             buffer.SetGlobalTexture(fxSourceId, from);
+            buffer.SetGlobalVector(fxSourceTexelSizeId, new Vector4(
+                1f / SourceSize.x, 1f / SourceSize.y, SourceSize.x, SourceSize.y));
             buffer.SetRenderTarget(
                 to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             
@@ -73,6 +76,8 @@ namespace TaoTie.RenderPipelines
             buffer.SetGlobalFloat(
                 finalDstBlendId, (float) FinalBlendMode.destination);
             buffer.SetGlobalTexture(fxSourceId, from);
+            buffer.SetGlobalVector(fxSourceTexelSizeId, new Vector4(
+                1f / SourceSize.x, 1f / SourceSize.y, SourceSize.x, SourceSize.y));
             buffer.SetRenderTarget(
                 BuiltinRenderTextureType.CameraTarget,
                 FinalBlendMode.destination == BlendMode.Zero &&
