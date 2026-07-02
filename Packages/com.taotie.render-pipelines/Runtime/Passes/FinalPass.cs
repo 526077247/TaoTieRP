@@ -23,7 +23,7 @@ namespace TaoTie.RenderPipelines
             using RenderGraphBuilder builder =
                 renderGraph.AddRenderPass(sampler.name, out FinalPass pass, sampler);
             pass.copier = copier;
-            pass.colorAttachment = builder.ReadTexture(textures.colorAttachment);
+            pass.colorAttachment = builder.ReadTexture(textures.resolvedColorAttachment);
             builder.SetRenderFunc<FinalPass>((pass, context) => pass.Render(context));
         }
     }

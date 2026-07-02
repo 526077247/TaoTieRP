@@ -96,6 +96,13 @@ namespace TaoTie.RenderPipelines
 
             bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
 
+            MSAASamples msaaSamples = cameraSettings.allowMSAA ? bufferSettings.msaa : MSAASamples.None;
+            if (camera.cameraType == CameraType.SceneView || camera.cameraType == CameraType.Preview)
+            {
+                msaaSamples = MSAASamples.None;
+            }
+            bool useMSAA = msaaSamples != MSAASamples.None;
+
             var renderGraphParameters = new RenderGraphParameters
             {
                 commandBuffer = CommandBufferPool.Get(),
@@ -123,7 +130,7 @@ namespace TaoTie.RenderPipelines
                         -1, useForwardPlus);
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
-                    useHDR, bufferSize, camera);
+                    useHDR, bufferSize, camera, msaaSamples);
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
                 if(bufferSettings.outLine) OutLinePass.Record(
@@ -139,6 +146,10 @@ namespace TaoTie.RenderPipelines
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                 UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
+                if (useMSAA)
+                {
+                    ResolvePass.Record(renderGraph, textures);
+                }
                 if (hasActivePostFX)
                 {
                     postFXStack.BufferSettings = bufferSettings;

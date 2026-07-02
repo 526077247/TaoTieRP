@@ -36,6 +36,8 @@ namespace TaoTie.RenderPipelines
 
         public bool allowFXAA = true;
 
+        public bool allowMSAA = true;
+
         public bool keepAlpha = true;
 
         [Serializable]

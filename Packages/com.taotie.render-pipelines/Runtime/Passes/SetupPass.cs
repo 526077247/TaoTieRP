@@ -41,7 +41,7 @@ namespace TaoTie.RenderPipelines
         }
 
         public static CameraRendererTextures Record(RenderGraph renderGraph, bool copyColor, bool copyDepth,
-            bool useHDR, Vector2Int attachmentSize, Camera camera)
+            bool useHDR, Vector2Int attachmentSize, Camera camera, MSAASamples msaaSamples)
         {
             using RenderGraphBuilder builder =
                 renderGraph.AddRenderPass(sampler.name, out SetupPass pass, sampler);
@@ -60,29 +60,46 @@ namespace TaoTie.RenderPipelines
             {
                 colorFormat = SystemInfo.GetGraphicsFormat(
                     useHDR ? DefaultFormat.HDR : DefaultFormat.LDR),
+                msaaSamples = msaaSamples,
                 name = "Color Attachment"
             };
             TextureHandle colorAttachment =
                 pass.colorAttachment = builder.WriteTexture(renderGraph.CreateTexture(desc));
+
+            TextureHandle resolvedColorAttachment;
+            if (msaaSamples != MSAASamples.None)
+            {
+                desc.msaaSamples = MSAASamples.None;
+                desc.name = "Resolved Color Attachment";
+                resolvedColorAttachment = renderGraph.CreateTexture(desc);
+            }
+            else
+            {
+                resolvedColorAttachment = colorAttachment;
+            }
+
             if (copyColor)
             {
+                desc.msaaSamples = MSAASamples.None;
                 desc.name = "Color Copy";
                 colorCopy = renderGraph.CreateTexture(desc);
             }
 
+            desc.msaaSamples = msaaSamples;
             desc.depthBufferBits = DepthBits.Depth32;
             desc.name = "Depth Attachment";
             TextureHandle depthAttachment =
                 pass.depthAttachment = builder.WriteTexture(renderGraph.CreateTexture(desc));
             if (copyDepth)
             {
+                desc.msaaSamples = MSAASamples.None;
                 desc.name = "Depth Copy";
                 depthCopy = renderGraph.CreateTexture(desc);
             }
             
             builder.AllowPassCulling(false);
             builder.SetRenderFunc<SetupPass>(static (pass, context) => pass.Render(context));
-            return new CameraRendererTextures(colorAttachment, depthAttachment, colorCopy, depthCopy);
+            return new CameraRendererTextures(colorAttachment, depthAttachment, colorCopy, depthCopy, resolvedColorAttachment);
         }
     }
 }

@@ -100,7 +100,7 @@ namespace TaoTie.RenderPipelines
 			if (bloom.maxIterations == 0 ||
 			    bloom.intensity <= 0f)
 			{
-				return textures.colorAttachment;
+				return textures.resolvedColorAttachment;
 			}
 			Vector2Int size = (bloom.ignoreRenderScale
 				? new Vector2Int(stack.Camera.pixelWidth, stack.Camera.pixelHeight)
@@ -109,13 +109,13 @@ namespace TaoTie.RenderPipelines
 			if (size.y < bloom.downscaleLimit * 2 ||
 			    size.x < bloom.downscaleLimit * 2)
 			{
-				return textures.colorAttachment;
+				return textures.resolvedColorAttachment;
 			}
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				sampler.name, out BloomPass pass, sampler);
 			pass.stack = stack;
-			pass.colorSource = builder.ReadTexture(textures.colorAttachment);
+			pass.colorSource = builder.ReadTexture(textures.resolvedColorAttachment);
 
 			var desc = new TextureDesc(size.x, size.y)
 			{

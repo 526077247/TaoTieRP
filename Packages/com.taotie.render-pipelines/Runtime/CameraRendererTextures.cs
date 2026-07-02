@@ -8,18 +8,21 @@ namespace TaoTie.RenderPipelines
             colorAttachment,
             depthAttachment,
             colorCopy,
-            depthCopy;
+            depthCopy,
+            resolvedColorAttachment;
 
         public CameraRendererTextures(
             TextureHandle colorAttachment,
             TextureHandle depthAttachment,
             TextureHandle colorCopy,
-            TextureHandle depthCopy)
+            TextureHandle depthCopy,
+            TextureHandle resolvedColorAttachment)
         {
             this.colorAttachment = colorAttachment;
             this.depthAttachment = depthAttachment;
             this.colorCopy = colorCopy;
             this.depthCopy = depthCopy;
+            this.resolvedColorAttachment = resolvedColorAttachment;
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace TaoTie.RenderPipelines
 {
@@ -8,6 +9,7 @@ namespace TaoTie.RenderPipelines
         public CameraBufferSettings cameraBuffer = new()
         {
             allowHDR = true,
+            msaa = MSAASamples.None,
             renderScale = 1f,
             fxaa = new()
             {

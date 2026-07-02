@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 using System;
 
 namespace TaoTie.RenderPipelines
@@ -50,6 +51,8 @@ namespace TaoTie.RenderPipelines
 #endif
             public Quality quality;
         }
+
+        public MSAASamples msaa;
 
         public FXAA fxaa;
 
