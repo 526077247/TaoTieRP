@@ -10,9 +10,12 @@ namespace TaoTie.RenderPipelines
 
         public bool copyColor = true, copyDepth = true;
 
-        [RenderingLayerMaskField] public int renderingLayerMask = -1;
-
         public bool maskLights = false;
+        [RenderingLayerMaskField] 
+#if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.ShowIf("@"+nameof(maskLights))]
+#endif
+        public int renderingLayerMask = -1;
 
         public enum RenderScaleMode
         {
@@ -38,12 +41,9 @@ namespace TaoTie.RenderPipelines
 
         public bool allowMSAA = true;
 
-        public bool keepAlpha = true;
-
         [Serializable]
         public struct FinalBlendMode
         {
-
             public BlendMode source, destination;
         }
 
