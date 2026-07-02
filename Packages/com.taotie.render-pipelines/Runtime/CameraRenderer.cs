@@ -101,6 +101,11 @@ namespace TaoTie.RenderPipelines
             {
                 msaaSamples = MSAASamples.None;
             }
+            // MSAA resolve requires CopyTexture, which is not available on GLES2/WebGL1.
+            if (SystemInfo.copyTextureSupport == CopyTextureSupport.None)
+            {
+                msaaSamples = MSAASamples.None;
+            }
             bool useMSAA = msaaSamples != MSAASamples.None;
 
             var renderGraphParameters = new RenderGraphParameters

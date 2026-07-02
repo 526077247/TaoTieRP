@@ -52,12 +52,7 @@ float GetBakedShadow (ShadowMask mask, int channel) {
 	float shadow = 1.0;
 	if (mask.always || mask.distance) {
 		if (channel >= 0) {
-			// GLSL ES 1.00 (WebGL1) does not support dynamic indexing of vec4;
-			// channel is a function parameter, not a constant-index-expression.
-			if (channel == 0) shadow = mask.shadows.x;
-			else if (channel == 1) shadow = mask.shadows.y;
-			else if (channel == 2) shadow = mask.shadows.z;
-			else if (channel == 3) shadow = mask.shadows.w;
+			shadow = mask.shadows[channel];
 		}
 	}
 	return shadow;
@@ -106,55 +101,25 @@ ShadowData GetShadowData (Surface surfaceWS) {
 	data.strength = FadedShadowStrength(
 		surfaceWS.depth, _ShadowDistanceFade.x, _ShadowDistanceFade.y
 	);
-	// Manually unrolled cascade loop with constant indices.
-	// GLSL ES 1.00 (WebGL1) does not support dynamic indexing of uniform arrays,
-	// and the original break-based loop made the index non-constant.
-	int i = _CascadeCount;
-
-	if (_CascadeCount > 0) {
-		float4 sphere = _CascadeCullingSpheres[0];
+	int i;
+	for (i = 0; i < MAX_CASCADE_COUNT; i++) {
+		if (i >= _CascadeCount) break;
+		float4 sphere = _CascadeCullingSpheres[i];
 		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
 		if (distanceSqr < sphere.w) {
-			i = 0;
 			float fade = FadedShadowStrength(
-				distanceSqr, _CascadeData[0].x, _ShadowDistanceFade.z);
-			if (_CascadeCount == 1) data.strength *= fade;
-			else data.cascadeBlend = fade;
+				distanceSqr, _CascadeData[i].x, _ShadowDistanceFade.z
+			);
+			if (i == _CascadeCount - 1) {
+				data.strength *= fade;
+			}
+			else {
+				data.cascadeBlend = fade;
+			}
+			break;
 		}
 	}
-	if (i == _CascadeCount && _CascadeCount > 1) {
-		float4 sphere = _CascadeCullingSpheres[1];
-		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
-		if (distanceSqr < sphere.w) {
-			i = 1;
-			float fade = FadedShadowStrength(
-				distanceSqr, _CascadeData[1].x, _ShadowDistanceFade.z);
-			if (_CascadeCount == 2) data.strength *= fade;
-			else data.cascadeBlend = fade;
-		}
-	}
-	if (i == _CascadeCount && _CascadeCount > 2) {
-		float4 sphere = _CascadeCullingSpheres[2];
-		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
-		if (distanceSqr < sphere.w) {
-			i = 2;
-			float fade = FadedShadowStrength(
-				distanceSqr, _CascadeData[2].x, _ShadowDistanceFade.z);
-			if (_CascadeCount == 3) data.strength *= fade;
-			else data.cascadeBlend = fade;
-		}
-	}
-	if (i == _CascadeCount && _CascadeCount > 3) {
-		float4 sphere = _CascadeCullingSpheres[3];
-		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
-		if (distanceSqr < sphere.w) {
-			i = 3;
-			float fade = FadedShadowStrength(
-				distanceSqr, _CascadeData[3].x, _ShadowDistanceFade.z);
-			data.strength *= fade;
-		}
-	}
-
+	
 	if (i == _CascadeCount && _CascadeCount > 0) {
 		data.strength = 0.0;
 	}
@@ -199,41 +164,21 @@ float FilterDirectionalShadow (float3 positionSTS) {
 	#endif
 }
 
-// Helper functions that use restrictive for-loops so the loop variable
-// qualifies as a constant-index-expression in GLSL ES 1.00 (WebGL1).
-float GetCascadeDataY (int cascadeIndex) {
-	float result = _CascadeData[0].y;
-	[unroll]
-	for (int c = 1; c < MAX_CASCADE_COUNT; c++) {
-		if (c == cascadeIndex) result = _CascadeData[c].y;
-	}
-	return result;
-}
-
-float4x4 GetDirectionalShadowMatrix (int tileIndex) {
-	float4x4 result = _DirectionalShadowMatrices[0];
-	[unroll]
-	for (int t = 1; t < MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT; t++) {
-		if (t == tileIndex) result = _DirectionalShadowMatrices[t];
-	}
-	return result;
-}
-
 float GetCascadedShadow (
 	DirectionalShadowData directional, ShadowData global, Surface surfaceWS
 ) {
 	float3 normalBias = surfaceWS.interpolatedNormal *
-		(directional.normalBias * GetCascadeDataY(global.cascadeIndex));
+		(directional.normalBias * _CascadeData[global.cascadeIndex].y);
 	float3 positionSTS = mul(
-		GetDirectionalShadowMatrix(directional.tileIndex),
+		_DirectionalShadowMatrices[directional.tileIndex],
 		float4(surfaceWS.position + normalBias, 1.0)
 	).xyz;
 	float shadow = FilterDirectionalShadow(positionSTS);
 	if (global.cascadeBlend < 1.0) {
 		normalBias = surfaceWS.interpolatedNormal *
-			(directional.normalBias * GetCascadeDataY(global.cascadeIndex + 1));
+			(directional.normalBias * _CascadeData[global.cascadeIndex + 1].y);
 		positionSTS = mul(
-			GetDirectionalShadowMatrix(directional.tileIndex + 1),
+			_DirectionalShadowMatrices[directional.tileIndex + 1],
 			float4(surfaceWS.position + normalBias, 1.0)
 		).xyz;
 		shadow = lerp(
@@ -301,51 +246,32 @@ float FilterOtherShadow (float3 positionSTS, float3 bounds) {
 	#endif
 }
 
-// Replaced static const array with direct selection for WebGL1/GLES2.
-float3 GetPointShadowPlane (int faceIndex) {
-	if (faceIndex == 0) return float3(-1.0, 0.0, 0.0);
-	if (faceIndex == 1) return float3(1.0, 0.0, 0.0);
-	if (faceIndex == 2) return float3(0.0, -1.0, 0.0);
-	if (faceIndex == 3) return float3(0.0, 1.0, 0.0);
-	if (faceIndex == 4) return float3(0.0, 0.0, -1.0);
-	return float3(0.0, 0.0, 1.0);
-}
-
-float4 GetOtherShadowTile (int tileIndex) {
-	float4 result = _OtherShadowTiles[0];
-	[unroll]
-	for (int t = 1; t < MAX_SHADOWED_OTHER_LIGHT_COUNT; t++) {
-		if (t == tileIndex) result = _OtherShadowTiles[t];
-	}
-	return result;
-}
-
-float4x4 GetOtherShadowMatrix (int tileIndex) {
-	float4x4 result = _OtherShadowMatrices[0];
-	[unroll]
-	for (int t = 1; t < MAX_SHADOWED_OTHER_LIGHT_COUNT; t++) {
-		if (t == tileIndex) result = _OtherShadowMatrices[t];
-	}
-	return result;
-}
+static const float3 pointShadowPlanes[6] = {
+	float3(-1.0, 0.0, 0.0),
+	float3(1.0, 0.0, 0.0),
+	float3(0.0, -1.0, 0.0),
+	float3(0.0, 1.0, 0.0),
+	float3(0.0, 0.0, -1.0),
+	float3(0.0, 0.0, 1.0)
+};
 
 float GetOtherShadow (
 	OtherShadowData other, ShadowData global, Surface surfaceWS
 ) {
-	int tileIndex = int(other.tileIndex);
+	float tileIndex = other.tileIndex;
 	float3 lightPlane = other.spotDirectionWS;
 	if (other.isPoint) {
-		int faceOffset = int(CubeMapFaceID(-other.lightDirectionWS));
+		float faceOffset = CubeMapFaceID(-other.lightDirectionWS);
 		tileIndex += faceOffset;
-		lightPlane = GetPointShadowPlane(faceOffset);
+		lightPlane = pointShadowPlanes[faceOffset];
 	}
-	float4 tileData = GetOtherShadowTile(tileIndex);
+	float4 tileData = _OtherShadowTiles[tileIndex];
 	float3 surfaceToLight = other.lightPositionWS - surfaceWS.position;
 	float distanceToLightPlane = dot(surfaceToLight, lightPlane);
 	float3 normalBias =
 		surfaceWS.interpolatedNormal * (distanceToLightPlane * tileData.w);
 	float4 positionSTS = mul(
-		GetOtherShadowMatrix(tileIndex),
+		_OtherShadowMatrices[tileIndex],
 		float4(surfaceWS.position + normalBias, 1.0)
 	);
 	return FilterOtherShadow(positionSTS.xyz / positionSTS.w, tileData.xyz);
