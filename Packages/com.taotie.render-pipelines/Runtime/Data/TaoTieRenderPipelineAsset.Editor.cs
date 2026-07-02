@@ -17,6 +17,12 @@
 
         public override string[] renderingLayerMaskNames => renderingLayerNames;
 
+        void OnValidate()
+        {
+            UnityEditor.SceneView.RepaintAll();
+            UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+        }
+
 #endif
     }
 }

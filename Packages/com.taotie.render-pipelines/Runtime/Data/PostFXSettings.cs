@@ -219,5 +219,13 @@ namespace TaoTie.RenderPipelines
 #endif
             return true;
         }
+
+#if UNITY_EDITOR
+        void OnValidate()
+        {
+            UnityEditor.SceneView.RepaintAll();
+            UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+        }
+#endif
     }
 }
