@@ -51,13 +51,7 @@ float SpecularStrength (Surface surface, BRDF brdf, Light light) {
     float d2 = Square(nh2 * (r2 - 1.0) + 1.00001);
     float normalization = brdf.roughness * 4.0 + 2.0;
     
-    float fresnelStrength = surface.fresnelStrength *
-         Pow4(1.0 - saturate(dot(surface.normal, surface.viewDirection)));
-    float NdotL = dot(surface.normal, light.direction);
-    float halfLambert = 0.5 + 0.5 * NdotL;
-    float aniso = saturate(1 - fresnelStrength) * surface.lightMap.b * halfLambert * 5.0;
-    
-    return r2 / (d2 * max(0.1, lh2) * normalization) + aniso;
+    return r2 / (d2 * max(0.1, lh2) * normalization);
 }
 
 

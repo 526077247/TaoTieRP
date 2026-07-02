@@ -11,10 +11,6 @@ TEXTURE2D(_DetailMap);
 SAMPLER(sampler_DetailMap);
 TEXTURE2D(_DetailNormalMap);
 TEXTURE2D(_NormalMap);
-TEXTURE2D(_LightMap);
-SAMPLER(sampler_LightMap);
-TEXTURE2D(_RampMap);
-SAMPLER(sampler_RampMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
@@ -97,18 +93,6 @@ float3 GetEmission (InputConfig c) {
     float4 map = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, c.baseUV);
     float4 color = INPUT_PROP(_EmissionColor);
     return map.rgb * color.rgb;
-}
-
-float4 GetLightMap (InputConfig c) {
-    return SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, c.baseUV);
-}
-
-float2 GetFaceShadow(InputConfig c)
-{
-    float2 faceShadowUV = float2(1.0 - c.baseUV.x, c.baseUV.y);
-    float faceShadow_left = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, c.baseUV).r;
-    float faceShadow_right = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, faceShadowUV).r;
-    return float2(faceShadow_left,faceShadow_right);
 }
 
 float3 GetNormalTS (InputConfig c) {

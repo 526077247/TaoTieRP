@@ -14,8 +14,6 @@ struct Surface {
     float smoothness;
     float fresnelStrength;
     float dither;
-    float4 lightMap;
-    float2 faceShadow;
     uint renderingLayerMask;
     bool receiveShadows;
 };

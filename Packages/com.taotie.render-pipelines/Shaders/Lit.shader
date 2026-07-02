@@ -13,10 +13,6 @@
 		[Tex(Surface._MASK_MAP)] _MaskMap("Mask (MODS)", 2D) = "white" {}
 		[SubToggle(Surface,_PREMULTIPLY_ALPHA)] _PremulAlpha ("Premultiply Alpha", Float) = 0
 		[Sub(Surface)]_Fresnel ("Fresnel", Range(0, 1)) = 1
-		[Tex(Surface)] _LightMap("Light Map", 2D) = "bump" {}
-		[SubToggle(Surface,_RAMP_MAP)] _RampToggle ("Ramp Map", Float) = 0
-		[Tex(Surface._RAMP_MAP)] _RampMap("Ramp", 2D) = "white" {}
-		[SubToggle(Surface,_SHADOW_FACE_ON)] _FaceOn ("IsFace", Float) = 0
 
 		
 		[Main(Shadows, _, off, off)]
@@ -90,8 +86,6 @@
 			#pragma shader_feature_local _MASK_MAP
 			#pragma shader_feature_local _NORMAL_MAP
 			#pragma shader_feature_local _DETAIL_MAP
-			#pragma shader_feature_local _RAMP_MAP
-			#pragma shader_feature_local _SHADOW_FACE_ON
 			#pragma multi_compile_local _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
 			#pragma multi_compile_local _ _SHADOW_MASK
 			#pragma multi_compile _ _TAOTIE_FORWARD_PLUS

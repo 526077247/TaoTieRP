@@ -95,8 +95,6 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	surface.dither = InterleavedGradientNoise(config.fragment.positionSS, 0);
 	surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
 	surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
-	surface.lightMap = GetLightMap(config);
-	surface.faceShadow = GetFaceShadow(config);
 	#if defined(_PREMULTIPLY_ALPHA)
 		BRDF brdf = GetBRDF(surface, true);
 	#else
@@ -110,10 +108,10 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	#endif
 	float3 color = GetLighting(config.fragment, surface, brdf, gi);
 	#if UNITY_COLORSPACE_GAMMA
-		color += SRGBToLinear(GetEmission(config)) * surface.lightMap.a;
+		color += SRGBToLinear(GetEmission(config));
 		color = LinearToSRGB(color);
 	#else
-		color += GetEmission(config) * surface.lightMap.a;
+		color += GetEmission(config);
 	#endif
 	return float4(color, GetFinalAlpha(surface.alpha));
 }
