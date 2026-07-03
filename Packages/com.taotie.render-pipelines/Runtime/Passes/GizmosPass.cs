@@ -21,7 +21,8 @@ namespace TaoTie.RenderPipelines
             ScriptableRenderContext renderContext = context.renderContext;
             
             copier.CopyByDrawing(
-                buffer, depthAttachment, BuiltinRenderTextureType.CameraTarget, true);
+                buffer, depthAttachment, BuiltinRenderTextureType.CameraTarget, true,
+                copier.Camera.pixelRect);
             renderContext.ExecuteCommandBuffer(buffer);
             buffer.Clear();
             

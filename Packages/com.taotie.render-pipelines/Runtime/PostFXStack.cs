@@ -86,8 +86,9 @@ namespace TaoTie.RenderPipelines
                     : RenderBufferLoadAction.Load,
                 RenderBufferStoreAction.Store);
             buffer.SetViewport(Camera.pixelRect);
-            
-            buffer.Blit(from, BuiltinRenderTextureType.CameraTarget, Settings.Material, (int) pass);
+            buffer.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
+            buffer.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, Settings.Material, 0, (int) pass);
+            buffer.SetViewProjectionMatrices(Camera.worldToCameraMatrix, Camera.projectionMatrix);
         }
     }
 }

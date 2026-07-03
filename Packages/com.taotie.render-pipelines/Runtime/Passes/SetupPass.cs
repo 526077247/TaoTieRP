@@ -26,6 +26,7 @@ namespace TaoTie.RenderPipelines
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                 depthAttachment,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.SetViewport(new Rect(0, 0, attachmentSize.x, attachmentSize.y));
             
             cmd.ClearRenderTarget(
                 clearFlags <= CameraClearFlags.Depth,
