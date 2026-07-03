@@ -97,7 +97,9 @@ namespace TaoTie.RenderPipelines
             bufferSettings.fxaa &= cameraSettings.allowFXAA;
 
             MSAASamples msaaSamples = cameraSettings.allowMSAA ? bufferSettings.msaa : MSAASamples.None;
-            if (camera.cameraType == CameraType.SceneView || camera.cameraType == CameraType.Preview)
+            if (camera.cameraType == CameraType.SceneView ||
+                camera.cameraType == CameraType.Preview ||
+                camera.targetTexture != null)
             {
                 msaaSamples = MSAASamples.None;
             }

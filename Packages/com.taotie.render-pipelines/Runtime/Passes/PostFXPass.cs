@@ -86,7 +86,12 @@ namespace TaoTie.RenderPipelines
 			using var _ = new RenderGraphProfilingScope(renderGraph, groupSampler);
 
 			TextureHandle colorSource = BloomPass.Record(renderGraph, stack, textures);
-			
+
+			TextureHandle colorLUT = default;
+			if (colorLUTResolution > 0)
+			{
+				colorLUT = ColorLUTPass.Record(renderGraph, stack, colorLUTResolution);
+			}
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				finalSampler.name, out PostFXPass pass, finalSampler);
@@ -95,7 +100,6 @@ namespace TaoTie.RenderPipelines
 			pass.colorLUTResolution = colorLUTResolution;
 			if (colorLUTResolution > 0)
 			{
-				TextureHandle colorLUT = ColorLUTPass.Record(renderGraph, stack, colorLUTResolution);
 				builder.ReadTexture(colorLUT);
 			}
 
