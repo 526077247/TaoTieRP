@@ -40,7 +40,7 @@ namespace TaoTie.RenderPipelines
         }
 
         public ColorLUTResolution colorLUTResolution = ColorLUTResolution._32;
-
+        [HideInInspector]
         public Material defaultMaterial;
 
         [HideInInspector]
