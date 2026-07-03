@@ -221,7 +221,9 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalFloat(softCascadeBlendId,
 				settings.directional.softCascadeBlend ? 1f : 0f);
 			buffer.SetGlobalInt(cascadeCountId, shadowedDirLightCount > 0 ? settings.directional.cascadeCount : 0);
-			float f = 1f - settings.directional.cascadeFade;
+			float f = settings.directional.cascadeCount > 1
+				? 1f - settings.directional.cascadeFade
+				: 1f;
 			buffer.SetGlobalVector(shadowDistanceFadeId, new Vector4(
 				1f / settings.maxDistance, 1f / settings.distanceFade,
 				1f / (1f - f * f)));
@@ -272,8 +274,9 @@ namespace TaoTie.RenderPipelines
 			int cascadeCount = settings.directional.cascadeCount;
 			int tileOffset = index * cascadeCount;
 			Vector3 ratios = settings.directional.CascadeRatios;
-			float cullingFactor =
-				Mathf.Max(0f, 0.8f - settings.directional.cascadeFade);
+			float cullingFactor = settings.directional.cascadeCount > 1
+				? Mathf.Max(0f, 0.8f - settings.directional.cascadeFade)
+				: 0f;
 			float tileScale = 1f / split;
 			for (int i = 0; i < cascadeCount; i++)
 			{

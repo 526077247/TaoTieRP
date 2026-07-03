@@ -93,7 +93,7 @@ namespace TaoTie.RenderPipelines
             public readonly Vector3 CascadeRatios =>
                 new(cascadeRatio1, cascadeRatio2, cascadeRatio3);
 #if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0 && "+ nameof(cascadeCount) + ">1")]
 #endif
             [Range(0.001f, 1f)] public float cascadeFade;
 #if ODIN_INSPECTOR
