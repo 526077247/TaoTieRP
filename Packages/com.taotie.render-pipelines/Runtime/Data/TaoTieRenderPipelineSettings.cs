@@ -41,6 +41,8 @@ namespace TaoTie.RenderPipelines
 
         public ColorLUTResolution colorLUTResolution = ColorLUTResolution._32;
 
+        public Material defaultMaterial;
+
         [HideInInspector]
         public Shader cameraRendererShader, cameraDebuggerShader;
     }

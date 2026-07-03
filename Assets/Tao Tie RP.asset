@@ -45,5 +45,6 @@ MonoBehaviour:
         atlasSize: 1024
     postFXSettings: {fileID: 11400000, guid: d78384e16e845f340a75fe167b39b86d, type: 2}
     colorLUTResolution: 32
+    defaultMaterial: {fileID: 2100000, guid: 098e035d9983e9443838df870e5db69b, type: 2}
     cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}
     cameraDebuggerShader: {fileID: 4800000, guid: 93996d35ad3144619c54bbc42c8f223b, type: 3}

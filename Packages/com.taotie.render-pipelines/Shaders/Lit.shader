@@ -7,7 +7,7 @@
 		[Tex(Surface, _BaseColor)]_BaseMap("Texture", 2D) = "white" {}
 		[HideInInspector]_BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
 		[Sub(Surface)]_Metallic ("Metallic", Range(0, 1)) = 0
-		[Sub(Surface)]_Occlusion ("Occlusion", Range(0, 1)) = 1
+		[Sub(Surface)]_OcclusionStrength ("Occlusion", Range(0, 1)) = 1
 		[Sub(Surface)]_Smoothness ("Smoothness", Range(0, 1)) = 0.5
 		[SubToggle(Surface, _MASK_MAP)] _MaskMapToggle ("Mask Map", Float) = 0
 		[Tex(Surface._MASK_MAP)] _MaskMap("Mask (MODS)", 2D) = "white" {}
@@ -19,8 +19,8 @@
 		_groupShadows ("Shadows", float) = 0
 		[Space()]
 		[SubToggle(Shadows,_RECEIVE_SHADOWS)] _ReceiveShadows ("Receive Shadows", Float) = 1
-		[KWEnum(Shadows, On, On, Clip, Clip, Dither, Dither, Off, Off)] _Shadows ("Shadows", Float) = 0
-
+		[KWEnum(Shadows, On, On, Clip, _SHADOWS_CLIP, Dither, _SHADOWS_DITHER, Off, _SHADOWS_OFF)] _Shadows ("Shadows", Float) = 0
+		
 		[Main(Clipping, _, off, off)]
 		_groupClipping ("Clipping", float) = 0
 		[Space()]
@@ -31,8 +31,8 @@
 		_groupNormalMap ("NormalMap", float) = 0
 		[Space()]
 		[SubToggle(NormalMap,_NORMAL_MAP)] _NormalMapToggle ("Normal Map", Float) = 0
-		[Tex(NormalMap._NORMAL_MAP)] _NormalMap("Normals", 2D) = "bump" {}
-		[Sub(NormalMap._NORMAL_MAP)]_NormalScale("Normal Scale", Range(0, 1)) = 1
+		[Tex(NormalMap._NORMAL_MAP)] _BumpMap("Normals", 2D) = "bump" {}
+		[Sub(NormalMap._NORMAL_MAP)]_BumpScale("Normal Scale", Range(0, 1)) = 1
 
 		[Main(Emission, _, off, off)]
 		_groupEmission ("Emission", float) = 0
@@ -44,9 +44,9 @@
 		_groupDetails ("Details", float) = 0
 		[Space()]
 		[SubToggle(Details,_DETAIL_MAP)] _DetailMapToggle ("Detail Maps", Float) = 0
-		[Tex(Details._DETAIL_MAP)]_DetailMap("Details", 2D) = "linearGrey" {}
+		[Tex(Details._DETAIL_MAP)]_DetailAlbedoMap("Details", 2D) = "linearGrey" {}
 		[Tex(Details._DETAIL_MAP)][NoScaleOffset] _DetailNormalMap("Detail Normals", 2D) = "bump" {}
-		[Sub(Details._DETAIL_MAP)]_DetailAlbedo("Detail Albedo", Range(0, 1)) = 1
+		[Sub(Details._DETAIL_MAP)]_DetailAlbedoScale("Detail Albedo", Range(0, 1)) = 1
 		[Sub(Details._DETAIL_MAP)]_DetailSmoothness("Detail Smoothness", Range(0, 1)) = 1
 		[Sub(Details._DETAIL_MAP)]_DetailNormalScale("Detail Normal Scale", Range(0, 1)) = 1
 		
@@ -105,7 +105,7 @@
 			ColorMask 0
 
 			HLSLPROGRAM
-			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
+			#pragma multi_compile_local _ _SHADOWS_OFF _SHADOWS_CLIP _SHADOWS_DITHER
 			#pragma multi_compile_instancing
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma vertex ShadowCasterPassVertex

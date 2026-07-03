@@ -7,26 +7,26 @@ TEXTURE2D(_BaseMap);
 TEXTURE2D(_MaskMap);
 TEXTURE2D(_EmissionMap);
 SAMPLER(sampler_BaseMap);
-TEXTURE2D(_DetailMap);
-SAMPLER(sampler_DetailMap);
+TEXTURE2D(_DetailAlbedoMap);
+SAMPLER(sampler_DetailAlbedoMap);
 TEXTURE2D(_DetailNormalMap);
-TEXTURE2D(_NormalMap);
+TEXTURE2D(_BumpMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _DetailMap_ST)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _DetailAlbedoMap_ST)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
     UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
     UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
     UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
     UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
-    UNITY_DEFINE_INSTANCED_PROP(float, _Occlusion)
+    UNITY_DEFINE_INSTANCED_PROP(float, _OcclusionStrength)
     UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
     UNITY_DEFINE_INSTANCED_PROP(float, _Fresnel)
-    UNITY_DEFINE_INSTANCED_PROP(float, _DetailAlbedo)
+    UNITY_DEFINE_INSTANCED_PROP(float, _DetailAlbedoScale)
     UNITY_DEFINE_INSTANCED_PROP(float, _DetailSmoothness)
     UNITY_DEFINE_INSTANCED_PROP(float, _DetailNormalScale)
-    UNITY_DEFINE_INSTANCED_PROP(float, _NormalScale)
+    UNITY_DEFINE_INSTANCED_PROP(float, _BumpScale)
     UNITY_DEFINE_INSTANCED_PROP(half, _OutlineWidth)
     UNITY_DEFINE_INSTANCED_PROP(half4, _OutlineColor)
     UNITY_DEFINE_INSTANCED_PROP(float, _ReceiveShadows)
@@ -56,13 +56,13 @@ float2 TransformBaseUV (float2 baseUV) {
 }
 
 float2 TransformDetailUV (float2 detailUV) {
-    float4 detailST = INPUT_PROP(_DetailMap_ST);
+    float4 detailST = INPUT_PROP(_DetailAlbedoMap_ST);
     return detailUV * detailST.xy + detailST.zw;
 }
 
 float4 GetDetail (InputConfig c) {
     if (c.useDetail) {
-        float4 map = SAMPLE_TEXTURE2D(_DetailMap, sampler_DetailMap, c.detailUV);
+        float4 map = SAMPLE_TEXTURE2D(_DetailAlbedoMap, sampler_DetailAlbedoMap, c.detailUV);
         return map * 2.0 - 1.0;
     }
     return 0.0;
@@ -80,7 +80,7 @@ float4 GetBase (InputConfig c) {
     float4 color = INPUT_PROP(_BaseColor);
     
     if (c.useDetail) {
-        float detail = GetDetail(c).r * INPUT_PROP(_DetailAlbedo);
+        float detail = GetDetail(c).r * INPUT_PROP(_DetailAlbedoScale);
         float mask = GetMask(c).b;
         map.rgb =
             lerp(sqrt(map.rgb), ceil(clamp(detail,0.0,1.0)), abs(detail) * mask);
@@ -96,12 +96,12 @@ float3 GetEmission (InputConfig c) {
 }
 
 float3 GetNormalTS (InputConfig c) {
-    float4 map = SAMPLE_TEXTURE2D(_NormalMap, sampler_BaseMap, c.baseUV);
-    float scale = INPUT_PROP(_NormalScale);
+    float4 map = SAMPLE_TEXTURE2D(_BumpMap, sampler_BaseMap, c.baseUV);
+    float scale = INPUT_PROP(_BumpScale);
     float3 normal = DecodeNormal(map, scale);
 
     if (c.useDetail) {
-        map = SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailMap, c.detailUV);
+        map = SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailAlbedoMap, c.detailUV);
         scale = INPUT_PROP(_DetailNormalScale) * GetMask(c).b;
         float3 detail = DecodeNormal(map, scale);
         normal = BlendNormalRNM(normal, detail);
@@ -137,7 +137,7 @@ float GetFresnel (InputConfig c) {
 }
 
 float GetOcclusion (InputConfig c) {
-    float strength = INPUT_PROP(_Occlusion);
+    float strength = INPUT_PROP(_OcclusionStrength);
     float occlusion = GetMask(c).g;
     occlusion = lerp(occlusion, 1.0, strength);
     return occlusion;

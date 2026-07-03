@@ -21,6 +21,11 @@ Varyings ShadowCasterPassVertex (Attributes input) {
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS_SS = TransformWorldToHClip(positionWS);
+    #if defined(_SHADOWS_OFF)
+        output.positionCS_SS = float4(2.0, 2.0, 2.0, 1.0);
+        output.baseUV = 0.0;
+        return output;
+    #endif
     if (_ShadowPancaking)
     {
         #if UNITY_REVERSED_Z
@@ -40,7 +45,9 @@ void ShadowCasterPassFragment (Varyings input) {
     InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
     ClipLOD(config.fragment, unity_LODFade.x);
     float4 base = GetBase(config);
-#if defined(_SHADOWS_CLIP)
+#if defined(_SHADOWS_OFF)
+    discard;
+#elif defined(_SHADOWS_CLIP)
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
 #elif defined(_SHADOWS_DITHER)
     float dither = InterleavedGradientNoise(config.fragment.positionSS, 0);
