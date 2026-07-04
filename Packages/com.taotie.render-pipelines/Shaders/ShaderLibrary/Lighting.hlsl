@@ -11,7 +11,7 @@ float3 GetLighting (Surface surface,BRDF brdf, Light light) {
 
 bool RenderingLayersOverlap (Surface surface, Light light) {
 #if defined(SHADER_API_GLES)
-    return surface.renderingLayerMask == light.renderingLayerMask;
+    return true;
 #else
     return (surface.renderingLayerMask & light.renderingLayerMask) != 0;
 #endif
