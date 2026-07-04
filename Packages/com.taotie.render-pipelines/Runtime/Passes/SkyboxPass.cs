@@ -30,7 +30,7 @@ namespace TaoTie.RenderPipelines
                 builder.ReadTexture(textures.depthAttachment);
 
                 builder.SetRenderFunc<SkyboxPass>(
-                    (pass, context) => pass.Render(context));
+                    static (pass, context) => pass.Render(context));
             }
         }
     }

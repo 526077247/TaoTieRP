@@ -185,6 +185,7 @@ namespace TaoTie.RenderPipelines
         {
             CoreUtils.Destroy(material);
             CameraDebugger.Cleanup();
+            LightingPass.Dispose();
         }
     }
 }

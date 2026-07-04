@@ -17,10 +17,10 @@ namespace TaoTie.RenderPipelines
 
 		static readonly ProfilingSampler sampler = new("Bloom");
 
-		readonly TextureHandle[] pyramid =
+		static readonly TextureHandle[] pyramid =
 			new TextureHandle[2 * maxBloomPyramidLevels + 1];
 
-		readonly Vector2Int[] pyramidSizes =
+		static readonly Vector2Int[] pyramidSizes =
 			new Vector2Int[2 * maxBloomPyramidLevels + 1];
 
 		Vector2Int sourceSize;
@@ -136,8 +136,6 @@ namespace TaoTie.RenderPipelines
 					stack.BufferSettings.allowHDR ? DefaultFormat.HDR : DefaultFormat.LDR),
 				name = "Bloom Prefilter"
 			};
-			TextureHandle[] pyramid = pass.pyramid;
-			Vector2Int[] pyramidSizes = pass.pyramidSizes;
 			pyramid[0] = builder.CreateTransientTexture(desc);
 			pyramidSizes[0] = size;
 			size /= 2;

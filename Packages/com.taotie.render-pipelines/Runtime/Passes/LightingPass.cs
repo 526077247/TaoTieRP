@@ -64,9 +64,9 @@ namespace TaoTie.RenderPipelines
 		Vector2Int tileDataTexSize;
 		int TileCount => tileCount.x * tileCount.y;
 
-		Vector4[] lightBounds = new Vector4[maxOtherLightCount];
-		private Vector2[] tileDataArray = new Vector2[1];
-		private float[] tileLightArray = new float[1];
+		static Vector4[] lightBounds = new Vector4[maxOtherLightCount];
+		static NativeArray<Vector2> tileDataArray;
+		static NativeArray<float> tileLightArray;
 		private static Texture2D tileDataTexture;
 		private static Texture2D tileLightTexture;
 
@@ -310,6 +310,14 @@ namespace TaoTie.RenderPipelines
 				light, visibleIndex);
 		}
 
+		public static void Dispose()
+		{
+			if (tileDataArray.IsCreated) tileDataArray.Dispose();
+			if (tileLightArray.IsCreated) tileLightArray.Dispose();
+			if (tileDataTexture != null) Object.DestroyImmediate(tileDataTexture);
+			if (tileLightTexture != null) Object.DestroyImmediate(tileLightTexture);
+		}
+
 		public static ShadowTextures Record(
 			RenderGraph renderGraph,
 			CullingResults cullingResults,Vector2Int attachmentSize, ShadowSettings shadowSettings,
@@ -324,6 +332,9 @@ namespace TaoTie.RenderPipelines
 			builder.AllowPassCulling(false);
 			return pass.shadows.GetRenderTextures(renderGraph, builder);
 		}
+
+		static readonly TextureFormat rgFormat = GetSupportedRGFormat();
+		static readonly TextureFormat rFormat = GetSupportedSingleChannelFormat();
 
 		static TextureFormat GetSupportedSingleChannelFormat()
 		{
@@ -360,29 +371,23 @@ namespace TaoTie.RenderPipelines
 		{
 			int dataW = Mathf.Min(NextPow2(Mathf.Max(tileSize.x, 1)), maxTexSize);
 			int dataH = Mathf.Min(NextPow2(Mathf.Max(tileSize.y, 1)), maxTexSize);
-			tileDataTexSize = new Vector2Int(dataW, dataH);
-			int dataTexSize = dataW * dataH;
 
 			lightCount = Mathf.Max(lightCount, 1);
 			int lightTexW = Mathf.Min(NextPow2(Mathf.CeilToInt(Mathf.Sqrt(lightCount))), maxTexSize);
 			lightTexW = Mathf.Max(lightTexW, 1);
 			int lightTexH = Mathf.Min(NextPow2(Mathf.CeilToInt(lightCount / (float)lightTexW)), maxTexSize);
 			lightTexH = Mathf.Max(lightTexH, 1);
-			int lightTexSize = lightTexW * lightTexH;
 
-			var rgbaFormat = GetSupportedRGFormat();
-			var rFormat = GetSupportedSingleChannelFormat();
-
-			if (tileDataTexture == null || tileDataTexture.width != dataW || tileDataTexture.height != dataH || tileDataTexture.format != rgbaFormat)
+			if (tileDataTexture == null || tileDataTexture.width < dataW || tileDataTexture.height < dataH)
 			{
 				if (tileDataTexture != null) Object.DestroyImmediate(tileDataTexture);
-				tileDataTexture = new Texture2D(dataW, dataH, rgbaFormat, false)
+				tileDataTexture = new Texture2D(dataW, dataH, rgFormat, false)
 				{
 					filterMode = FilterMode.Point,
 					wrapMode = TextureWrapMode.Clamp
 				};
 			}
-			if (tileLightTexture == null || tileLightTexture.width != lightTexW || tileLightTexture.height != lightTexH || tileLightTexture.format != rFormat)
+			if (tileLightTexture == null || tileLightTexture.width < lightTexW || tileLightTexture.height < lightTexH)
 			{
 				if (tileLightTexture != null) Object.DestroyImmediate(tileLightTexture);
 				tileLightTexture = new Texture2D(lightTexW, lightTexH, rFormat, false)
@@ -391,13 +396,20 @@ namespace TaoTie.RenderPipelines
 					wrapMode = TextureWrapMode.Clamp
 				};
 			}
-			if (tileDataArray.Length != dataTexSize)
+
+			tileDataTexSize = new Vector2Int(tileDataTexture.width, tileDataTexture.height);
+			int actualDataTexSize = tileDataTexSize.x * tileDataTexSize.y;
+			int actualLightTexSize = tileLightTexture.width * tileLightTexture.height;
+
+			if (!tileDataArray.IsCreated || tileDataArray.Length < actualDataTexSize)
 			{
-				tileDataArray = new Vector2[dataTexSize];
+				if (tileDataArray.IsCreated) tileDataArray.Dispose();
+				tileDataArray = new NativeArray<Vector2>(actualDataTexSize, Allocator.Persistent);
 			}
-			if (tileLightArray.Length != lightTexSize)
+			if (!tileLightArray.IsCreated || tileLightArray.Length < actualLightTexSize)
 			{
-				tileLightArray = new float[lightTexSize];
+				if (tileLightArray.IsCreated) tileLightArray.Dispose();
+				tileLightArray = new NativeArray<float>(actualLightTexSize, Allocator.Persistent);
 			}
 		}
 

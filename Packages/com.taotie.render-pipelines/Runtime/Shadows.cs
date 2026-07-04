@@ -51,7 +51,7 @@ namespace TaoTie.RenderPipelines
 			public float nearPlaneOffset;
 		}
 
-		readonly ShadowedDirectionalLight[] shadowedDirectionalLights =
+		static readonly ShadowedDirectionalLight[] shadowedDirectionalLights =
 			new ShadowedDirectionalLight[maxShadowedDirLightCount];
 
 		struct ShadowedOtherLight
@@ -62,7 +62,7 @@ namespace TaoTie.RenderPipelines
 			public bool isPoint;
 		}
 
-		readonly ShadowedOtherLight[] shadowedOtherLights =
+		static readonly ShadowedOtherLight[] shadowedOtherLights =
 			new ShadowedOtherLight[maxShadowedOtherLightCount];
 
 		int shadowedDirLightCount, shadowedOtherLightCount;
