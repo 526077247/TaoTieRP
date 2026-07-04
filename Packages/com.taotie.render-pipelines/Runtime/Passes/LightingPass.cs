@@ -15,6 +15,9 @@ namespace TaoTie.RenderPipelines
 
 		private const int maxDirLightCount = 4, maxOtherLightCount = 256, maxForwardOtherLightCount = 8;
 
+		// WebGL does not support ComputeBuffer; use Texture2D fallback on those platforms.
+		static readonly bool useComputeBuffer = SystemInfo.supportsComputeShaders;
+
 		static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
 			dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors"),
@@ -22,6 +25,8 @@ namespace TaoTie.RenderPipelines
 			dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData"),
 			tilesId = Shader.PropertyToID("_ForwardPlusTilesTex"),
 			tilesLightId = Shader.PropertyToID("_ForwardPlusTileLightsTex"),
+			tilesBufId = Shader.PropertyToID("_ForwardPlusTilesBuf"),
+			tilesLightBufId = Shader.PropertyToID("_ForwardPlusTileLightsBuf"),
 			tileSettingsId = Shader.PropertyToID("_ForwardPlusTileSettings"),
 			lightTexSizeId = Shader.PropertyToID("_ForwardPlusLightTexSize");
 
@@ -69,6 +74,19 @@ namespace TaoTie.RenderPipelines
 		static NativeArray<float> tileLightArray;
 		private static Texture2D tileDataTexture;
 		private static Texture2D tileLightTexture;
+		private static ComputeBuffer tileDataBuffer, tileLightBuffer;
+		static int tileDataBufferSize, tileLightBufferSize;
+
+		// Light-centric tile culling temporaries
+		static int[] tileLightCounts;
+		static int[] tileLightFillPos;
+
+		// Dirty-flag: skip GPU upload when tile data hasn't changed.
+		// Must be static because RenderGraph creates a new LightingPass instance each frame.
+		static readonly Vector4[] lastLightBounds = new Vector4[maxOtherLightCount];
+		static int lastOtherLightCount = -1;
+		static Vector2Int lastTileCount = new(-1, -1);
+		static bool tileDataDirty = true;
 
 		private int maxLightsPerTile;
 		private bool useForwardPlus;
@@ -165,15 +183,125 @@ namespace TaoTie.RenderPipelines
 				int maxLightIndices = Mathf.Max(tileCountTotal * maxLightsPerTile, 1);
 				EnsureTileTextures(tileCount, maxLightIndices);
 
-				var tileScreenUVSize = math.float2(
-					1f / screenUVToTileCoordinates.x,
-					1f / screenUVToTileCoordinates.y);
-				int runningOffset = 0;
-				for (int j = 0; j < tileCountTotal; j++)
+				// Dirty check: compare light bounds, count, and tile grid with last frame
+				bool needsRecompute = TileDataNeedsRecompute(tileCountTotal);
+
+				if (needsRecompute)
 				{
-					ExecuteTile(j, this.tileCount.x, tileScreenUVSize, ref runningOffset);
+					BuildTileLightLists(tileCountTotal);
+					tileDataDirty = true;
+				}
+				else
+				{
+					tileDataDirty = false;
 				}
 			}
+		}
+
+		bool TileDataNeedsRecompute(int tileCountTotal)
+		{
+			if (otherLightCount != lastOtherLightCount ||
+			    tileCount.x != lastTileCount.x ||
+			    tileCount.y != lastTileCount.y)
+				return true;
+
+			for (int j = 0; j < otherLightCount; j++)
+			{
+				Vector4 cur = lightBounds[j];
+				Vector4 last = lastLightBounds[j];
+				if (cur.x != last.x || cur.y != last.y ||
+				    cur.z != last.z || cur.w != last.w)
+					return true;
+			}
+			return false;
+		}
+
+		void SaveTileDataState()
+		{
+			lastOtherLightCount = otherLightCount;
+			lastTileCount = tileCount;
+			for (int j = 0; j < otherLightCount; j++)
+				lastLightBounds[j] = lightBounds[j];
+		}
+
+		/// <summary>
+		/// Light-centric tile culling: iterate lights, compute affected tile range,
+		/// then fill tile data. Complexity O(lights × avgTilesPerLight) vs original
+		/// O(tiles × lights).
+		/// </summary>
+		void BuildTileLightLists(int tileCountTotal)
+		{
+			int dataStride = tileDataTexSize.x;
+
+			// Pass 1: clear per-tile light counts
+			for (int j = 0; j < tileCountTotal; j++)
+				tileLightCounts[j] = 0;
+
+			// Pass 2: for each light, compute tile range and count
+			for (int i = 0; i < otherLightCount; i++)
+			{
+				float4 b = lightBounds[i];
+				int minTx = Mathf.Max(0, Mathf.CeilToInt(b.x * screenUVToTileCoordinates.x) - 1);
+				int maxTx = Mathf.Min(tileCount.x - 1, Mathf.FloorToInt(b.z * screenUVToTileCoordinates.x));
+				int minTy = Mathf.Max(0, Mathf.CeilToInt(b.y * screenUVToTileCoordinates.y) - 1);
+				int maxTy = Mathf.Min(tileCount.y - 1, Mathf.FloorToInt(b.w * screenUVToTileCoordinates.y));
+
+				for (int ty = minTy; ty <= maxTy; ty++)
+				{
+					for (int tx = minTx; tx <= maxTx; tx++)
+					{
+						int tileIdx = ty * tileCount.x + tx;
+						if (tileLightCounts[tileIdx] < maxLightsPerTile)
+							tileLightCounts[tileIdx]++;
+					}
+				}
+			}
+
+			// Pass 3: prefix sum → write headerIndex + count to tileDataArray
+			int runningOffset = 0;
+			for (int j = 0; j < tileCountTotal; j++)
+			{
+				int count = tileLightCounts[j];
+				int y = j / tileCount.x;
+				int x = j - y * tileCount.x;
+				int texIndex = y * dataStride + x;
+				tileDataArray[texIndex] = new Vector2(runningOffset, count);
+				tileLightFillPos[j] = runningOffset;
+				runningOffset += count;
+			}
+
+			// Pass 4: for each light, fill light indices into tileLightArray
+			for (int i = 0; i < otherLightCount; i++)
+			{
+				float4 b = lightBounds[i];
+				int minTx = Mathf.Max(0, Mathf.CeilToInt(b.x * screenUVToTileCoordinates.x) - 1);
+				int maxTx = Mathf.Min(tileCount.x - 1, Mathf.FloorToInt(b.z * screenUVToTileCoordinates.x));
+				int minTy = Mathf.Max(0, Mathf.CeilToInt(b.y * screenUVToTileCoordinates.y) - 1);
+				int maxTy = Mathf.Min(tileCount.y - 1, Mathf.FloorToInt(b.w * screenUVToTileCoordinates.y));
+
+				for (int ty = minTy; ty <= maxTy; ty++)
+				{
+					for (int tx = minTx; tx <= maxTx; tx++)
+					{
+						int tileIdx = ty * tileCount.x + tx;
+						int count = tileLightCounts[tileIdx];
+						int fillPos = tileLightFillPos[tileIdx];
+						int headerIndex = (int)tileDataArray[ty * dataStride + tx].x;
+						if (fillPos - headerIndex < count)
+						{
+							if (fillPos >= tileLightArray.Length)
+							{
+								Debug.LogError("请增加tileSize");
+								break;
+							}
+							tileLightArray[fillPos] = i;
+							tileLightFillPos[tileIdx]++;
+						}
+					}
+				}
+			}
+
+			SaveTileDataState();
 		}
 
 		void Render(RenderGraphContext context)
@@ -207,11 +335,6 @@ namespace TaoTie.RenderPipelines
 				}
 				else
 				{
-					Array.Copy(otherLightColors, forwardOtherLightColors, maxForwardOtherLightCount);
-					Array.Copy(otherLightPositions, forwardOtherLightPositions, maxForwardOtherLightCount);
-					Array.Copy(otherLightDirectionsAndMasks, forwardOtherLightDirectionsAndMasks, maxForwardOtherLightCount);
-					Array.Copy(otherLightSpotAngles, forwardOtherLightSpotAngles, maxForwardOtherLightCount);
-					Array.Copy(otherLightShadowData, forwardOtherLightShadowData, maxForwardOtherLightCount);
 					buffer.SetGlobalVectorArray(otherLightColorsId, forwardOtherLightColors);
 					buffer.SetGlobalVectorArray(
 						otherLightPositionsId, forwardOtherLightPositions);
@@ -226,20 +349,45 @@ namespace TaoTie.RenderPipelines
 
 			shadows.Render(context);
 
-			if (useForwardPlus && tileDataTexture != null && tileLightTexture != null)
+			if (useForwardPlus)
 			{
-				tileDataTexture.SetPixelData(tileDataArray, 0);
-				tileDataTexture.Apply();
-				tileLightTexture.SetPixelData(tileLightArray, 0);
-				tileLightTexture.Apply();
-				buffer.SetGlobalTexture(tilesId, tileDataTexture);
-				buffer.SetGlobalTexture(tilesLightId, tileLightTexture);
+				bool canUseBuffer = useComputeBuffer && tileDataBuffer != null && tileLightBuffer != null;
+				if (tileDataDirty)
+				{
+					if (canUseBuffer)
+					{
+						tileDataBuffer.SetData(tileDataArray);
+						tileLightBuffer.SetData(tileLightArray);
+					}
+					else
+					{
+						tileDataTexture.SetPixelData(tileDataArray, 0);
+						tileDataTexture.Apply(false);
+						tileLightTexture.SetPixelData(tileLightArray, 0);
+						tileLightTexture.Apply(false);
+					}
+					tileDataDirty = false;
+				}
+
+				if (canUseBuffer)
+				{
+					buffer.SetGlobalBuffer(tilesBufId, tileDataBuffer);
+					buffer.SetGlobalBuffer(tilesLightBufId, tileLightBuffer);
+					// z = tileDataTexSize.x (data stride for linear indexing)
+					buffer.SetGlobalVector(lightTexSizeId, new Vector4(
+						tileLightBufferSize, 1, tileDataTexSize.x, 0));
+				}
+				else
+				{
+					buffer.SetGlobalTexture(tilesId, tileDataTexture);
+					buffer.SetGlobalTexture(tilesLightId, tileLightTexture);
+					buffer.SetGlobalVector(lightTexSizeId, new Vector4(
+						tileLightTexture.width, tileLightTexture.height, 0, 0));
+				}
 				buffer.SetGlobalVector(tileSettingsId, new Vector4(
 					screenUVToTileCoordinates.x, screenUVToTileCoordinates.y,
 					tileCount.x,
 					maxLightsPerTile));
-				buffer.SetGlobalVector(lightTexSizeId, new Vector4(
-					tileLightTexture.width, tileLightTexture.height, 0, 0));
 			}
 			else
 			{
@@ -274,40 +422,69 @@ namespace TaoTie.RenderPipelines
 		void SetupPointLight(
 			int index, int visibleIndex, ref VisibleLight visibleLight, Light light)
 		{
-			otherLightColors[index] = GetFinalColor(ref visibleLight);
+			Vector4 color = GetFinalColor(ref visibleLight);
 			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
-			otherLightPositions[index] = position;
-			otherLightSpotAngles[index] = new Vector4(0f, 1f);
+			Vector4 spotAngles = new Vector4(0f, 1f);
 			Vector4 dirAndmask = Vector4.zero;
 			dirAndmask.w = light.renderingLayerMask.ReinterpretAsFloat();
-			otherLightDirectionsAndMasks[index] = dirAndmask;
-			otherLightShadowData[index] = shadows.ReserveOtherShadows(
-				light, visibleIndex);
+			Vector4 shadowData = shadows.ReserveOtherShadows(light, visibleIndex);
+
+			if (useForwardPlus)
+			{
+				otherLightColors[index] = color;
+				otherLightPositions[index] = position;
+				otherLightSpotAngles[index] = spotAngles;
+				otherLightDirectionsAndMasks[index] = dirAndmask;
+				otherLightShadowData[index] = shadowData;
+			}
+			else
+			{
+				forwardOtherLightColors[index] = color;
+				forwardOtherLightPositions[index] = position;
+				forwardOtherLightSpotAngles[index] = spotAngles;
+				forwardOtherLightDirectionsAndMasks[index] = dirAndmask;
+				forwardOtherLightShadowData[index] = shadowData;
+			}
 		}
 
 		void SetupSpotLight(
 			int index, int visibleIndex, ref VisibleLight visibleLight, Light light)
 		{
-			otherLightColors[index] = GetFinalColor(ref visibleLight);
+			Vector4 color = GetFinalColor(ref visibleLight);
 			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
-			otherLightPositions[index] = position;
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
 			dirAndMask.w = light.renderingLayerMask.ReinterpretAsFloat();
-			otherLightDirectionsAndMasks[index] = dirAndMask;
 
 			float innerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * light.innerSpotAngle);
 			float outerCos = Mathf.Cos(
 				Mathf.Deg2Rad * 0.5f * visibleLight.spotAngle);
 			float angleRangeInv = 1f / Mathf.Max(innerCos - outerCos, 0.001f);
-			otherLightSpotAngles[index] = new Vector4(
+			Vector4 spotAngles = new Vector4(
 				angleRangeInv, -outerCos * angleRangeInv
 			);
-			otherLightShadowData[index] = shadows.ReserveOtherShadows(
+			Vector4 shadowData = shadows.ReserveOtherShadows(
 				light, visibleIndex);
+
+			if (useForwardPlus)
+			{
+				otherLightColors[index] = color;
+				otherLightPositions[index] = position;
+				otherLightDirectionsAndMasks[index] = dirAndMask;
+				otherLightSpotAngles[index] = spotAngles;
+				otherLightShadowData[index] = shadowData;
+			}
+			else
+			{
+				forwardOtherLightColors[index] = color;
+				forwardOtherLightPositions[index] = position;
+				forwardOtherLightDirectionsAndMasks[index] = dirAndMask;
+				forwardOtherLightSpotAngles[index] = spotAngles;
+				forwardOtherLightShadowData[index] = shadowData;
+			}
 		}
 
 		public static void Dispose()
@@ -316,6 +493,9 @@ namespace TaoTie.RenderPipelines
 			if (tileLightArray.IsCreated) tileLightArray.Dispose();
 			if (tileDataTexture != null) Object.DestroyImmediate(tileDataTexture);
 			if (tileLightTexture != null) Object.DestroyImmediate(tileLightTexture);
+			tileDataBuffer?.Release();
+			tileLightBuffer?.Release();
+			tileDataBufferSize = tileLightBufferSize = 0;
 		}
 
 		public static ShadowTextures Record(
@@ -378,6 +558,7 @@ namespace TaoTie.RenderPipelines
 			int lightTexH = Mathf.Min(NextPow2(Mathf.CeilToInt(lightCount / (float)lightTexW)), maxTexSize);
 			lightTexH = Mathf.Max(lightTexH, 1);
 
+			// Always keep Texture2D alive as WebGL fallback (or when compute not supported)
 			if (tileDataTexture == null || tileDataTexture.width < dataW || tileDataTexture.height < dataH)
 			{
 				if (tileDataTexture != null) Object.DestroyImmediate(tileDataTexture);
@@ -411,48 +592,35 @@ namespace TaoTie.RenderPipelines
 				if (tileLightArray.IsCreated) tileLightArray.Dispose();
 				tileLightArray = new NativeArray<float>(actualLightTexSize, Allocator.Persistent);
 			}
+
+			int tileCountTotal = TileCount;
+			if (tileLightCounts == null || tileLightCounts.Length < tileCountTotal)
+			{
+				tileLightCounts = new int[tileCountTotal];
+				tileLightFillPos = new int[tileCountTotal];
+			}
+
+			if (useComputeBuffer)
+			{
+				if (tileDataBufferSize < actualDataTexSize)
+				{
+					tileDataBuffer?.Release();
+					tileDataBuffer = new ComputeBuffer(actualDataTexSize, 8); // Vector2 = 8 bytes
+					tileDataBufferSize = actualDataTexSize;
+				}
+				if (tileLightBufferSize < actualLightTexSize)
+				{
+					tileLightBuffer?.Release();
+					tileLightBuffer = new ComputeBuffer(actualLightTexSize, 4); // float = 4 bytes
+					tileLightBufferSize = actualLightTexSize;
+				}
+			}
 		}
 
 		void SetupForwardPlus(int lightIndex, ref VisibleLight visibleLight)
 		{
 			Rect r = visibleLight.screenRect;
 			lightBounds[lightIndex] = math.float4(r.xMin, r.yMin, r.xMax, r.yMax);
-		}
-
-		void ExecuteTile(int tileIndex, int tilesPerRow, float2 tileScreenUVSize, ref int runningOffset)
-		{
-			int y = tileIndex / tilesPerRow;
-			int x = tileIndex - y * tilesPerRow;
-			var bounds = math.float4(x, y, x + 1, y + 1) * tileScreenUVSize.xyxy;
-
-			int headerIndex = runningOffset;
-			int dataIndex = headerIndex;
-			int lightsInTileCount = 0;
-
-			for (int i = 0; i < otherLightCount; i++)
-			{
-				float4 b = lightBounds[i];
-				if (math.all(math.float4(b.xy, bounds.xy) <= math.float4(bounds.zw, b.zw)))
-				{
-					if (dataIndex >= tileLightArray.Length)
-					{
-						Debug.LogError("请增加tileSize");
-						break;
-					}
-					tileLightArray[dataIndex] = i;
-					if (lightsInTileCount + 1 > maxLightsPerTile)
-					{
-						break;
-					}
-
-					lightsInTileCount++;
-					dataIndex++;
-				}
-			}
-
-			int texIndex = y * tileDataTexSize.x + x;
-			tileDataArray[texIndex] = new Vector2(headerIndex, lightsInTileCount);
-			runningOffset += lightsInTileCount;
 		}
 	}
 }

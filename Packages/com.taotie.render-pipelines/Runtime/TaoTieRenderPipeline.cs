@@ -31,6 +31,12 @@ namespace TaoTie.RenderPipelines
             else
                 Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
 
+            // WebGL does not support ComputeBuffer; use Texture2D fallback there.
+            if (SystemInfo.supportsComputeShaders)
+                Shader.EnableKeyword("_COMPUTE_BUFFER");
+            else
+                Shader.DisableKeyword("_COMPUTE_BUFFER");
+
             InitializeForEditor();
             renderer = new(settings.cameraRendererShader, settings.cameraDebuggerShader);
         }

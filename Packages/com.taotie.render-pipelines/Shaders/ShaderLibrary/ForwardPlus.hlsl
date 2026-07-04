@@ -6,8 +6,15 @@
 // w: Tile data size (maxLightsPerTile), as integer.
 float4 _ForwardPlusTileSettings;
 
-TEXTURE2D(_ForwardPlusTileLightsTex);
-TEXTURE2D(_ForwardPlusTilesTex);
+// Use separate property names to avoid property sheet type conflicts
+// between Texture2D and StructuredBuffer shader variants.
+#if defined(_COMPUTE_BUFFER)
+    StructuredBuffer<float2> _ForwardPlusTilesBuf;
+    StructuredBuffer<float> _ForwardPlusTileLightsBuf;
+#else
+    TEXTURE2D(_ForwardPlusTilesTex);
+    TEXTURE2D(_ForwardPlusTileLightsTex);
+#endif
 
 float4 _ForwardPlusLightTexSize;
 
@@ -26,7 +33,11 @@ struct ForwardPlusTile
 
     int GetForwardPlusTiles(int temp)
     {
-        return (int)_ForwardPlusTileLightsTex.Load(int3(FpLightTexCoord(temp), 0)).r;
+        #if defined(_COMPUTE_BUFFER)
+            return (int)_ForwardPlusTileLightsBuf[temp];
+        #else
+            return (int)_ForwardPlusTileLightsTex.Load(int3(FpLightTexCoord(temp), 0)).r;
+        #endif
     }
 
     int GetTileDataSize()
@@ -70,9 +81,18 @@ ForwardPlusTile GetForwardPlusTile(float2 screenUV)
 {
     ForwardPlusTile tile;
     tile.coordinates = int2(screenUV * _ForwardPlusTileSettings.xy);
-    float4 data = _ForwardPlusTilesTex.Load(int3(tile.coordinates, 0));
-    tile.headerIndex = (int)data.r;
-    tile.lightCount = (int)data.g;
+    #if defined(_COMPUTE_BUFFER)
+        // _ForwardPlusLightTexSize.z = tileDataTexSize.x (data stride for linear indexing)
+        int dataStride = (int)_ForwardPlusLightTexSize.z;
+        int linearIndex = tile.coordinates.y * dataStride + tile.coordinates.x;
+        float2 data = _ForwardPlusTilesBuf[linearIndex];
+        tile.headerIndex = (int)data.x;
+        tile.lightCount = (int)data.y;
+    #else
+        float4 data = _ForwardPlusTilesTex.Load(int3(tile.coordinates, 0));
+        tile.headerIndex = (int)data.r;
+        tile.lightCount = (int)data.g;
+    #endif
     tile.index = tile.coordinates.y * (int)_ForwardPlusTileSettings.z +
         tile.coordinates.x;
     return tile;

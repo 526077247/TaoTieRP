@@ -22,6 +22,8 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
     shadowData.shadowMask = gi.shadowMask;
     float3 color = IndirectBRDF(surfaceWS, brdf, gi.diffuse, gi.specular);
     int dirLightCount = GetDirectionalLightCount();
+    #if defined(SHADER_API_GLES)
+    // GLES2/WebGL1: loops must have constant bounds
     for (int i = 0; i < MAX_DIRECTIONAL_LIGHT_COUNT; i++) {
         if (i < dirLightCount) {
             Light light = GetDirectionalLight(i, surfaceWS, shadowData);
@@ -30,6 +32,14 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
             }
         }
     }
+    #else
+    for (int i = 0; i < dirLightCount; i++) {
+        Light light = GetDirectionalLight(i, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light)) {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    #endif
     
     #if defined(TAOTIE_FORWARD_PLUS)
     ForwardPlusTile tile = GetForwardPlusTile(fragment.screenUV);
@@ -45,17 +55,27 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
     }
     #else
     int otherLightCount = GetOtherLightCount();
-    for (int j = 0; j < MAX_OTHER_LIGHT_COUNT; j++)
-    {
-        if (j < otherLightCount)
-        {
+    #if defined(SHADER_API_GLES)
+    // GLES2/WebGL1: loops must have constant bounds
+    for (int j = 0; j < MAX_OTHER_LIGHT_COUNT; j++) {
+        if (j < otherLightCount) {
             Light light = GetOtherLight(j, surfaceWS, shadowData);
-            if (RenderingLayersOverlap(surfaceWS, light))
-            {
+            if (RenderingLayersOverlap(surfaceWS, light)) {
                 color += GetLighting(surfaceWS, brdf, light);
             }
         }
     }
+    #else
+    [loop]
+    for (int j = 0; j < otherLightCount; j++)
+    {
+        Light light = GetOtherLight(j, surfaceWS, shadowData);
+        if (RenderingLayersOverlap(surfaceWS, light))
+        {
+            color += GetLighting(surfaceWS, brdf, light);
+        }
+    }
+    #endif
     #endif
     return color;
 }
