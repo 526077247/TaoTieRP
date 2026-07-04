@@ -9,35 +9,36 @@ namespace TaoTie.RenderPipelines.Editor
 {
     public class ShaderStripper : IPreprocessShaders
     {
-        static readonly HashSet<string> stripKeywords = new()
-        {
-            "_COMPUTE_BUFFER",
-        };
-
         public int callbackOrder => 0;
 
         public void OnProcessShader(
             Shader shader, ShaderSnippetData snippet,
             IList<ShaderCompilerData> data)
         {
-            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL) return;
-
-            // Meta Pass is only used for lightmap baking, not needed at runtime.
+            if (shader.name == "Hidden/TaoTie RP/Camera Debugger")
+            {
+                data.Clear();
+                return;
+            }
+            
             if (snippet.passType == PassType.Meta)
             {
                 data.Clear();
                 return;
             }
-
-            for (int i = data.Count - 1; i >= 0; i--)
+            
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL)
             {
-                ShaderKeyword[] keywords = data[i].shaderKeywordSet.GetShaderKeywords();
-                foreach (ShaderKeyword kw in keywords)
+                for (int i = data.Count - 1; i >= 0; i--)
                 {
-                    if (stripKeywords.Contains(kw.GetKeywordName()))
+                    ShaderKeyword[] keywords = data[i].shaderKeywordSet.GetShaderKeywords();
+                    foreach (ShaderKeyword kw in keywords)
                     {
-                        data.RemoveAt(i);
-                        break;
+                        if ("_COMPUTE_BUFFER" == kw.GetKeywordName())
+                        {
+                            data.RemoveAt(i);
+                            break;
+                        }
                     }
                 }
             }

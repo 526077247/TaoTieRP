@@ -13,6 +13,7 @@ namespace TaoTie.RenderPipelines
             Deferred
         }
 
+        [RenderingModeField]
         public RenderingMode renderingMode = RenderingMode.Forward;
         
         public CameraBufferSettings cameraBuffer = new()
