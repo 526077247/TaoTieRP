@@ -102,5 +102,39 @@ namespace TaoTie.RenderPipelines
             builder.SetRenderFunc<SetupPass>(static (pass, context) => pass.Render(context));
             return new CameraRendererTextures(colorAttachment, depthAttachment, colorCopy, depthCopy, resolvedColorAttachment);
         }
+
+        public static GBufferTextures RecordGBuffer(
+            RenderGraph renderGraph, bool useHDR, Vector2Int bufferSize,
+            TextureHandle depthAttachment)
+        {
+            using RenderGraphBuilder builder =
+                renderGraph.AddRenderPass("G-Buffer Setup", out SetupPass pass, sampler);
+            pass.attachmentSize = bufferSize;
+
+            // Use UNorm for normals since octahedral encoding is remapped to [0,1].
+            GraphicsFormat albedoFormat = useHDR &&
+                SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
+                ? GraphicsFormat.R16G16B16A16_SFloat
+                : GraphicsFormat.R8G8B8A8_UNorm;
+            GraphicsFormat normalFormat = albedoFormat;
+
+            var desc = new TextureDesc(bufferSize.x, bufferSize.y)
+            {
+                colorFormat = albedoFormat,
+                name = "G-Buffer Albedo AO"
+            };
+            TextureHandle albedoAO = renderGraph.CreateTexture(desc);
+
+            desc.colorFormat = normalFormat;
+            desc.name = "G-Buffer Normal Metallic";
+            TextureHandle normalMS = renderGraph.CreateTexture(desc);
+
+            desc.colorFormat = albedoFormat;
+            desc.name = "G-Buffer Emission";
+            TextureHandle emission = renderGraph.CreateTexture(desc);
+
+            builder.SetRenderFunc<SetupPass>(static (pass, context) => {});
+            return new GBufferTextures(albedoAO, normalMS, emission, depthAttachment);
+        }
     }
 }

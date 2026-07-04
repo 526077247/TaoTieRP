@@ -18,27 +18,29 @@ namespace TaoTie.RenderPipelines
                 settings.useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
 
-            bool useForwardPlus = settings.shadows.renderingMode switch
-            {
-                ShadowSettings.RenderingMode.Auto =>
-                    SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2,
-                ShadowSettings.RenderingMode.ForwardPlus => true,
-                ShadowSettings.RenderingMode.Forward => false,
-                _ => true
-            };
-            if (useForwardPlus)
-                Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
-            else
-                Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
-
             // WebGL does not support ComputeBuffer; use Texture2D fallback there.
             if (SystemInfo.supportsComputeShaders)
                 Shader.EnableKeyword("_COMPUTE_BUFFER");
             else
                 Shader.DisableKeyword("_COMPUTE_BUFFER");
 
+            UpdateForwardPlusKeyword();
+
             InitializeForEditor();
-            renderer = new(settings.cameraRendererShader, settings.cameraDebuggerShader);
+            renderer = new(
+                settings.cameraRendererShader,
+                settings.cameraDebuggerShader,
+                Shader.Find("Hidden/TaoTie RP/Deferred Lighting"));
+        }
+
+        void UpdateForwardPlusKeyword()
+        {
+            bool useForwardPlus = settings.shadows.useForwardPlus &&
+                                  SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+            if (useForwardPlus)
+                Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
+            else
+                Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
         }
 
         private CameraRenderer renderer;
@@ -50,11 +52,7 @@ namespace TaoTie.RenderPipelines
 
         protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
         {
-#if UNITY_EDITOR
-            if (UnityEditor.BuildPipeline.isBuildingPlayer)
-                return;
-#endif
-
+            RenderForEditor();
             for (int i = 0; i < cameras.Count; i++)
             {
                 renderer.Render(renderGraph, context, cameras[i], settings);

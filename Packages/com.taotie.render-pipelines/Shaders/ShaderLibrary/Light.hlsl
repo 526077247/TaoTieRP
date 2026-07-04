@@ -9,12 +9,12 @@
 #endif
 
 CBUFFER_START(_CustomLight)
-	int _DirectionalLightCount;
+	float _DirectionalLightCount;
 	float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
 	float4 _DirectionalLightDirectionsAndMasks[MAX_DIRECTIONAL_LIGHT_COUNT];
 	float4 _DirectionalLightShadowData[MAX_DIRECTIONAL_LIGHT_COUNT];
 
-	int _OtherLightCount;
+	float _OtherLightCount;
 	float4 _OtherLightColors[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightPositions[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightDirectionsAndMasks[MAX_OTHER_LIGHT_COUNT];
@@ -30,7 +30,7 @@ struct Light {
 };
 
 int GetDirectionalLightCount () {
-	return _DirectionalLightCount;
+	return (int)_DirectionalLightCount;
 }
 
 DirectionalShadowData GetDirectionalShadowData (
@@ -49,7 +49,7 @@ Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) 
 	Light light;
 	light.color = _DirectionalLightColors[index].rgb;
 	light.direction = _DirectionalLightDirectionsAndMasks[index].xyz;
-	light.renderingLayerMask = asuint(_DirectionalLightDirectionsAndMasks[index].w);
+	light.renderingLayerMask = (uint)_DirectionalLightDirectionsAndMasks[index].w;
 	DirectionalShadowData dirShadowData =
 		GetDirectionalShadowData(index, shadowData);
 	light.attenuation =
@@ -58,7 +58,7 @@ Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) 
 }
 
 int GetOtherLightCount () {
-	return _OtherLightCount;
+	return (int)_OtherLightCount;
 }
 
 OtherShadowData GetOtherShadowData (int lightIndex) {
@@ -85,7 +85,7 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	);
 	float4 spotAngles = _OtherLightSpotAngles[index];
 	float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
-	light.renderingLayerMask = asuint(_OtherLightDirectionsAndMasks[index].w);
+	light.renderingLayerMask = (uint)_OtherLightDirectionsAndMasks[index].w;
 	float spotAttenuation = Square(
 		saturate(dot(spotDirection, light.direction) *
 		spotAngles.x + spotAngles.y)

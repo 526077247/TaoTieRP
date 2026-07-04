@@ -5,15 +5,6 @@ namespace TaoTie.RenderPipelines
     [System.Serializable]
     public class ShadowSettings
     {
-        public enum RenderingMode
-        {
-            Auto,
-            ForwardPlus,
-            Forward
-        }
-
-        public RenderingMode renderingMode = RenderingMode.Auto;
-
         public enum MapSize
         {
 #if ODIN_INSPECTOR
@@ -134,8 +125,10 @@ namespace TaoTie.RenderPipelines
 #endif
             public MapSize atlasSize;
         }
+        
+        public bool useForwardPlus = true;
 #if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.ShowIf("@"+nameof(renderingMode)+"!=RenderingMode.Forward")]
+        [Sirenix.OdinInspector.ShowIf("@"+nameof(useForwardPlus))]
 #endif
         public Other other = new()
         {

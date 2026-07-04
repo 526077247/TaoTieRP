@@ -11,6 +11,8 @@ namespace TaoTie.RenderPipelines
 
         partial void InitializeForEditor();
         partial void DisposeForEditor();
+        
+        partial void RenderForEditor();
 #if UNITY_EDITOR
 
         static Lightmapping.RequestLightsDelegate lightsDelegate =
@@ -64,6 +66,13 @@ namespace TaoTie.RenderPipelines
         partial void DisposeForEditor()
         {
             Lightmapping.ResetDelegate();
+        }
+
+        partial void RenderForEditor()
+        {
+            if (UnityEditor.BuildPipeline.isBuildingPlayer)
+                return;
+            UpdateForwardPlusKeyword();
         }
 #endif
     }

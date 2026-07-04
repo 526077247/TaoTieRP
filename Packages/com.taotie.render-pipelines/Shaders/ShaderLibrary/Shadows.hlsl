@@ -29,7 +29,7 @@ TEXTURE2D_SHADOW(_OtherShadowAtlas);
 SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CustomShadows)
-	int _CascadeCount;
+	float _CascadeCount;
 	float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
 	float4 _CascadeData[MAX_CASCADE_COUNT];
 	float4x4 _DirectionalShadowMatrices

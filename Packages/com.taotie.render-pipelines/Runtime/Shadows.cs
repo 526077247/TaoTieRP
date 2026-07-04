@@ -220,7 +220,7 @@ namespace TaoTie.RenderPipelines
 					: 0f);
 			buffer.SetGlobalFloat(softCascadeBlendId,
 				settings.directional.softCascadeBlend ? 1f : 0f);
-			buffer.SetGlobalInt(cascadeCountId, shadowedDirLightCount > 0 ? settings.directional.cascadeCount : 0);
+			buffer.SetGlobalFloat(cascadeCountId, shadowedDirLightCount > 0 ? settings.directional.cascadeCount : 0);
 			float f = settings.directional.cascadeCount > 1
 				? 1f - settings.directional.cascadeFade
 				: 1f;

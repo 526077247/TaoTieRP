@@ -41,7 +41,22 @@ float3 GetLighting (Fragment fragment,Surface surfaceWS, BRDF brdf, GI gi) {
     }
     #endif
     
-    #if defined(TAOTIE_FORWARD_PLUS)
+    // In deferred lighting pass, iterate all other lights directly (no tile culling).
+    // In forward pass, use Forward+ tiles when available, else iterate all (capped) lights.
+    #if defined(TAOTIE_DEFERRED_LIGHTING)
+    {
+        int otherLightCount = GetOtherLightCount();
+        [loop]
+        for (int j = 0; j < otherLightCount; j++)
+        {
+            Light light = GetOtherLight(j, surfaceWS, shadowData);
+            if (RenderingLayersOverlap(surfaceWS, light))
+            {
+                color += GetLighting(surfaceWS, brdf, light);
+            }
+        }
+    }
+    #elif defined(TAOTIE_FORWARD_PLUS)
     ForwardPlusTile tile = GetForwardPlusTile(fragment.screenUV);
     int lastLightIndex = tile.GetLastLightIndexInTile();
     for (int j = tile.GetFirstLightIndexInTile(); j <= lastLightIndex; j++)

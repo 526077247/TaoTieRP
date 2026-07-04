@@ -308,7 +308,7 @@ namespace TaoTie.RenderPipelines
 		{
 			CommandBuffer buffer = context.cmd;
 
-			buffer.SetGlobalInt(dirLightCountId, dirLightCount);
+			buffer.SetGlobalFloat(dirLightCountId, dirLightCount);
 			if (dirLightCount > 0)
 			{
 				buffer.SetGlobalVectorArray(dirLightColorsId, dirLightColors);
@@ -318,7 +318,7 @@ namespace TaoTie.RenderPipelines
 					dirLightShadowDataId, dirLightShadowData);
 			}
 
-			buffer.SetGlobalInt(otherLightCountId, otherLightCount);
+			buffer.SetGlobalFloat(otherLightCountId, otherLightCount);
 			if (otherLightCount > 0)
 			{
 				if (useForwardPlus)
@@ -413,7 +413,7 @@ namespace TaoTie.RenderPipelines
 		{
 			dirLightColors[index] = GetFinalColor(ref visibleLight);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
-			dirAndMask.w = light.renderingLayerMask.ReinterpretAsFloat();
+			dirAndMask.w = (float)light.renderingLayerMask;
 			dirLightDirectionsAndMasks[index] = dirAndMask;
 			dirLightShadowData[index] =
 				shadows.ReserveDirectionalShadows(light, visibleIndex);
@@ -428,7 +428,7 @@ namespace TaoTie.RenderPipelines
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
 			Vector4 spotAngles = new Vector4(0f, 1f);
 			Vector4 dirAndmask = Vector4.zero;
-			dirAndmask.w = light.renderingLayerMask.ReinterpretAsFloat();
+			dirAndmask.w = (float)light.renderingLayerMask;
 			Vector4 shadowData = shadows.ReserveOtherShadows(light, visibleIndex);
 
 			if (useForwardPlus)
@@ -457,7 +457,7 @@ namespace TaoTie.RenderPipelines
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
-			dirAndMask.w = light.renderingLayerMask.ReinterpretAsFloat();
+			dirAndMask.w = (float)light.renderingLayerMask;
 
 			float innerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * light.innerSpotAngle);
 			float outerCos = Mathf.Cos(

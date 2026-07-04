@@ -123,13 +123,15 @@ GI GetGI (float2 lightMapUV, Surface surfaceWS, BRDF brdf) {
     gi.shadowMask.distance = false;
     gi.shadowMask.shadows = 1.0;
 
-    #if defined(_SHADOW_MASK_ALWAYS)
-    gi.shadowMask.always = true;
-    gi.shadowMask.shadows = SampleBakedShadows(lightMapUV, surfaceWS);
-    #elif defined(_SHADOW_MASK_DISTANCE)
-    gi.shadowMask.distance = true;
-    gi.shadowMask.shadows = SampleBakedShadows(lightMapUV, surfaceWS);
-    #endif
+    // _ShadowMaskMode: 0 = off, 1 = Shadowmask (always), 2 = Distance Shadowmask
+    if (_ShadowMaskMode > 0.5) {
+        gi.shadowMask.shadows = SampleBakedShadows(lightMapUV, surfaceWS);
+        if (_ShadowMaskMode > 1.5) {
+            gi.shadowMask.distance = true;
+        } else {
+            gi.shadowMask.always = true;
+        }
+    }
     return gi;
 }
 #endif

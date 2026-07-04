@@ -114,6 +114,28 @@
 			#include "ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
+		Pass {
+			Tags {
+				"LightMode" = "DeferredGBuffer"
+			}
+
+			Blend Off
+			ZWrite On
+
+			HLSLPROGRAM
+			#pragma exclude_renderers gles
+			#pragma shader_feature_local _CLIPPING
+			#pragma shader_feature_local _MASK_MAP
+			#pragma shader_feature_local _NORMAL_MAP
+			#pragma shader_feature_local _DETAIL_MAP
+			#pragma multi_compile _ LIGHTMAP_ON
+			#pragma multi_compile _ LOD_FADE_CROSSFADE
+			#pragma multi_compile_instancing
+			#pragma vertex DeferredGBufferPassVertex
+			#pragma fragment DeferredGBufferPassFragment
+			#include "DeferredGBufferPass.hlsl"
+			ENDHLSL
+		}
     	Pass {
 			Tags {
 				"LightMode" = "Meta"

@@ -1,11 +1,20 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
+using System;
 
 namespace TaoTie.RenderPipelines
 {
-    [System.Serializable]
+    [Serializable]
     public class TaoTieRenderPipelineSettings
     {
+        public enum RenderingMode
+        {
+            Forward,
+            Deferred
+        }
+
+        public RenderingMode renderingMode = RenderingMode.Forward;
+        
         public CameraBufferSettings cameraBuffer = new()
         {
             allowHDR = true,
