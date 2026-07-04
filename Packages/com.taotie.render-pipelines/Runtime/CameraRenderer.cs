@@ -53,6 +53,9 @@ namespace TaoTie.RenderPipelines
                 useDepthTexture = bufferSettings.copyDepth && cameraSettings.copyDepth;
             }
 
+            // Reflection probe cameras only need lighting + opaque geometry.
+            bool isReflectionCamera = camera.cameraType == CameraType.Reflection;
+
 
             if (cameraSettings.overridePostFX)
             {
@@ -140,40 +143,48 @@ namespace TaoTie.RenderPipelines
                     useHDR, bufferSize, camera, msaaSamples);
                 GeometryPass.Record(
                     renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
-                if(bufferSettings.outLine) OutLinePass.Record(
-                    renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
-
-                SkyboxPass.Record(renderGraph, camera, textures);
 
                 var copier = new CameraRendererCopier(material, camera, cameraSettings.finalBlendMode);
 
-                CopyAttachmentsPass.Record(
-                    renderGraph, useColorTexture, useDepthTexture, copier, textures);
+                if (!isReflectionCamera)
+                {
+                    if(bufferSettings.outLine) OutLinePass.Record(
+                        renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
 
-                GeometryPass.Record(
-                    renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
-                UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
-                if (useMSAA)
-                {
-                    ResolvePass.Record(renderGraph, textures);
-                }
-                if (hasActivePostFX)
-                {
-                    postFXStack.BufferSettings = bufferSettings;
-                    postFXStack.BufferSize = bufferSize;
-                    postFXStack.Camera = camera;
-                    postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
-                    postFXStack.Settings = postFXSettings;
-                    PostFXPass.Record(
-                        renderGraph, postFXStack, (int) settings.colorLUTResolution,
-                        textures);
+                    SkyboxPass.Record(renderGraph, camera, textures);
+
+                    CopyAttachmentsPass.Record(
+                        renderGraph, useColorTexture, useDepthTexture, copier, textures);
+
+                    GeometryPass.Record(
+                        renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
+                    UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
+                    if (useMSAA)
+                    {
+                        ResolvePass.Record(renderGraph, textures);
+                    }
+                    if (hasActivePostFX)
+                    {
+                        postFXStack.BufferSettings = bufferSettings;
+                        postFXStack.BufferSize = bufferSize;
+                        postFXStack.Camera = camera;
+                        postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
+                        postFXStack.Settings = postFXSettings;
+                        PostFXPass.Record(
+                            renderGraph, postFXStack, (int) settings.colorLUTResolution,
+                            textures);
+                    }
+                    else
+                    {
+                        FinalPass.Record(renderGraph, copier, textures);
+                    }
+                    DebugPass.Record(renderGraph, settings, camera);
+                    GizmosPass.Record(renderGraph, copier, textures);
                 }
                 else
                 {
                     FinalPass.Record(renderGraph, copier, textures);
                 }
-                DebugPass.Record(renderGraph, settings, camera);
-                GizmosPass.Record(renderGraph, copier, textures);
             }
 
             context.ExecuteCommandBuffer(renderGraphParameters.commandBuffer);
