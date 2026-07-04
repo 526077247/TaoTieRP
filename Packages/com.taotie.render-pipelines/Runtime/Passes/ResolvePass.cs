@@ -12,7 +12,7 @@ namespace TaoTie.RenderPipelines
         void Render(RenderGraphContext context)
         {
             CommandBuffer buffer = context.cmd;
-            buffer.CopyTexture(msaaColor, resolvedColor);
+            buffer.ResolveAntiAliasedSurface(msaaColor, resolvedColor);
             context.renderContext.ExecuteCommandBuffer(buffer);
             buffer.Clear();
         }

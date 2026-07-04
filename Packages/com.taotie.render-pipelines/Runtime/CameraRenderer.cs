@@ -215,8 +215,13 @@ namespace TaoTie.RenderPipelines
 
                         SkyboxPass.Record(renderGraph, camera, textures);
 
+                        if (useMSAA)
+                        {
+                            ResolvePass.Record(renderGraph, textures);
+                        }
+
                         CopyAttachmentsPass.Record(
-                            renderGraph, useColorTexture, useDepthTexture, copier, textures);
+                            renderGraph, useColorTexture, useDepthTexture, copier, textures, useMSAA);
 
                         GeometryPass.Record(
                             renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);

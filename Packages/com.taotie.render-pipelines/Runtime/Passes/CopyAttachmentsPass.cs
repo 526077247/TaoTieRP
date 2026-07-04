@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
@@ -12,15 +13,17 @@ namespace TaoTie.RenderPipelines
             colorCopyID = Shader.PropertyToID("_CameraColorTexture"),
             depthCopyID = Shader.PropertyToID("_CameraDepthTexture");
 
-        bool copyColor, copyDepth;
+        bool copyColor, copyDepth, useMSAA;
 
         CameraRendererCopier copier;
 
         TextureHandle colorAttachment, depthAttachment, colorCopy, depthCopy;
+        TextureHandle rtColor, rtDepth;
 
         void Render(RenderGraphContext context)
         {
             CommandBuffer buffer = context.cmd;
+            bool usedCopyByDrawing = false;
             if (copyColor)
             {
                 copier.Copy(buffer, colorAttachment, colorCopy, false);
@@ -29,16 +32,25 @@ namespace TaoTie.RenderPipelines
 
             if (copyDepth)
             {
-                copier.Copy(buffer, depthAttachment, depthCopy, true);
+                if (useMSAA)
+                {
+                    copier.CopyByDrawing(buffer, depthAttachment, depthCopy, true,
+                        new Rect(0, 0, copier.Camera.pixelWidth, copier.Camera.pixelHeight));
+                    usedCopyByDrawing = true;
+                }
+                else
+                {
+                    copier.Copy(buffer, depthAttachment, depthCopy, true);
+                }
                 buffer.SetGlobalTexture(depthCopyID, depthCopy);
             }
 
-            if (CameraRendererCopier.RequiresRenderTargetResetAfterCopy)
+            if (CameraRendererCopier.RequiresRenderTargetResetAfterCopy || usedCopyByDrawing)
             {
                 buffer.SetRenderTarget(
-                    colorAttachment,
+                    rtColor,
                     RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
-                    depthAttachment,
+                    rtDepth,
                     RenderBufferLoadAction.Load, RenderBufferStoreAction.Store
                 );
             }
@@ -50,7 +62,8 @@ namespace TaoTie.RenderPipelines
         public static void Record(RenderGraph renderGraph, bool copyColor,
             bool copyDepth,
             CameraRendererCopier copier,
-            in CameraRendererTextures textures)
+            in CameraRendererTextures textures,
+            bool useMSAA = false)
         {
             if (copyColor || copyDepth)
             {
@@ -58,10 +71,14 @@ namespace TaoTie.RenderPipelines
                     sampler.name, out CopyAttachmentsPass pass, sampler);
                 pass.copyColor = copyColor;
                 pass.copyDepth = copyDepth;
+                pass.useMSAA = useMSAA;
                 pass.copier = copier;
 
-                pass.colorAttachment = builder.ReadTexture(textures.colorAttachment);
+                pass.colorAttachment = builder.ReadTexture(
+                    useMSAA ? textures.resolvedColorAttachment : textures.colorAttachment);
                 pass.depthAttachment = builder.ReadTexture(textures.depthAttachment);
+                pass.rtColor = textures.colorAttachment;
+                pass.rtDepth = textures.depthAttachment;
                 if (copyColor)
                 {
                     pass.colorCopy = builder.WriteTexture(textures.colorCopy);
