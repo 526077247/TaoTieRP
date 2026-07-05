@@ -26,13 +26,22 @@ namespace TaoTie.RenderPipelines
             bool usedCopyByDrawing = false;
             if (copyColor)
             {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                buffer.Blit(colorAttachment, colorCopy);
+                usedCopyByDrawing = true;
+#else
                 copier.Copy(buffer, colorAttachment, colorCopy, false);
+#endif
                 buffer.SetGlobalTexture(colorCopyID, colorCopy);
             }
 
             if (copyDepth)
             {
-                if (useMSAA)
+                if (useMSAA
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    || true
+#endif
+                   )
                 {
                     copier.CopyByDrawing(buffer, depthAttachment, depthCopy, true,
                         new Rect(0, 0, copier.Camera.pixelWidth, copier.Camera.pixelHeight));
