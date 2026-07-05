@@ -23,6 +23,8 @@ namespace TaoTie.RenderPipelines
 
         public BicubicRescalingMode bicubicRescaling;
 
+        [MSAAField]
+        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode.")]
         public MSAASamples msaa;
 
         public bool fxaa;

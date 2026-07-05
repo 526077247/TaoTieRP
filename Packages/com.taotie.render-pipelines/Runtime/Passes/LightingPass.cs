@@ -183,6 +183,11 @@ namespace TaoTie.RenderPipelines
 				int maxLightIndices = Mathf.Max(tileCountTotal * maxLightsPerTile, 1);
 				EnsureTileTextures(tileCount, maxLightIndices);
 
+				#if UNITY_EDITOR
+				// In editor, always recompute and upload tile data per camera per frame
+				BuildTileLightLists(tileCountTotal);
+				tileDataDirty = true;
+				#else
 				// Dirty check: compare light bounds, count, and tile grid with last frame
 				bool needsRecompute = TileDataNeedsRecompute(tileCountTotal);
 
@@ -195,6 +200,7 @@ namespace TaoTie.RenderPipelines
 				{
 					tileDataDirty = false;
 				}
+				#endif
 			}
 		}
 

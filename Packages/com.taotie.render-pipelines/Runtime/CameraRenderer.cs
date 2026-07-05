@@ -138,7 +138,7 @@ namespace TaoTie.RenderPipelines
 
                 // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.
                 // GLES2/WebGL1 does not support MRT, so always use forward there.
-#if !UNITY_WEBGL
+#if !UNITY_WEBGL || UNITY_EDITOR
                 bool useDeferred = !isReflectionCamera && settings.renderingMode switch
                 {
                     TaoTieRenderPipelineSettings.RenderingMode.Deferred =>

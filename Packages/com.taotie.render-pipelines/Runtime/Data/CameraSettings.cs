@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,10 +11,8 @@ namespace TaoTie.RenderPipelines
         public bool copyColor = true, copyDepth = true;
 
         public bool maskLights = false;
-        [RenderingLayerMaskField] 
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.ShowIf("@"+nameof(maskLights))]
-#endif
+        [RenderingLayerMaskField]
+        [ShowIf(nameof(maskLights))]
         public int renderingLayerMask = -1;
 
         public enum RenderScaleMode
@@ -25,20 +23,17 @@ namespace TaoTie.RenderPipelines
         }
 
         public RenderScaleMode renderScaleMode = RenderScaleMode.Inherit;
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.ShowIf("@"+nameof(renderScaleMode)+"!=RenderScaleMode.Inherit")]
-#endif
+        [ShowIf(nameof(renderScaleMode), ShowIfOperator.NotEqual, (int)RenderScaleMode.Inherit)]
         [Range(0.1f, 2f)] public float renderScale = 1f;
 
         public bool overridePostFX = false;
 
-        #if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.ShowIf(nameof(overridePostFX))]
-        #endif
+        [ShowIf(nameof(overridePostFX))]
         public PostFXSettings postFXSettings = default;
 
         public bool allowFXAA = true;
-
+        [MSAAField]
+        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode.")]
         public bool allowMSAA = true;
 
         [Serializable]

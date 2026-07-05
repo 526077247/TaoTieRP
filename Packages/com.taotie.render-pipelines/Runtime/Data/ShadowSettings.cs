@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace TaoTie.RenderPipelines
 {
@@ -7,37 +7,15 @@ namespace TaoTie.RenderPipelines
     {
         public enum MapSize
         {
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("256")]
-#endif
-            _256 = 256,
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("512")]
-#endif
-            _512 = 512,
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("1024")]
-#endif
-            _1024 = 1024,
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("2048")]
-#endif
-            _2048 = 2048,
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("4096")]
-#endif
-            _4096 = 4096,
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.LabelText("8192")]
-#endif
-            _8192 = 8192
+            [LabelText("256")] _256 = 256,
+            [LabelText("512")] _512 = 512,
+            [LabelText("1024")] _1024 = 1024,
+            [LabelText("2048")] _2048 = 2048,
+            [LabelText("4096")] _4096 = 4096,
+            [LabelText("8192")] _8192 = 8192
         }
 
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.MinValue(0.001f)]
-#else
-        [Min(0.001f)] 
-#endif
+        [Min(0.001f)]
         public float maxDistance = 100f;
 
         [Range(0.001f, 1f)] public float distanceFade = 0.1f;
@@ -60,36 +38,27 @@ namespace TaoTie.RenderPipelines
         {
             [Range(0f, 4f)]
             public int maxLightCount;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [EnumLabel]
             public MapSize atlasSize;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [Range(1, 4)] public int cascadeCount;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0 && "+ nameof(cascadeCount) + ">1")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
             [Range(0f, 1f)] public float cascadeRatio1;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0 && "+ nameof(cascadeCount) + ">2")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 2)]
             [Range(0f, 1f)] public float cascadeRatio2;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0 && "+ nameof(cascadeCount) + ">3")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 3)]
             [Range(0f, 1f)] public float cascadeRatio3;
 
             public readonly Vector3 CascadeRatios =>
                 new(cascadeRatio1, cascadeRatio2, cascadeRatio3);
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0 && "+ nameof(cascadeCount) + ">1")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
             [Range(0.001f, 1f)] public float cascadeFade;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
-#endif
+            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             public bool softCascadeBlend;
         }
 
@@ -115,21 +84,16 @@ namespace TaoTie.RenderPipelines
             {
                 Default, Small = 32, Normal = 64, Mid = 128, Large = 256, Off = 8192
             }
-#if UNITY_EDITOR && ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightsPerTile)+"!=0")]
-#endif
+            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [Tooltip("Tile size in pixels per dimension, default is Normal.")]
             public TileSize tileSize;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightsPerTile)+"!=0")]
-#endif
+            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
+            [EnumLabel]
             public MapSize atlasSize;
         }
-        
+        [Tooltip("In the Forward rendering path, support is provided for up to 8 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256.")]
         public bool useForwardPlus = true;
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.ShowIf("@"+nameof(useForwardPlus))]
-#endif
+        [ShowIf(nameof(useForwardPlus))]
         public Other other = new()
         {
             maxLightsPerTile = 128,

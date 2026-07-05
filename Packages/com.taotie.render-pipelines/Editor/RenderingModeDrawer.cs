@@ -14,12 +14,7 @@ namespace TaoTie.RenderPipelines.Editor
 
             bool isWebGL =
                 EditorUserBuildSettings.selectedBuildTargetGroup == BuildTargetGroup.WebGL;
-
-            if (isWebGL && property.enumValueIndex == 1)
-            {
-                property.enumValueIndex = 0;
-            }
-
+            
             if (isWebGL)
             {
                 position = EditorGUI.PrefixLabel(position, label);
@@ -35,9 +30,14 @@ namespace TaoTie.RenderPipelines.Editor
                             property.enumValueIndex = 0;
                             property.serializedObject.ApplyModifiedProperties();
                         });
-                    menu.AddDisabledItem(
+                    menu.AddItem(
                         new GUIContent("Deferred (Not supported on WebGL)"),
-                        property.enumValueIndex == 1);
+                        property.enumValueIndex == 1,
+                        () =>
+                        {
+                            property.enumValueIndex = 1;
+                            property.serializedObject.ApplyModifiedProperties();
+                        });
                     menu.DropDown(position);
                 }
             }

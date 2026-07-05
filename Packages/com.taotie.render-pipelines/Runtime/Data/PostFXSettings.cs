@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using UnityEditor;
 
@@ -15,44 +15,23 @@ namespace TaoTie.RenderPipelines
         public struct BloomSettings
         {
             [Range(0f, 16f)] public int maxIterations;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public bool ignoreRenderScale;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.MinValue(1)]
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#else
-            [Min(1f)] 
-#endif
-           
+            [Min(1f)]
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public int downscaleLimit;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public bool bicubicUpsampling;
 
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.MinValue(0)]
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#else
-            [Min(0f)] 
-#endif
+            [Min(0f)]
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public float threshold;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             [Range(0f, 1f)] public float thresholdKnee;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.MinValue(0)]
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#else
-            [Min(0f)] 
-#endif
+            [Min(0f)]
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public float intensity;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public bool fadeFireflies;
 
             public enum Mode
@@ -60,13 +39,9 @@ namespace TaoTie.RenderPipelines
                 Additive,
                 Scattering
             }
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public Mode mode;
-#if ODIN_INSPECTOR
-            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxIterations)+"!=0")]
-#endif
+            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             [Range(0.05f, 0.95f)] public float scatter;
         }
 
