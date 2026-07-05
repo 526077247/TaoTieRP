@@ -29,7 +29,6 @@ namespace TaoTie.RenderPipelines
             InitializeForEditor();
             renderer = new(
                 settings.cameraRendererShader,
-                settings.cameraDebuggerShader,
                 Shader.Find("Hidden/TaoTie RP/Deferred Lighting"));
         }
 

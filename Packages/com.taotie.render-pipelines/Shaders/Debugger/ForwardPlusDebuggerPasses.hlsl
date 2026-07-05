@@ -1,5 +1,5 @@
-﻿#ifndef CAMERA_DEBUGGER_PASSES_INCLUDED
-#define CAMERA_DEBUGGER_PASSES_INCLUDED
+﻿#ifndef FORWARDPLUS_DEBUGGER_PASSES_INCLUDED
+#define FORWARDPLUS_DEBUGGER_PASSES_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Debug.hlsl"
 

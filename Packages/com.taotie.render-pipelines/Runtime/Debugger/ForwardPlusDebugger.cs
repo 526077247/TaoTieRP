@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 namespace TaoTie.RenderPipelines
 {
-    public static class CameraDebugger
+    public static class ForwardPlusDebugger
     {
         const string panelName = "Forward+";
         

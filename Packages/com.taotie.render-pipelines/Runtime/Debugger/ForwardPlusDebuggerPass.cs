@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 namespace TaoTie.RenderPipelines
 {
-    public class DebugPass
+    public class ForwardPlusDebuggerPass
     {
         static readonly ProfilingSampler sampler = new("Debug");
 
@@ -15,13 +15,13 @@ namespace TaoTie.RenderPipelines
             TaoTieRenderPipelineSettings settings,
             Camera camera)
         {
-            if (CameraDebugger.IsActive &&
+            if (ForwardPlusDebugger.IsActive &&
                 camera.cameraType <= CameraType.SceneView)
             {
                 using RenderGraphBuilder builder = renderGraph.AddRenderPass(
-                    sampler.name, out DebugPass pass, sampler);
-                builder.SetRenderFunc<DebugPass>(
-                    static (pass, context) => CameraDebugger.Render(context));
+                    sampler.name, out ForwardPlusDebuggerPass pass, sampler);
+                builder.SetRenderFunc<ForwardPlusDebuggerPass>(
+                    static (pass, context) => ForwardPlusDebugger.Render(context));
             }
         }
     }

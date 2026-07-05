@@ -43,6 +43,6 @@ namespace TaoTie.RenderPipelines
         public Material defaultMaterial;
 
         [HideInInspector]
-        public Shader cameraRendererShader, cameraDebuggerShader;
+        public Shader cameraRendererShader;
     }
 }

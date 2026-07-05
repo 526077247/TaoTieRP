@@ -9,13 +9,18 @@ namespace TaoTie.RenderPipelines.Editor
 {
     public class ShaderStripper : IPreprocessShaders
     {
+        private HashSet<string> debuggerShaders = new HashSet<string>()
+        {
+            "Hidden/TaoTie RP/ForwardPlus Debugger",
+            "Hidden/TaoTie RP/Depth Debugger",
+        };
         public int callbackOrder => 0;
 
         public void OnProcessShader(
             Shader shader, ShaderSnippetData snippet,
             IList<ShaderCompilerData> data)
         {
-            if (shader.name == "Hidden/TaoTie RP/Camera Debugger")
+            if (debuggerShaders.Contains(shader.name))
             {
                 data.Clear();
                 return;

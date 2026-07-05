@@ -1,4 +1,4 @@
-﻿Shader "Hidden/TaoTie RP/Camera Renderer" {
+Shader "Hidden/TaoTie RP/Camera Renderer" {
 	
 	SubShader {
 		Cull Off

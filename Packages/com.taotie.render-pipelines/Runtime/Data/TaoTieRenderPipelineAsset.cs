@@ -10,14 +10,6 @@ namespace TaoTie.RenderPipelines
 
         protected override RenderPipeline CreatePipeline()
         {
-            if (settings.cameraDebuggerShader == null)
-            {
-                settings.cameraDebuggerShader = Shader.Find("Hidden/TaoTie RP/Camera Debugger");
-                if (settings.cameraDebuggerShader == null)
-                {
-                    Debug.LogError("Hidden/TaoTie RP/Camera Debugger shader not found!");
-                }
-            }
             if (settings.cameraRendererShader == null)
             {
                 settings.cameraRendererShader = Shader.Find("Hidden/TaoTie RP/Camera Renderer");

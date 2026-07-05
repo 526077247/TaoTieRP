@@ -17,11 +17,12 @@ namespace TaoTie.RenderPipelines
         Material material;
         Shader deferredLightingShader;
 
-        public CameraRenderer(Shader shader, Shader cameraDebuggerShader, Shader deferredLightingShader)
+        public CameraRenderer(Shader shader, Shader deferredLightingShader)
         {
             material = CoreUtils.CreateEngineMaterial(shader);
-            CameraDebugger.Initialize(cameraDebuggerShader);
+            ForwardPlusDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/ForwardPlus Debugger"));
             this.deferredLightingShader = deferredLightingShader;
+            DepthDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/Depth Debugger"));
         }
 
         public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera,
@@ -114,6 +115,14 @@ namespace TaoTie.RenderPipelines
             {
                 msaaSamples = MSAASamples.None;
             }
+            // TODO: MSAA depth cannot be copied to a non-MSAA depth texture on D3D11:
+            // SampleLevel returns empty on MSAA textures, CopyTexture rejects cross-sample-count,
+            // ResolveAntiAliasedSurface only works for color, and this engine version
+            // has no bindMS flag on RenderTargetIdentifier. Disable MSAA when depth copy is needed.
+            if (useDepthTexture && msaaSamples != MSAASamples.None)
+            {
+                msaaSamples = MSAASamples.None;
+            }
             bool useMSAA = msaaSamples != MSAASamples.None;
 
             var renderGraphParameters = new RenderGraphParameters
@@ -203,7 +212,8 @@ namespace TaoTie.RenderPipelines
                     {
                         FinalPass.Record(renderGraph, copier, textures);
                     }
-                    DebugPass.Record(renderGraph, settings, camera);
+                    DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
+                    ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
                     GizmosPass.Record(renderGraph, copier, textures);
                 }
                 else
@@ -249,7 +259,8 @@ namespace TaoTie.RenderPipelines
                         {
                             FinalPass.Record(renderGraph, copier, textures);
                         }
-                        DebugPass.Record(renderGraph, settings, camera);
+                        DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
+                        ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
                         GizmosPass.Record(renderGraph, copier, textures);
                     }
                     else
@@ -267,9 +278,10 @@ namespace TaoTie.RenderPipelines
         public void Dispose()
         {
             CoreUtils.Destroy(material);
-            CameraDebugger.Cleanup();
+            ForwardPlusDebugger.Cleanup();
             LightingPass.Dispose();
             DeferredLightingPass.Dispose();
+            DepthDebugger.Cleanup();
         }
     }
 }
