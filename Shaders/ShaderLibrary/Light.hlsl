@@ -8,6 +8,8 @@
     #define MAX_OTHER_LIGHT_COUNT 8
 #endif
 
+#include "ShaderLibrary/Cookies.hlsl"
+
 CBUFFER_START(_CustomLight)
 	float _DirectionalLightCount;
 	float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
@@ -48,6 +50,7 @@ DirectionalShadowData GetDirectionalShadowData (
 Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	Light light;
 	light.color = _DirectionalLightColors[index].rgb;
+	light.color *= SampleDirectionalCookie(index, surfaceWS.position);
 	light.direction = _DirectionalLightDirectionsAndMasks[index].xyz;
 	light.renderingLayerMask = (uint)_DirectionalLightDirectionsAndMasks[index].w;
 	DirectionalShadowData dirShadowData =
@@ -90,6 +93,11 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 		saturate(dot(spotDirection, light.direction) *
 		spotAngles.x + spotAngles.y)
 	);
+	// Apply cookie for spot lights (non-Forward+ path only to avoid loop unroll issues)
+	#if !defined(TAOTIE_FORWARD_PLUS)
+	if (spotAngles.x != 0.0)
+		light.color *= SampleSpotCookie(index, surfaceWS.position);
+	#endif
 	OtherShadowData otherShadowData = GetOtherShadowData(index);
 	otherShadowData.lightPositionWS = position;
 	otherShadowData.lightDirectionWS = light.direction;

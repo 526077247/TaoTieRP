@@ -58,6 +58,48 @@ namespace TaoTie.RenderPipelines
 			forwardOtherLightSpotAngles = new Vector4[maxForwardOtherLightCount],
 			forwardOtherLightShadowData = new Vector4[maxForwardOtherLightCount];
 
+		// Cookie support
+		static readonly int
+			dirCookieMatrixId = Shader.PropertyToID("_DirLightCookieMatrix"),
+			otherCookieMatrixId = Shader.PropertyToID("_OtherLightCookieMatrix"),
+			dirCookieEnabledId = Shader.PropertyToID("_DirLightCookieEnabled"),
+			otherCookieEnabledId = Shader.PropertyToID("_OtherLightCookieEnabled");
+
+		static readonly Matrix4x4[]
+			dirCookieMatrices = new Matrix4x4[maxDirLightCount],
+			otherCookieMatrices = new Matrix4x4[maxOtherLightCount],
+			forwardOtherCookieMatrices = new Matrix4x4[maxForwardOtherLightCount];
+
+		static readonly float[]
+			dirCookieEnabled = new float[maxDirLightCount],
+			otherCookieEnabled = new float[maxOtherLightCount],
+			forwardOtherCookieEnabled = new float[maxForwardOtherLightCount];
+
+		static readonly int[] dirCookieTexIDs =
+		{
+			Shader.PropertyToID("_DirLightCookie0"),
+			Shader.PropertyToID("_DirLightCookie1"),
+			Shader.PropertyToID("_DirLightCookie2"),
+			Shader.PropertyToID("_DirLightCookie3"),
+		};
+		static readonly int[] otherCookieTexIDs =
+		{
+			Shader.PropertyToID("_OtherLightCookie0"),
+			Shader.PropertyToID("_OtherLightCookie1"),
+			Shader.PropertyToID("_OtherLightCookie2"),
+			Shader.PropertyToID("_OtherLightCookie3"),
+			Shader.PropertyToID("_OtherLightCookie4"),
+			Shader.PropertyToID("_OtherLightCookie5"),
+			Shader.PropertyToID("_OtherLightCookie6"),
+			Shader.PropertyToID("_OtherLightCookie7"),
+		};
+
+		static Texture2D whiteCookieTexture;
+
+		static readonly Texture[] dirCookieTextures = new Texture[maxDirLightCount];
+		static readonly Texture[] otherCookieTextures = new Texture[maxOtherLightCount];
+		static readonly Texture[] forwardOtherCookieTextures = new Texture[maxForwardOtherLightCount];
+
 		CullingResults cullingResults;
 
 		readonly Shadows shadows = new();
@@ -353,6 +395,37 @@ namespace TaoTie.RenderPipelines
 				}
 			}
 
+			// Upload cookie data
+			if (whiteCookieTexture == null)
+			{
+				whiteCookieTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+				whiteCookieTexture.SetPixel(0, 0, Color.white);
+				whiteCookieTexture.Apply();
+				whiteCookieTexture.name = "White Cookie";
+			}
+			buffer.SetGlobalMatrixArray(dirCookieMatrixId, dirCookieMatrices);
+			buffer.SetGlobalFloatArray(dirCookieEnabledId, dirCookieEnabled);
+			for (int ci = 0; ci < maxDirLightCount; ci++)
+				buffer.SetGlobalTexture(dirCookieTexIDs[ci],
+					dirCookieTextures[ci] != null ? dirCookieTextures[ci] : whiteCookieTexture);
+
+			if (useForwardPlus)
+			{
+				buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
+				buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
+			}
+			else
+			{
+				buffer.SetGlobalMatrixArray(otherCookieMatrixId, forwardOtherCookieMatrices);
+				buffer.SetGlobalFloatArray(otherCookieEnabledId, forwardOtherCookieEnabled);
+			}
+			for (int ci = 0; ci < maxForwardOtherLightCount; ci++)
+			{
+				Texture tex = useForwardPlus ? otherCookieTextures[ci] : forwardOtherCookieTextures[ci];
+				buffer.SetGlobalTexture(otherCookieTexIDs[ci],
+					tex != null ? tex : whiteCookieTexture);
+			}
+
 			shadows.Render(context);
 
 			if (useForwardPlus)
@@ -423,6 +496,26 @@ namespace TaoTie.RenderPipelines
 			dirLightDirectionsAndMasks[index] = dirAndMask;
 			dirLightShadowData[index] =
 				shadows.ReserveDirectionalShadows(light, visibleIndex);
+
+			// Cookie
+			if (light.cookie != null)
+			{
+				Matrix4x4 worldToLight = visibleLight.localToWorldMatrix.inverse;
+				// Ortho projection: map [-0.5, 0.5] to clip space, scale by cookie size
+				float cookieSize = light.cookieSize;
+				if (cookieSize <= 0f) cookieSize = 1f;
+				float scale = 1f / cookieSize;
+				Matrix4x4 ortho = Matrix4x4.Ortho(-0.5f, 0.5f, -0.5f, 0.5f, -0.5f, 0.5f);
+				Matrix4x4 scaleM = Matrix4x4.Scale(new Vector3(scale, scale, 1));
+				dirCookieMatrices[index] = ortho * scaleM * worldToLight;
+				dirCookieEnabled[index] = 1f;
+				dirCookieTextures[index] = light.cookie;
+			}
+			else
+			{
+				dirCookieEnabled[index] = 0f;
+				dirCookieTextures[index] = null;
+			}
 		}
 
 		void SetupPointLight(
@@ -475,6 +568,23 @@ namespace TaoTie.RenderPipelines
 			Vector4 shadowData = shadows.ReserveOtherShadows(
 				light, visibleIndex);
 
+			// Cookie
+			Matrix4x4 cookieMatrix = Matrix4x4.identity;
+			float cookieEnabled = 0f;
+			Texture cookieTex = null;
+			if (light.cookie != null)
+			{
+				Matrix4x4 worldToLight = visibleLight.localToWorldMatrix.inverse;
+				float spotAngle = visibleLight.spotAngle;
+				float range = visibleLight.range;
+				Matrix4x4 persp = Matrix4x4.Perspective(spotAngle, 1f, 0.001f, range);
+				// Cancel Unity's embedded Z-flip in perspective matrix
+				persp.m22 = -persp.m22;
+				cookieMatrix = persp * worldToLight;
+				cookieEnabled = 1f;
+				cookieTex = light.cookie;
+			}
+
 			if (useForwardPlus)
 			{
 				otherLightColors[index] = color;
@@ -482,6 +592,9 @@ namespace TaoTie.RenderPipelines
 				otherLightDirectionsAndMasks[index] = dirAndMask;
 				otherLightSpotAngles[index] = spotAngles;
 				otherLightShadowData[index] = shadowData;
+				otherCookieMatrices[index] = cookieMatrix;
+				otherCookieEnabled[index] = cookieEnabled;
+				otherCookieTextures[index] = cookieTex;
 			}
 			else
 			{
@@ -490,6 +603,9 @@ namespace TaoTie.RenderPipelines
 				forwardOtherLightDirectionsAndMasks[index] = dirAndMask;
 				forwardOtherLightSpotAngles[index] = spotAngles;
 				forwardOtherLightShadowData[index] = shadowData;
+				forwardOtherCookieMatrices[index] = cookieMatrix;
+				forwardOtherCookieEnabled[index] = cookieEnabled;
+				forwardOtherCookieTextures[index] = cookieTex;
 			}
 		}
 

@@ -1,6 +1,6 @@
 # TaoTie RP
 
-A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling, cascaded shadow maps, and a full post-processing stack.
+A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling, cascaded shadow maps, light cookies, and a full post-processing stack.
 
 ## Requirements
 
@@ -56,15 +56,15 @@ TaoTie RP supports two rendering paths with optional Forward+ tile-based light c
 
 **Forward path:**
 ```
-LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → OutLinePass → SkyboxPass
+LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → SkyboxPass
 → [ResolvePass(MSAA)] → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
-→ UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → PostFX → Final
+→ UnsupportedShadersPass → [ResolvePass] → OutLinePass → [TAAResolvePass] → PostFX → Final
 ```
 
 **Deferred path:**
 ```
-LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass → SkyboxPass
-→ OutLinePass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
+LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
+→ SkyboxPass → OutLinePass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [TAAResolvePass] → PostFX → Final
 ```
 
@@ -76,6 +76,12 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - ComputeBuffer light data with Texture2D fallback for WebGL
 - Light probe interpolation and Light Probe Proxy Volumes (LPPV)
 - Reflection probes
+- **Light Cookies** — Directional and spot light cookie textures with per-light world-to-light projection matrices
+  - **Directional lights**: Supported in both Forward and Deferred paths. Cookie size controls tiling repeat.
+  - **Spot lights**: Supported in Forward path only (non-Forward+). Cookie is perspective-projected through the cone using the spot angle and range.
+  - **Point lights**: Not supported (cubemap cookies not implemented).
+  - **Forward+ path**: Spot light cookies are not available due to CBUFFER size and shader loop unroll constraints.
+  - When no cookie is assigned, a 1×1 white texture is bound (no performance overhead — shader early-outs via enable flag).
 
 ### Shadows
 
@@ -85,6 +91,14 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - Shadowmask support
 - 3 shadow filter quality levels (Hard / Medium / Soft)
 - Configurable shadow atlas resolution (256–8192)
+
+### Outline (Post-Process)
+
+- Roberts Cross depth edge detection
+- Optional G-Buffer normal edge detection (Deferred path)
+- Configurable color, depth sensitivity, normal sensitivity, and width
+- Supports both Forward (with MSAA) and Deferred paths
+- Skipped for SceneView and Preview cameras
 
 ### Post-Processing
 
@@ -103,13 +117,13 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 | Mode | Description | Forward | Deferred | WebGL1 |
 |------|-------------|:-------:|:-------:|:------:|
 | **MSAA** | Hardware multi-sample anti-aliasing (2x/4x/8x) | ✅ | ❌ | ❌ |
-| **TAA** | Temporal anti-aliasing with Halton jitter, depth-based reprojection, neighborhood clamping | ✅ | ✅ | ❌ |
+| **TAA** | Temporal anti-aliasing with Halton jitter, depth-based reprojection, YCoCg variance clamping, AABB clip-to-center | ✅ | ✅ | ❌ |
 
 - MSAA and TAA are mutually exclusive — enabling one disables the other
 - MSAA is disabled in Deferred mode (MRT + MSAA not reliably supported)
 - TAA is disabled on WebGL1/GLES2 (requires depth texture sampling)
 - When MSAA + Copy Depth is enabled, a Depth Pre-Pass renders opaque depth to a non-MSAA texture
-- TAA parameters: Jitter Scale, Anti-Flicker, Base Blend Factor, Jitter Spread
+- TAA parameters: Jitter Scale, Base Blend Factor, Variance Clamp Scale
 
 **Post-Process AA** (pipeline-level, mutually exclusive):
 
@@ -120,6 +134,7 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 
 - FXAA and SMAA are mutually exclusive
 - SMAA uses the original precomputed lookup textures (areaTex 160×560, searchTex 64×16) embedded as byte arrays
+- SMAA edge texture uses optimized `R8G8_UNorm` format for reduced memory
 - When SMAA is not selected, SMAA shader passes and lookup data are stripped from builds via `SMAA_DISABLED` define
 
 **Per-Camera Control:**
@@ -131,15 +146,17 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 
 | Shader | Description |
 |--------|-------------|
-| `TaoTie RP/Lit` | Metallic-roughness PBR lit shader with normal maps, detail maps, MODS mask map, emission, alpha clipping, fresnel, outline |
+| `TaoTie RP/Lit` | Metallic-roughness PBR lit shader with normal maps, detail maps, MODS mask map, emission, alpha clipping, fresnel |
 | `TaoTie RP/Unlit` | Unlit shader |
 | `TaoTie RP/Unlit Particles` | Particle shader with near fade, soft particles, distortion, vertex colors, flipbook blending |
 | `TaoTie RP/UI TaoTie Blending` | UI shader with stencil and custom blending |
-| `Hidden/DeferredLighting` | Fullscreen deferred lighting pass |
-| `Hidden/PostFXStack` | All post-processing effects |
-| `Hidden/CameraRenderer` | Internal blit/copy operations |
-| `Hidden/ForwardPlusDebugger` | Debug overlay |
-| `Hidden/DepthDebugger` | Depth visualization (Linear Eye / 01 / Raw, split-screen, opacity) |
+| `Hidden/TaoTie RP/Deferred Lighting` | Fullscreen deferred lighting pass |
+| `Hidden/TaoTie RP/Post FX Stack` | All post-processing effects |
+| `Hidden/TaoTie RP/Camera Renderer` | Internal blit/copy operations |
+| `Hidden/TaoTie RP/TAA` | Temporal anti-aliasing resolve |
+| `Hidden/TaoTie RP/Outline` | Post-process outline (depth + normal edge detection) |
+| `Hidden/ForwardPlus Debugger` | Debug overlay |
+| `Hidden/Depth Debugger` | Depth visualization (Linear Eye / 01 / Raw, split-screen, opacity) |
 
 ### Other Features
 
@@ -149,8 +166,10 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 - **SRP Batcher** — Enabled by default for reduced draw call overhead
 - **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
 - **HDR** — Per-camera HDR support
-- **Shader Stripping** — Automatic stripping of unused shader variants (debug shaders, Meta passes, WebGL compute buffer variants)
+- **Shader Stripping** — Automatic stripping of unused shader variants (debug shaders, Meta passes, WebGL compute buffer variants, SMAA passes)
 - **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on WebGL1/GLES2 (`supportedRenderTargetCount == 1`), graphics format fallbacks
+- **Rendering Layer Mask** — Per-light rendering layer mask for selective lighting (custom SRP layer names, works alongside Unity's built-in Culling Mask)
+- **Rendering Layer Mask Names** — 31 custom rendering layers exposed via `TaoTieRenderPipelineAsset.renderingLayerMaskNames`
 
 ### Depth Texture (Copy Depth)
 
@@ -163,7 +182,7 @@ When `copyDepth` is enabled, the opaque depth buffer is copied to `_CameraDepthT
 
 **Forward path with MSAA + Copy Depth:**
 ```
-SetupPass → DepthPrePass → GeometryPass(opaque) → OutLine → Skybox → ResolvePass
+SetupPass → DepthPrePass → GeometryPass(opaque) → Skybox → ResolvePass
 → CopyAttachmentsPass (color copy only)
 → GeometryPass(transparent) → ...
 ```
@@ -194,14 +213,17 @@ TaoTieRP/
 │       ├── Runtime/
 │       │   ├── Data/               # Pipeline settings (camera, shadow, post-FX, etc.)
 │       │   ├── Passes/             # Render graph passes (18 passes)
+│       │   ├── Debugger/          # Debug passes (depth, forward+)
 │       │   ├── Attribute/          # Custom inspector attributes
-│       │   └── Materials/          # Internal materials
+│       │   └── Materials/         # Internal materials
 │       ├── Editor/                 # Editor tools, property drawers, shader stripper
 │       ├── Shaders/
-│       │   ├── ShaderLibrary/     # HLSL include files
+│       │   ├── ShaderLibrary/     # HLSL include files (Common, Lighting, Cookies, TAA, Outline, etc.)
 │       │   ├── Lit.shader
 │       │   ├── Unlit.shader
 │       │   ├── UnlitParticles.shader
+│       │   ├── Outline.shader
+│       │   ├── TAA.shader
 │       │   └── ...
 │       └── LWGUI/                 # Material inspector (Light Weight Shader GUI)
 └── ProjectSettings/
@@ -211,16 +233,16 @@ TaoTieRP/
 
 **Forward Path:**
 ```
-LightingPass → SetupPass → GeometryPass(opaque) → OutLinePass → SkyboxPass
+LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque) → SkyboxPass
 → ResolvePass(MSAA) → CopyAttachments → GeometryPass(transparent)
-→ UnsupportedShaders → ResolvePass → PostFX → Final → DepthDebug → Debug → Gizmos
+→ UnsupportedShaders → ResolvePass → OutLinePass → TAAResolvePass → PostFX → Final → Debug → Gizmos
 ```
 
 **Deferred Path:**
 ```
-LightingPass → SetupPass → GBufferPass → DeferredLightingPass → SkyboxPass
-→ OutLinePass → CopyAttachments → GeometryPass(transparent)
-→ PostFX → Final → DepthDebug → Debug → Gizmos
+LightingPass → SetupPass → GBufferPass → DeferredLightingPass
+→ SkyboxPass → OutLinePass → CopyAttachments → GeometryPass(transparent)
+→ PostFX → Final → Debug → Gizmos
 ```
 
 ---
@@ -243,5 +265,3 @@ LightingPass → SetupPass → GBufferPass → DeferredLightingPass → SkyboxPa
 | Multiple Cameras | Per-camera overrides (render scale, post-FX, blend mode) |
 | Particles | Particle system with custom shader |
 | Tone Mapping | ACES / Neutral / Reinhard tone mapping |
-
----

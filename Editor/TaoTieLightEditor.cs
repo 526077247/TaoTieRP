@@ -34,7 +34,7 @@ namespace TaoTie.RenderPipelines.Editor
             {
                 base.OnInspectorGUI();
             }
-            catch (NullReferenceException) when (savedRLM != null)
+            catch (NullReferenceException)
             {
                 // Expected: DrawRenderingLayerMask NREs on null property.
                 // NRE occurs before GetControlRect(), so layout state is clean.
