@@ -116,6 +116,23 @@
 		}
 		Pass {
 			Tags {
+				"LightMode" = "DepthOnly"
+			}
+
+			ColorMask 0
+			ZWrite On
+
+			HLSLPROGRAM
+			#pragma shader_feature_local _CLIPPING
+			#pragma multi_compile _ LOD_FADE_CROSSFADE
+			#pragma multi_compile_instancing
+			#pragma vertex DepthOnlyPassVertex
+			#pragma fragment DepthOnlyPassFragment
+			#include "DepthOnlyPass.hlsl"
+			ENDHLSL
+		}
+		Pass {
+			Tags {
 				"LightMode" = "DeferredGBuffer"
 			}
 

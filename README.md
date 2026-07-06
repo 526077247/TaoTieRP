@@ -73,6 +73,24 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 - **Shader Stripping** — Automatic stripping of unused shader variants (debug shaders, Meta passes, WebGL compute buffer variants)
 - **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on GLES2, graphics format fallbacks
 
+### Depth Texture (Copy Depth)
+
+When `copyDepth` is enabled, the opaque depth buffer is copied to `_CameraDepthTexture` before the transparent render queue, enabling soft particles, depth-based transparency, and other depth-dependent effects.
+
+| Condition | Method | Description |
+|-----------|--------|-------------|
+| No MSAA | `CopyTexture` / `CopyByDrawing` | Direct copy from depth attachment to non-MSAA depth texture |
+| MSAA + any platform | Depth Pre-Pass | Opaque objects are rendered with a `DepthOnly` shader pass into a non-MSAA depth texture before the main geometry pass |
+
+**Forward path with MSAA + Copy Depth:**
+```
+SetupPass → DepthPrePass → GeometryPass(opaque) → OutLine → Skybox → ResolvePass
+→ CopyAttachmentsPass (color copy only)
+→ GeometryPass(transparent) → ...
+```
+
+> **Note:** Deferred path always forces MSAA off, so depth copy always uses the direct `CopyTexture` method regardless of platform.
+
 ---
 
 ## Project Structure

@@ -37,11 +37,7 @@ namespace TaoTie.RenderPipelines
 
             if (copyDepth)
             {
-                if (useMSAA
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    || true
-#endif
-                   )
+                if (useMSAA)
                 {
                     copier.CopyByDrawing(buffer, depthAttachment, depthCopy, true,
                         new Rect(0, 0, copier.Camera.pixelWidth, copier.Camera.pixelHeight));

@@ -115,15 +115,9 @@ namespace TaoTie.RenderPipelines
             {
                 msaaSamples = MSAASamples.None;
             }
-            // TODO: MSAA depth cannot be copied to a non-MSAA depth texture on D3D11:
-            // SampleLevel returns empty on MSAA textures, CopyTexture rejects cross-sample-count,
-            // ResolveAntiAliasedSurface only works for color, and this engine version
-            // has no bindMS flag on RenderTargetIdentifier. Disable MSAA when depth copy is needed.
-            if (useDepthTexture && msaaSamples != MSAASamples.None)
-            {
-                msaaSamples = MSAASamples.None;
-            }
             bool useMSAA = msaaSamples != MSAASamples.None;
+
+            bool useDepthPrePass = useMSAA && useDepthTexture;
 
             var renderGraphParameters = new RenderGraphParameters
             {
@@ -191,7 +185,8 @@ namespace TaoTie.RenderPipelines
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
 
                     CopyAttachmentsPass.Record(
-                        renderGraph, useColorTexture, useDepthTexture, copier, textures);
+                        renderGraph, useColorTexture, useDepthTexture, copier, textures,
+                        false);
 
                     // Transparent objects always use forward path (with Forward+ if available).
                     GeometryPass.Record(
@@ -219,6 +214,12 @@ namespace TaoTie.RenderPipelines
                 else
                 {
                     // --- Forward path ---
+                    if (useDepthPrePass)
+                    {
+                        DepthPrePass.Record(renderGraph, camera, cullingResults,
+                            cameraSettings.renderingLayerMask, textures);
+                    }
+
                     GeometryPass.Record(
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
 
@@ -235,7 +236,8 @@ namespace TaoTie.RenderPipelines
                         }
 
                         CopyAttachmentsPass.Record(
-                            renderGraph, useColorTexture, useDepthTexture, copier, textures, useMSAA);
+                            renderGraph, useColorTexture, useDepthTexture && !useDepthPrePass,
+                            copier, textures, useMSAA);
 
                         GeometryPass.Record(
                             renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
@@ -265,6 +267,13 @@ namespace TaoTie.RenderPipelines
                     }
                     else
                     {
+                        if (useColorTexture || useDepthTexture)
+                        {
+                            CopyAttachmentsPass.Record(
+                                renderGraph, useColorTexture, useDepthTexture,
+                                copier, textures, false);
+                        }
+
                         FinalPass.Record(renderGraph, copier, textures);
                     }
                 }

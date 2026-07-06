@@ -10,7 +10,11 @@ namespace TaoTie.RenderPipelines
 
         public bool allowHDR;
 
-        public bool copyColor, copyColorReflection, copyDepth, copyDepthReflection;
+        public bool copyColor, copyColorReflection;
+
+        [Tooltip("Copy opaque depth to _CameraDepthTexture before transparent pass. " +
+                 "No MSAA: CopyTexture. MSAA: depth pre-pass (DepthOnly shader pass).")]
+        public bool copyDepth, copyDepthReflection;
 
         [Range(0.1f, 2f)] public float renderScale;
 
@@ -24,7 +28,7 @@ namespace TaoTie.RenderPipelines
         public BicubicRescalingMode bicubicRescaling;
 
         [MSAAField]
-        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode.")]
+        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode or WebGL1/GLES2.")]
         public MSAASamples msaa;
 
         public bool fxaa;
