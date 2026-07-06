@@ -32,9 +32,10 @@ namespace TaoTie.RenderPipelines
         public PostFXSettings postFXSettings = default;
 
         public bool allowFXAA = true;
+
         [MSAAField]
-        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode.")]
-        public bool allowMSAA = true;
+        [Tooltip("Allow high-quality anti-aliasing for this camera.")]
+        public bool allowHighQualityAA = true;
 
         [Serializable]
         public struct FinalBlendMode

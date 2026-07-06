@@ -25,9 +25,10 @@ namespace TaoTie.RenderPipelines
             copyDepth = true,
             renderScale = 1f,
             bicubicRescaling = CameraBufferSettings.BicubicRescalingMode.UpOnly,
-            msaa = MSAASamples.None,
+            highQualityAA = CameraBufferSettings.HighQualityAAMode.Off,
+            taaSettings = new CameraBufferSettings.TAASettings(),
         };
-        
+
         public ShadowSettings shadows;
 
         public PostFXSettings postFXSettings;

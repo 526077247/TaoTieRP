@@ -103,21 +103,54 @@ namespace TaoTie.RenderPipelines
 
             bufferSettings.fxaa &= cameraSettings.allowFXAA;
 
-            MSAASamples msaaSamples = cameraSettings.allowMSAA ? bufferSettings.msaa : MSAASamples.None;
-            if (camera.cameraType == CameraType.SceneView ||
-                camera.cameraType == CameraType.Preview ||
-                camera.targetTexture != null)
+            bool useMSAA = false;
+            bool useTAA = false;
+            MSAASamples msaaSamples = MSAASamples.None;
+
+            if (cameraSettings.allowHighQualityAA)
             {
-                msaaSamples = MSAASamples.None;
+                switch (bufferSettings.highQualityAA)
+                {
+                    case CameraBufferSettings.HighQualityAAMode.MSAA:
+                        msaaSamples = bufferSettings.msaaSamples;
+                        if (camera.cameraType == CameraType.SceneView ||
+                            camera.cameraType == CameraType.Preview ||
+                            camera.targetTexture != null)
+                        {
+                            msaaSamples = MSAASamples.None;
+                        }
+                        if (SystemInfo.copyTextureSupport == CopyTextureSupport.None)
+                        {
+                            msaaSamples = MSAASamples.None;
+                        }
+                        useMSAA = msaaSamples != MSAASamples.None;
+                        break;
+                    case CameraBufferSettings.HighQualityAAMode.TAA:
+                        useTAA = !isReflectionCamera &&
+                                 camera.cameraType != CameraType.Preview &&
+                                 SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+                        break;
+                }
             }
-            // MSAA resolve requires CopyTexture, which is not available on GLES2/WebGL1.
-            if (SystemInfo.copyTextureSupport == CopyTextureSupport.None)
+
+            if (useTAA)
             {
-                msaaSamples = MSAASamples.None;
+                useDepthTexture = true;
             }
-            bool useMSAA = msaaSamples != MSAASamples.None;
 
             bool useDepthPrePass = useMSAA && useDepthTexture;
+
+            TAACameraData taaData = null;
+            Matrix4x4 nonJitteredProj = camera.projectionMatrix;
+            Vector2 taaJitter = Vector2.zero;
+            var taaSettings = bufferSettings.taaSettings ?? new CameraBufferSettings.TAASettings();
+            if (useTAA)
+            {
+                taaData = TAACameraData.Get(camera);
+                taaData.EnsureHistoryTexture(bufferSize.x, bufferSize.y, useHDR);
+                taaData.SetJitterParams(taaSettings.jitterScale, taaSettings.jitterSpread);
+                taaJitter = taaData.GetJitter();
+            }
 
             var renderGraphParameters = new RenderGraphParameters
             {
@@ -163,7 +196,8 @@ namespace TaoTie.RenderPipelines
 
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
-                    useHDR, bufferSize, camera, msaaSamples);
+                    useHDR, bufferSize, camera, msaaSamples,
+                    taaJitter, useTAA);
                 var copier = new CameraRendererCopier(material, camera, cameraSettings.finalBlendMode);
 
                 if (useDeferred)
@@ -192,6 +226,21 @@ namespace TaoTie.RenderPipelines
                     GeometryPass.Record(
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                     UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
+
+                    // TAA resolve before PostFX
+                    if (useTAA)
+                    {
+                        Matrix4x4 invNonJitteredVP = Matrix4x4.Inverse(
+                            GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix);
+                        TextureHandle historyRT = renderGraph.ImportTexture(taaData.historyRT);
+                        TAAResolvePass.Record(
+                            renderGraph, textures, historyRT, bufferSize,
+                            taaData.hasHistory ? taaSettings.baseBlendFactor : 0f,
+                            taaSettings.antiFlicker,
+                            taaData.GetJitter(),
+                            invNonJitteredVP, taaData.prevViewProjMatrix, camera, useHDR);
+                    }
+
                     if (hasActivePostFX)
                     {
                         postFXStack.BufferSettings = bufferSettings;
@@ -246,6 +295,21 @@ namespace TaoTie.RenderPipelines
                         {
                             ResolvePass.Record(renderGraph, textures);
                         }
+
+                        // TAA resolve before PostFX
+                        if (useTAA)
+                        {
+                            Matrix4x4 invNonJitteredVP = Matrix4x4.Inverse(
+                                GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix);
+                            TextureHandle historyRT = renderGraph.ImportTexture(taaData.historyRT);
+                            TAAResolvePass.Record(
+                                renderGraph, textures, historyRT, bufferSize,
+                                taaData.hasHistory ? taaSettings.baseBlendFactor : 0f,
+                                taaSettings.antiFlicker,
+                                taaData.GetJitter(),
+                                invNonJitteredVP, taaData.prevViewProjMatrix, camera, useHDR);
+                        }
+
                         if (hasActivePostFX)
                         {
                             postFXStack.BufferSettings = bufferSettings;
@@ -282,6 +346,14 @@ namespace TaoTie.RenderPipelines
             context.ExecuteCommandBuffer(renderGraphParameters.commandBuffer);
             context.Submit();
             CommandBufferPool.Release(renderGraphParameters.commandBuffer);
+
+            // TAA post-frame: update history state
+            if (useTAA && taaData != null)
+            {
+                Matrix4x4 nonJitteredVP = GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix;
+                taaData.prevViewProjMatrix = nonJitteredVP;
+                taaData.AdvanceFrame();
+            }
         }
 
         public void Dispose()
@@ -291,6 +363,8 @@ namespace TaoTie.RenderPipelines
             LightingPass.Dispose();
             DeferredLightingPass.Dispose();
             DepthDebugger.Cleanup();
+            TAAResolvePass.Dispose();
+            TAACameraData.CleanupAll();
         }
     }
 }

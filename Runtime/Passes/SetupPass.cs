@@ -15,12 +15,23 @@ namespace TaoTie.RenderPipelines
         Vector2Int attachmentSize;
         Camera camera;
         CameraClearFlags clearFlags;
+        Vector2 jitter;
+        bool useJitter;
 
         void Render(RenderGraphContext context)
         {
             context.renderContext.SetupCameraProperties(camera);
             CommandBuffer cmd = context.cmd;
-            
+
+            // Apply TAA jitter after SetupCameraProperties
+            if (useJitter)
+            {
+                Matrix4x4 jitteredProj = camera.projectionMatrix;
+                jitteredProj.m02 += jitter.x * 2f / attachmentSize.x;
+                jitteredProj.m12 += jitter.y * 2f / attachmentSize.y;
+                cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, jitteredProj);
+            }
+
             cmd.SetRenderTarget(
                 colorAttachment,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
@@ -42,13 +53,16 @@ namespace TaoTie.RenderPipelines
         }
 
         public static CameraRendererTextures Record(RenderGraph renderGraph, bool copyColor, bool copyDepth,
-            bool useHDR, Vector2Int attachmentSize, Camera camera, MSAASamples msaaSamples)
+            bool useHDR, Vector2Int attachmentSize, Camera camera, MSAASamples msaaSamples,
+            Vector2 taaJitter = default, bool useTAA = false)
         {
             using RenderGraphBuilder builder =
                 renderGraph.AddRenderPass(sampler.name, out SetupPass pass, sampler);
             pass.attachmentSize = attachmentSize;
             pass.camera = camera;
             pass.clearFlags = camera.clearFlags;
+            pass.jitter = taaJitter;
+            pass.useJitter = useTAA;
 
             TextureHandle colorCopy = default, depthCopy = default;
 

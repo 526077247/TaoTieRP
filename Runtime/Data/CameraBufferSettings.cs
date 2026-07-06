@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Rendering;
 using System;
 
@@ -27,11 +27,47 @@ namespace TaoTie.RenderPipelines
 
         public BicubicRescalingMode bicubicRescaling;
 
-        [MSAAField]
-        [Tooltip("Multi-sample anti-aliasing. Not available in deferred rendering mode or WebGL1/GLES2.")]
-        public MSAASamples msaa;
+        public enum HighQualityAAMode
+        {
+            Off,
+            MSAA,
+            TAA
+        }
 
+        [MSAAField]
+        [Tooltip("High-quality anti-aliasing. MSAA not available in deferred mode.")]
+        public HighQualityAAMode highQualityAA;
+
+        [Tooltip("MSAA sample count when High-Quality AA is set to MSAA.")]
+        [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.MSAA)]
+        [MSAAField]
+        public MSAASamples msaaSamples;
+
+        [Serializable]
+        public class TAASettings
+        {
+            [Tooltip("Jitter Scale controls the amplitude of the jitter offset. " +
+                     "Lower values reduce visible jitter/flicker but weaken anti-aliasing (sharper edges).")]
+            [Range(0.1f, 1f)] public float jitterScale = 0.5f;
+
+            [Tooltip("Anti-Flicker expands the neighborhood clamp bounds to reduce flickering. " +
+                     "Higher values suppress flicker but may introduce ghosting.")]
+            [Range(0f, 1f)] public float antiFlicker = 0.125f;
+
+            [Tooltip("Base Blend Factor controls how much the history frame contributes. " +
+                     "Higher values make the image more stable but may cause ghosting during motion.")]
+            [Range(0f, 0.99f)] public float baseBlendFactor = 0.9f;
+
+            [Tooltip("Jitter Spread controls the diameter of the jitter sample spread. " +
+                     "Smaller values produce sharper but more aliased images; " +
+                     "larger values produce smoother but blurrier images.")]
+            [Range(0.1f, 2f)] public float jitterSpread = 1f;
+        }
+        
         public bool fxaa;
+
+        [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.TAA)]
+        public TAASettings taaSettings;
 
         public bool outLine;
     }
