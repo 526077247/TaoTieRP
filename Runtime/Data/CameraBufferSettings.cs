@@ -48,20 +48,16 @@ namespace TaoTie.RenderPipelines
         {
             [Tooltip("Jitter Scale controls the amplitude of the jitter offset. " +
                      "Lower values reduce visible jitter/flicker but weaken anti-aliasing (sharper edges).")]
-            [Range(0.1f, 1f)] public float jitterScale = 0.5f;
-
-            [Tooltip("Anti-Flicker expands the neighborhood clamp bounds to reduce flickering. " +
-                     "Higher values suppress flicker but may introduce ghosting.")]
-            [Range(0f, 1f)] public float antiFlicker = 0.125f;
+            [Range(0.1f, 1f)] public float jitterScale = 1f;
 
             [Tooltip("Base Blend Factor controls how much the history frame contributes. " +
                      "Higher values make the image more stable but may cause ghosting during motion.")]
             [Range(0f, 0.99f)] public float baseBlendFactor = 0.9f;
 
-            [Tooltip("Jitter Spread controls the diameter of the jitter sample spread. " +
-                     "Smaller values produce sharper but more aliased images; " +
-                     "larger values produce smoother but blurrier images.")]
-            [Range(0.1f, 2f)] public float jitterSpread = 1f;
+            [Tooltip("Variance Clamp Scale controls the tightness of the neighborhood clamp. " +
+                     "Lower values reduce ghosting more aggressively but may cause flickering. " +
+                     "Higher values preserve more detail but allow more ghosting.")]
+            [Range(0.001f, 10f)] public float varianceClampScale = 0.9f;
         }
 
         [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.TAA)]
@@ -74,7 +70,11 @@ namespace TaoTie.RenderPipelines
             SMAA
         }
         public PostProcessAA postProcessAA;
-        
+
         public bool outLine;
+        [ShowIf(nameof(outLine))] public Color outLineColor;
+        [ShowIf(nameof(outLine))] [Range(0.0001f, 1f)] public float outLineDepthSensitivity;
+        [ShowIf(nameof(outLine))] [Range(0.0001f, 1f)] public float outLineNormalSensitivity;
+        [ShowIf(nameof(outLine))] [Range(1f, 5f)] public float outLineWidth;
     }
 }

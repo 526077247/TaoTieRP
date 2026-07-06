@@ -101,7 +101,7 @@ namespace TaoTie.RenderPipelines
             builder.ReadTexture(shadowTextures.directionalAtlas);
             builder.ReadTexture(shadowTextures.otherAtlas);
 
-            builder.AllowPassCulling(false);
+            builder.AllowPassCulling(true);
             builder.SetRenderFunc<GBufferPass>(
                 static (pass, context) => pass.Render(context));
 

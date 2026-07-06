@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -23,6 +23,55 @@ namespace TaoTie.RenderPipelines
             ForwardPlusDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/ForwardPlus Debugger"));
             this.deferredLightingShader = deferredLightingShader;
             DepthDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/Depth Debugger"));
+        }
+
+        void SetupPostFXStack(
+            Camera camera, CameraSettings cameraSettings,
+            in CameraBufferSettings bufferSettings, PostFXSettings postFXSettings,
+            Vector2Int bufferSize)
+        {
+            postFXStack.BufferSettings = bufferSettings;
+            postFXStack.BufferSize = bufferSize;
+            postFXStack.Camera = camera;
+            postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
+            postFXStack.Settings = postFXSettings;
+        }
+
+        void RecordTAA(
+            RenderGraph renderGraph, in CameraRendererTextures textures,
+            TAACameraData taaData, Vector2Int bufferSize,
+            in CameraBufferSettings.TAASettings taaSettings,
+            Matrix4x4 nonJitteredProj, Camera camera, bool useHDR)
+        {
+            Matrix4x4 invNonJitteredVP = Matrix4x4.Inverse(
+                GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix);
+            TextureHandle historyRT = renderGraph.ImportTexture(taaData.historyRT);
+            TAAResolvePass.Record(
+                renderGraph, textures, historyRT, bufferSize,
+                taaData.hasHistory ? (1f - taaSettings.baseBlendFactor) : 1f,
+                taaSettings.varianceClampScale,
+                taaData.GetJitter(),
+                invNonJitteredVP, taaData.prevViewProjMatrix, camera, useHDR);
+        }
+
+        void RecordPostFXAndDebug(
+            RenderGraph renderGraph, CameraRendererCopier copier,
+            in CameraRendererTextures textures, bool useDepthTexture,
+            PostFXStack postFXStack, int colorLUTResolution,
+            TaoTieRenderPipelineSettings settings, Camera camera, bool hasActivePostFX)
+        {
+            if (hasActivePostFX)
+            {
+                PostFXPass.Record(
+                    renderGraph, postFXStack, colorLUTResolution, textures);
+            }
+            else
+            {
+                FinalPass.Record(renderGraph, copier, textures);
+            }
+            DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
+            ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
+            GizmosPass.Record(renderGraph, copier, textures);
         }
 
         public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera,
@@ -149,7 +198,7 @@ namespace TaoTie.RenderPipelines
             {
                 taaData = TAACameraData.Get(camera);
                 taaData.EnsureHistoryTexture(bufferSize.x, bufferSize.y, useHDR);
-                taaData.SetJitterParams(taaSettings.jitterScale, taaSettings.jitterSpread);
+                taaData.SetJitterScale(taaSettings.jitterScale);
                 taaJitter = taaData.GetJitter();
             }
 
@@ -216,8 +265,10 @@ namespace TaoTie.RenderPipelines
                     // Skybox renders after deferred lighting, only where depth is far
                     SkyboxPass.Record(renderGraph, camera, textures);
 
-                    if(bufferSettings.outLine) OutLinePass.Record(
-                        renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
+                    if(bufferSettings.outLine && camera.cameraType != CameraType.SceneView && camera.cameraType != CameraType.Preview) OutLinePass.Record(
+                        renderGraph, camera, textures, bufferSettings,
+                        true, gBuffer.normalMetallicSmoothness,
+                        bufferSize, useHDR, msaaSamples);
 
                     CopyAttachmentsPass.Record(
                         renderGraph, useColorTexture, useDepthTexture, copier, textures,
@@ -228,38 +279,16 @@ namespace TaoTie.RenderPipelines
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                     UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
 
-                    // TAA resolve before PostFX
                     if (useTAA)
                     {
-                        Matrix4x4 invNonJitteredVP = Matrix4x4.Inverse(
-                            GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix);
-                        TextureHandle historyRT = renderGraph.ImportTexture(taaData.historyRT);
-                        TAAResolvePass.Record(
-                            renderGraph, textures, historyRT, bufferSize,
-                            taaData.hasHistory ? taaSettings.baseBlendFactor : 0f,
-                            taaSettings.antiFlicker,
-                            taaData.GetJitter(),
-                            invNonJitteredVP, taaData.prevViewProjMatrix, camera, useHDR);
+                        RecordTAA(renderGraph, textures, taaData, bufferSize,
+                            taaSettings, nonJitteredProj, camera, useHDR);
                     }
 
-                    if (hasActivePostFX)
-                    {
-                        postFXStack.BufferSettings = bufferSettings;
-                        postFXStack.BufferSize = bufferSize;
-                        postFXStack.Camera = camera;
-                        postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
-                        postFXStack.Settings = postFXSettings;
-                        PostFXPass.Record(
-                            renderGraph, postFXStack, (int) settings.colorLUTResolution,
-                            textures);
-                    }
-                    else
-                    {
-                        FinalPass.Record(renderGraph, copier, textures);
-                    }
-                    DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
-                    ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
-                    GizmosPass.Record(renderGraph, copier, textures);
+                    SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize);
+                    RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
+                        postFXStack, (int) settings.colorLUTResolution,
+                        settings, camera, hasActivePostFX);
                 }
                 else
                 {
@@ -275,9 +304,6 @@ namespace TaoTie.RenderPipelines
 
                     if (!isReflectionCamera)
                     {
-                        if(bufferSettings.outLine) OutLinePass.Record(
-                            renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, textures, shadowTextures);
-
                         SkyboxPass.Record(renderGraph, camera, textures);
 
                         if (useMSAA)
@@ -297,38 +323,21 @@ namespace TaoTie.RenderPipelines
                             ResolvePass.Record(renderGraph, textures);
                         }
 
-                        // TAA resolve before PostFX
+                        if(bufferSettings.outLine && camera.cameraType != CameraType.SceneView && camera.cameraType != CameraType.Preview) OutLinePass.Record(
+                            renderGraph, camera, textures, bufferSettings,
+                            false, default,
+                            bufferSize, useHDR, MSAASamples.None);
+
                         if (useTAA)
                         {
-                            Matrix4x4 invNonJitteredVP = Matrix4x4.Inverse(
-                                GL.GetGPUProjectionMatrix(nonJitteredProj, false) * camera.worldToCameraMatrix);
-                            TextureHandle historyRT = renderGraph.ImportTexture(taaData.historyRT);
-                            TAAResolvePass.Record(
-                                renderGraph, textures, historyRT, bufferSize,
-                                taaData.hasHistory ? taaSettings.baseBlendFactor : 0f,
-                                taaSettings.antiFlicker,
-                                taaData.GetJitter(),
-                                invNonJitteredVP, taaData.prevViewProjMatrix, camera, useHDR);
+                            RecordTAA(renderGraph, textures, taaData, bufferSize,
+                                taaSettings, nonJitteredProj, camera, useHDR);
                         }
 
-                        if (hasActivePostFX)
-                        {
-                            postFXStack.BufferSettings = bufferSettings;
-                            postFXStack.BufferSize = bufferSize;
-                            postFXStack.Camera = camera;
-                            postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
-                            postFXStack.Settings = postFXSettings;
-                            PostFXPass.Record(
-                                renderGraph, postFXStack, (int) settings.colorLUTResolution,
-                                textures);
-                        }
-                        else
-                        {
-                            FinalPass.Record(renderGraph, copier, textures);
-                        }
-                        DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
-                        ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
-                        GizmosPass.Record(renderGraph, copier, textures);
+                        SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize);
+                        RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
+                            postFXStack, (int) settings.colorLUTResolution,
+                            settings, camera, hasActivePostFX);
                     }
                     else
                     {
@@ -363,10 +372,12 @@ namespace TaoTie.RenderPipelines
             ForwardPlusDebugger.Cleanup();
             LightingPass.Dispose();
             DeferredLightingPass.Dispose();
+            OutLinePass.Dispose();
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
             SMAATextures.Dispose();
+            CameraRendererCopier.Cleanup();
         }
     }
 }

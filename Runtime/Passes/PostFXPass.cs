@@ -16,11 +16,11 @@ namespace TaoTie.RenderPipelines
 				? GraphicsFormat.R16G16B16A16_SFloat
 				: GraphicsFormat.R8G8B8A8_UNorm;
 
-		static readonly GraphicsFormat edgeFormat =
-			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
-				? GraphicsFormat.R16G16B16A16_SFloat
-				: GraphicsFormat.R8G8B8A8_UNorm;
+		static readonly GraphicsFormat smaaEdgeFormat = GraphicsFormat.R8G8_UNorm;
 
+		private static readonly int
+			_SMAAAreaTexId = Shader.PropertyToID("_SMAAAreaTex"),
+			_SMAASearchTexId = Shader.PropertyToID("_SMAASearchTex");
 		GraphicsFormat format;
 
 		PostFXStack stack;
@@ -64,8 +64,8 @@ namespace TaoTie.RenderPipelines
 			{
 				// Ensure lookup textures are created
 				SMAATextures.EnsureCreated();
-				buffer.SetGlobalTexture(Shader.PropertyToID("_SMAAAreaTex"), SMAATextures.AreaTex);
-				buffer.SetGlobalTexture(Shader.PropertyToID("_SMAASearchTex"), SMAATextures.SearchTex);
+				buffer.SetGlobalTexture(_SMAAAreaTexId, SMAATextures.AreaTex);
+				buffer.SetGlobalTexture(_SMAASearchTexId, SMAATextures.SearchTex);
 
 				// Apply color grading first into colorGradingResult
 				if (colorLUTResolution > 0)
@@ -176,7 +176,7 @@ namespace TaoTie.RenderPipelines
 			{
 				var edgeDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
 				{
-					colorFormat = edgeFormat,
+					colorFormat = smaaEdgeFormat,
 					name = "SMAA Edges"
 				};
 				pass.smaaEdges = builder.CreateTransientTexture(edgeDesc);

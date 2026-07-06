@@ -49,7 +49,13 @@ namespace TaoTie.RenderPipelines
 
         protected override void Render(ScriptableRenderContext context, Camera[] cameras)
         {
-            Debug.LogError("Using Render List<Camera>");
+            RenderForEditor();
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                renderer.Render(renderGraph, context, cameras[i], settings);
+            }
+
+            renderGraph.EndFrame();
         }
 
         protected override void Render(ScriptableRenderContext context, List<Camera> cameras)

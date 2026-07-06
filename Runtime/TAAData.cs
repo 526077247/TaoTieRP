@@ -76,26 +76,21 @@ namespace TaoTie.RenderPipelines
             }
         }
 
-        float jitterScale = 0.5f;
-        float jitterSpread = 1f;
+        float jitterScale = 1.0f;
 
         public Vector2 GetJitter()
         {
-            return GetHaltonJitter(frameIndex % 16, jitterScale, jitterSpread);
-        }
-
-        public void SetJitterParams(float scale, float spread)
-        {
-            jitterScale = scale;
-            jitterSpread = spread;
-        }
-
-        public static Vector2 GetHaltonJitter(int index, float scale = 0.5f, float spread = 1f)
-        {
+            // URP-style Halton sequence: skip index 0 for shadow stability, wrap at 1024
+            int index = (frameIndex & 1023) + 1;
             return new Vector2(
-                (Halton(index + 1, 2) - 0.5f) * spread * scale,
-                (Halton(index + 1, 3) - 0.5f) * spread * scale
+                (Halton(index, 2) - 0.5f) * jitterScale,
+                (Halton(index, 3) - 0.5f) * jitterScale
             );
+        }
+
+        public void SetJitterScale(float scale)
+        {
+            jitterScale = Mathf.Clamp01(scale);
         }
 
         static float Halton(int index, int radix)

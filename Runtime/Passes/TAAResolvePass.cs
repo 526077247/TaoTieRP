@@ -13,8 +13,8 @@ namespace TaoTie.RenderPipelines
             taaCurrentColorID = Shader.PropertyToID("_TAACurrentColor"),
             taaHistoryColorID = Shader.PropertyToID("_TAAHistoryColor"),
             taaTexelSizeID = Shader.PropertyToID("_TAATexelSize"),
-            taaBlendFactorID = Shader.PropertyToID("_TAABlendFactor"),
-            taaAntiFlickerID = Shader.PropertyToID("_TAAAntiFlicker"),
+            taaFrameInfluenceID = Shader.PropertyToID("_TAAFrameInfluence"),
+            taaVarianceClampScaleID = Shader.PropertyToID("_TAAVarianceClampScale"),
             taaJitterID = Shader.PropertyToID("_TAAJitter"),
             inverseNonJitteredViewProjID = Shader.PropertyToID("_InverseNonJitteredViewProj"),
             prevViewProjID = Shader.PropertyToID("_PrevViewProj");
@@ -28,8 +28,8 @@ namespace TaoTie.RenderPipelines
         TextureHandle colorAttachment;
         TextureHandle historyOutput;
         Vector2Int bufferSize;
-        float blendFactor;
-        float antiFlicker;
+        float frameInfluence;
+        float varianceClampScale;
         Vector2 jitter;
         Matrix4x4 inverseNonJitteredViewProj;
         Matrix4x4 prevViewProj;
@@ -57,8 +57,8 @@ namespace TaoTie.RenderPipelines
             cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
             cmd.SetGlobalVector(taaTexelSizeID, new Vector4(
                 1f / bufferSize.x, 1f / bufferSize.y, bufferSize.x, bufferSize.y));
-            cmd.SetGlobalFloat(taaBlendFactorID, blendFactor);
-            cmd.SetGlobalFloat(taaAntiFlickerID, antiFlicker);
+            cmd.SetGlobalFloat(taaFrameInfluenceID, frameInfluence);
+            cmd.SetGlobalFloat(taaVarianceClampScaleID, varianceClampScale);
             cmd.SetGlobalVector(taaJitterID, jitter);
             cmd.SetGlobalMatrix(inverseNonJitteredViewProjID, inverseNonJitteredViewProj);
             cmd.SetGlobalMatrix(prevViewProjID, prevViewProj);
@@ -87,8 +87,8 @@ namespace TaoTie.RenderPipelines
             in CameraRendererTextures textures,
             TextureHandle historyTexture,
             Vector2Int bufferSize,
-            float blendFactor,
-            float antiFlicker,
+            float frameInfluence,
+            float varianceClampScale,
             Vector2 jitter,
             Matrix4x4 inverseNonJitteredViewProj,
             Matrix4x4 prevViewProj,
@@ -123,8 +123,8 @@ namespace TaoTie.RenderPipelines
             pass.tempResult = builder.WriteTexture(renderGraph.CreateTexture(desc));
 
             pass.bufferSize = bufferSize;
-            pass.blendFactor = blendFactor;
-            pass.antiFlicker = antiFlicker;
+            pass.frameInfluence = frameInfluence;
+            pass.varianceClampScale = varianceClampScale;
             pass.jitter = jitter;
             pass.inverseNonJitteredViewProj = inverseNonJitteredViewProj;
             pass.prevViewProj = prevViewProj;

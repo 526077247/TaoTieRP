@@ -107,5 +107,14 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalFloat(srcBlendID, 1f);
 			buffer.SetGlobalFloat(dstBlendID, 0f);
 		}
+
+		public static void Cleanup()
+		{
+			if (fullscreenMesh != null)
+			{
+				Object.DestroyImmediate(fullscreenMesh);
+				fullscreenMesh = null;
+			}
+		}
 	}
 }

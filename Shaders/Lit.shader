@@ -50,13 +50,6 @@
 		[Sub(Details._DETAIL_MAP)]_DetailSmoothness("Detail Smoothness", Range(0, 1)) = 1
 		[Sub(Details._DETAIL_MAP)]_DetailNormalScale("Detail Normal Scale", Range(0, 1)) = 1
 		
-		[Main(Outline, _, off, off)]
-        _groupOutline ("OutlineSettings", float) = 1
-		[Space()]
-		[SubToggle(Outline, _OUTLINE)] _Outline("Use Outline", Float) = 0.0
-		[Sub(Outline._OUTLINE)] _OutlineColor ("Outline Color", Color) = (0,0,0,0)
-        [Sub(Outline._OUTLINE)] _OutlineWidth ("Outline Width", Range(0, 10)) = 1
-		
 		[Space(50)]
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
@@ -166,25 +159,6 @@
 			#include "MetaPass.hlsl"
 			ENDHLSL
 		}
-		
-		Pass
-        {
-            Name "OutLine"
-            Tags {"LightMode" = "Outline" }
-            Cull Front
-            ZWrite[_ZWrite]
-            BlendOp Add, Max
-            ZTest LEqual
-            Offset 1, 1
-
-            HLSLPROGRAM
-            #pragma multi_compile _ _OUTLINE
-            #pragma vertex NormalOutLineVertex
-            #pragma fragment NormalOutlineFragment
-            
-            #include "ShaderLibrary/NormalOutline.hlsl"
-            ENDHLSL
-        }
     }
 	CustomEditor "LWGUI.LWGUI"
 }

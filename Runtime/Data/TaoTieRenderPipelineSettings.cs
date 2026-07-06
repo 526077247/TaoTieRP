@@ -27,6 +27,10 @@ namespace TaoTie.RenderPipelines
             bicubicRescaling = CameraBufferSettings.BicubicRescalingMode.UpOnly,
             highQualityAA = CameraBufferSettings.HighQualityAAMode.Off,
             taaSettings = new CameraBufferSettings.TAASettings(),
+            outLineColor = Color.black,
+            outLineDepthSensitivity = 0.1f,
+            outLineNormalSensitivity = 0.1f,
+            outLineWidth = 1f,
         };
 
         public ShadowSettings shadows;

@@ -18,5 +18,10 @@ namespace TaoTie.RenderPipelines
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         void OnEnable() => sampler = null;
 #endif
+
+        void OnDisable()
+        {
+            TAACameraData.Cleanup(GetComponent<Camera>());
+        }
     }
 }
