@@ -16,7 +16,7 @@ namespace TaoTie.RenderPipelines
         }
 
         [Min(0.001f)]
-        public float maxDistance = 100f;
+        public float maxDistance = 30f;
 
         [Range(0.001f, 1f)] public float distanceFade = 0.1f;
 
@@ -64,11 +64,11 @@ namespace TaoTie.RenderPipelines
 
         public Directional directional = new()
         {
-            maxLightCount = 4,
-            atlasSize = MapSize._1024,
-            cascadeCount = 4,
-            cascadeRatio1 = 0.1f,
-            cascadeRatio2 = 0.25f,
+            maxLightCount = 1,
+            atlasSize = MapSize._4096,
+            cascadeCount = 2,
+            cascadeRatio1 = 0.3f,
+            cascadeRatio2 = 0.4f,
             cascadeRatio3 = 0.5f,
             cascadeFade = 0.1f,
         };

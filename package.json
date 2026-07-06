@@ -1,0 +1,17 @@
+{
+    "name": "com.taotie.render-pipelines",
+    "version": "1.0.0",
+    "displayName": "TaoTie RP",
+    "description": "Custom Unity Scriptable Render Pipeline built on the Render Graph API. Supports Forward and Deferred rendering paths with Forward+ tile-based light culling (up to 4 directional + 256 point/spot lights), cascaded shadow maps (1-4 cascades, shadowmask, 3 quality levels), and a full post-processing stack (Bloom, Tone Mapping, Color Grading LUT, FXAA, Bicubic Rescaling). Includes PBR Lit/Unlit/Particle/UI shaders with GPU instancing, SRP Batcher, LOD cross-fade, per-camera HDR and render scaling, automatic shader variant stripping, and WebGL/mobile compatibility.",
+    "dependencies": {
+        "com.unity.render-pipelines.core": "14.0.10",
+        "com.unity.mathematics": "1.2.6"
+    },
+    "samples": [
+        {
+            "displayName": "TaoTie RP Samples",
+            "description": "Example scripts and scenes showcasing GPU instancing, per-object material properties, baked lighting, circuitry materials, LOD, many lights, multiple cameras, particles, and tone mapping.",
+            "path": "Samples~"
+        }
+    ]
+}

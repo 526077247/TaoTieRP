@@ -3,7 +3,6 @@ using UnityEngine.Rendering;
 
 namespace TaoTie.RenderPipelines
 {
-    [CreateAssetMenu(menuName = "Rendering/TaoTie Pipeline")]
     public partial class TaoTieRenderPipelineAsset : RenderPipelineAsset
     {
         [SerializeField] public TaoTieRenderPipelineSettings settings = new TaoTieRenderPipelineSettings();

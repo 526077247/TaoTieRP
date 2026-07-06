@@ -21,8 +21,11 @@ namespace TaoTie.RenderPipelines
         public CameraBufferSettings cameraBuffer = new()
         {
             allowHDR = true,
-            msaa = MSAASamples.None,
+            copyColor = true,
+            copyDepth = true,
             renderScale = 1f,
+            bicubicRescaling = CameraBufferSettings.BicubicRescalingMode.UpOnly,
+            msaa = MSAASamples.None,
         };
         
         public ShadowSettings shadows;

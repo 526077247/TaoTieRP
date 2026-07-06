@@ -3323,14 +3323,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: 8
     maskLights: 1
+    renderingLayerMask: 8
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 1
     postFXSettings: {fileID: 11400000, guid: 16180271c9b8f6c4dba4914d9319a37f, type: 2}
     allowFXAA: 0
-    keepAlpha: 0
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 0
@@ -3499,14 +3499,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: 5
     maskLights: 1
+    renderingLayerMask: 5
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 0
     postFXSettings: {fileID: 0}
     allowFXAA: 0
-    keepAlpha: 0
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 0
@@ -6179,14 +6179,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: 3
     maskLights: 1
+    renderingLayerMask: 3
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 0
     postFXSettings: {fileID: 0}
     allowFXAA: 0
-    keepAlpha: 0
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 0
@@ -6629,14 +6629,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: 80
     maskLights: 1
+    renderingLayerMask: 80
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 1
     postFXSettings: {fileID: 11400000, guid: 3e97eaeb20ee9c940a7475a54602c5cb, type: 2}
     allowFXAA: 1
-    keepAlpha: 1
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 10
@@ -9639,14 +9639,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: 49
     maskLights: 1
+    renderingLayerMask: 49
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 1
     postFXSettings: {fileID: 0}
     allowFXAA: 0
-    keepAlpha: 0
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 0
@@ -10221,14 +10221,14 @@ MonoBehaviour:
   settings:
     copyColor: 1
     copyDepth: 1
-    renderingLayerMask: -1
     maskLights: 0
+    renderingLayerMask: -1
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 0
     postFXSettings: {fileID: 11400000, guid: 16180271c9b8f6c4dba4914d9319a37f, type: 2}
     allowFXAA: 1
-    keepAlpha: 1
+    allowMSAA: 1
     finalBlendMode:
       source: 1
       destination: 0

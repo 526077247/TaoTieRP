@@ -4,7 +4,6 @@ using UnityEditor;
 
 namespace TaoTie.RenderPipelines
 {
-    [CreateAssetMenu(menuName = "Rendering/TaoTie Post FX Settings")]
     public class PostFXSettings : ScriptableObject
     {
 
@@ -47,6 +46,14 @@ namespace TaoTie.RenderPipelines
 
         [SerializeField] BloomSettings bloom = new BloomSettings
         {
+            maxIterations = 16,
+            downscaleLimit = 2,
+            bicubicUpsampling = true,
+            threshold = 1f,
+            thresholdKnee = 0.5f,
+            intensity = 0.2f,
+            fadeFireflies = true,
+            mode = BloomSettings.Mode.Scattering,
             scatter = 0.7f
         };
 
@@ -82,7 +89,8 @@ namespace TaoTie.RenderPipelines
 
         [SerializeField] ColorAdjustmentsSettings colorAdjustments = new ColorAdjustmentsSettings
         {
-            colorFilter = Color.white
+            colorFilter = Color.white,
+            saturation = 28f
         };
 
         public ColorAdjustmentsSettings ColorAdjustments => colorAdjustments;
@@ -143,9 +151,9 @@ namespace TaoTie.RenderPipelines
         [SerializeField] ShadowsMidtonesHighlightsSettings
             shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings
             {
-                shadows = Color.white,
-                midtones = Color.white,
-                highlights = Color.white,
+                shadows = new Color(0.7490196f, 0.6156863f, 1f, 1f),
+                midtones = new Color(1f, 0.8509804f, 0.8509804f, 1f),
+                highlights = new Color(1f, 0.89411765f, 0.7921569f, 1f),
                 shadowsEnd = 0.3f,
                 highlightsStart = 0.55f,
                 highLightsEnd = 1f
@@ -154,7 +162,10 @@ namespace TaoTie.RenderPipelines
         public ShadowsMidtonesHighlightsSettings ShadowsMidtonesHighlights =>
             shadowsMidtonesHighlights;
 
-        [SerializeField] ToneMappingSettings toneMapping = default;
+        [SerializeField] ToneMappingSettings toneMapping = new ToneMappingSettings
+        {
+            mode = ToneMappingSettings.Mode.ACES
+        };
 
         public ToneMappingSettings ToneMapping => toneMapping;
 
