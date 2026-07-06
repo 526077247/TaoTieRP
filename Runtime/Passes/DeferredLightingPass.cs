@@ -62,6 +62,8 @@ namespace TaoTie.RenderPipelines
             in ShadowTextures shadowTextures,
             Shader deferredLightingShader)
         {
+            if (deferredLightingShader == null) return;
+
             if (deferredLightingMaterial == null || deferredLightingMaterial.shader != deferredLightingShader)
             {
                 if (deferredLightingMaterial != null) CoreUtils.Destroy(deferredLightingMaterial);

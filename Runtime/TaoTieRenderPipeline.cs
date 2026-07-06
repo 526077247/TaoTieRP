@@ -27,9 +27,12 @@ namespace TaoTie.RenderPipelines
             UpdateForwardPlusKeyword();
 
             InitializeForEditor();
+            var deferredShader = Shader.Find("Hidden/TaoTie RP/Deferred Lighting");
+            if (deferredShader == null)
+                Debug.LogWarning("Hidden/TaoTie RP/Deferred Lighting shader not found — Deferred path will fall back to Forward.");
             renderer = new(
                 settings.cameraRendererShader,
-                Shader.Find("Hidden/TaoTie RP/Deferred Lighting"));
+                deferredShader);
         }
 
         void UpdateForwardPlusKeyword()

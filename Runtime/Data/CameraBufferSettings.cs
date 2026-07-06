@@ -63,12 +63,18 @@ namespace TaoTie.RenderPipelines
                      "larger values produce smoother but blurrier images.")]
             [Range(0.1f, 2f)] public float jitterSpread = 1f;
         }
-        
-        public bool fxaa;
 
         [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.TAA)]
         public TAASettings taaSettings;
 
+        public enum PostProcessAA
+        {
+            Off,
+            FXAA,
+            SMAA
+        }
+        public PostProcessAA postProcessAA;
+        
         public bool outLine;
     }
 }

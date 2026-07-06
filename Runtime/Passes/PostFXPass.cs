@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
@@ -12,6 +12,11 @@ namespace TaoTie.RenderPipelines
 			finalSampler = new("Final Post FX");
 
 		static readonly GraphicsFormat colorFormat =
+			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
+				? GraphicsFormat.R16G16B16A16_SFloat
+				: GraphicsFormat.R8G8B8A8_UNorm;
+
+		static readonly GraphicsFormat edgeFormat =
 			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
 				? GraphicsFormat.R16G16B16A16_SFloat
 				: GraphicsFormat.R8G8B8A8_UNorm;
@@ -32,6 +37,7 @@ namespace TaoTie.RenderPipelines
 		ScaleMode scaleMode;
 
 		TextureHandle colorSource, colorGradingResult, scaledResult;
+		TextureHandle smaaEdges, smaaWeights, smaaResult;
 
 		void Render(RenderGraphContext context)
 		{
@@ -40,26 +46,50 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalFloat(PostFXStack.finalDstBlendId, 0f);
 			stack.SourceSize = stack.BufferSize;
 
+			var postProcessAA = stack.BufferSettings.postProcessAA;
+
 			RenderTargetIdentifier finalSource;
 			PostFXStack.Pass finalPass;
-			if (stack.BufferSettings.fxaa)
+
+			if (postProcessAA == CameraBufferSettings.PostProcessAA.FXAA)
 			{
 				finalSource = colorGradingResult;
 				finalPass = PostFXStack.Pass.FXAA;
 				if (colorLUTResolution > 0)
-				{
-					stack.Draw(buffer, colorSource, finalSource,
-						PostFXStack.Pass.ApplyColorGrading);
-				}
+					stack.Draw(buffer, colorSource, finalSource, PostFXStack.Pass.ApplyColorGrading);
 				else
-				{
 					stack.Draw(buffer, colorSource, finalSource, PostFXStack.Pass.Copy);
-				}
+			}
+			else if (postProcessAA == CameraBufferSettings.PostProcessAA.SMAA)
+			{
+				// Ensure lookup textures are created
+				SMAATextures.EnsureCreated();
+				buffer.SetGlobalTexture(Shader.PropertyToID("_SMAAAreaTex"), SMAATextures.AreaTex);
+				buffer.SetGlobalTexture(Shader.PropertyToID("_SMAASearchTex"), SMAATextures.SearchTex);
+
+				// Apply color grading first into colorGradingResult
+				if (colorLUTResolution > 0)
+					stack.Draw(buffer, colorSource, colorGradingResult, PostFXStack.Pass.ApplyColorGrading);
+				else
+					stack.Draw(buffer, colorSource, colorGradingResult, PostFXStack.Pass.Copy);
+
+				// SMAA Pass 1: Edge Detection (color → edges)
+				stack.Draw(buffer, colorGradingResult, smaaEdges, PostFXStack.Pass.SMAAEdgeDetection);
+
+				// SMAA Pass 2: Blend Weight Calculation (edges → weights)
+				stack.Draw(buffer, smaaEdges, smaaWeights, PostFXStack.Pass.SMAABlendWeightCalculation);
+
+				// SMAA Pass 3: Neighborhood Blending (color + weights → smaaResult)
+				buffer.SetGlobalTexture(PostFXStack.fxSource2Id, smaaWeights);
+				stack.Draw(buffer, colorGradingResult, smaaResult, PostFXStack.Pass.SMAANeighborhoodBlending);
+
+				finalSource = smaaResult;
+				finalPass = PostFXStack.Pass.Copy;
 			}
 			else
 			{
 				finalSource = colorSource;
-				finalPass = colorLUTResolution > 0?PostFXStack.Pass.ApplyColorGrading: PostFXStack.Pass.Copy;
+				finalPass = colorLUTResolution > 0 ? PostFXStack.Pass.ApplyColorGrading : PostFXStack.Pass.Copy;
 			}
 
 			if (scaleMode == ScaleMode.None)
@@ -119,15 +149,17 @@ namespace TaoTie.RenderPipelines
 						: ScaleMode.Linear;
 			}
 
-			bool applyFXAA = stack.BufferSettings.fxaa;
-			if (applyFXAA || pass.scaleMode != ScaleMode.None)
+			bool applyFXAA = stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.FXAA;
+			bool applySMAA = stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.SMAA;
+			bool needsColorGradingResult = applyFXAA || applySMAA;
+			if (needsColorGradingResult || pass.scaleMode != ScaleMode.None)
 			{
 				pass.format = colorFormat;
 				var desc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
 				{
 					colorFormat = pass.format
 				};
-				if (applyFXAA)
+				if (needsColorGradingResult)
 				{
 					desc.name = "Color Grading Result";
 					pass.colorGradingResult = builder.CreateTransientTexture(desc);
@@ -138,6 +170,30 @@ namespace TaoTie.RenderPipelines
 					desc.name = "Scaled Result";
 					pass.scaledResult = builder.CreateTransientTexture(desc);
 				}
+			}
+
+			if (applySMAA)
+			{
+				var edgeDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
+				{
+					colorFormat = edgeFormat,
+					name = "SMAA Edges"
+				};
+				pass.smaaEdges = builder.CreateTransientTexture(edgeDesc);
+
+				var weightDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
+				{
+					colorFormat = pass.format,
+					name = "SMAA Weights"
+				};
+				pass.smaaWeights = builder.CreateTransientTexture(weightDesc);
+
+				var resultDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
+				{
+					colorFormat = pass.format,
+					name = "SMAA Result"
+				};
+				pass.smaaResult = builder.CreateTransientTexture(resultDesc);
 			}
 
 			builder.SetRenderFunc<PostFXPass>(

@@ -43,6 +43,10 @@ namespace TaoTie.RenderPipelines
 
         [EnumLabel]
         public ColorLUTResolution colorLUTResolution = ColorLUTResolution._32;
+
+        [Tooltip("Strip SMAA shader passes and lookup textures from builds when Post-Process AA is not set to SMAA. " +
+                 "Reduces build size by ~180KB. Disable if you plan to switch to SMAA at runtime.")]
+        public bool stripSMAAWhenUnused = true;
         [HideInInspector]
         public Material defaultMaterial;
 

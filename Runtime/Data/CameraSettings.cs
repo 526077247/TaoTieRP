@@ -31,7 +31,7 @@ namespace TaoTie.RenderPipelines
         [ShowIf(nameof(overridePostFX))]
         public PostFXSettings postFXSettings = default;
 
-        public bool allowFXAA = true;
+        public bool allowPostProcessAA = true;
 
         [MSAAField]
         [Tooltip("Allow high-quality anti-aliasing for this camera.")]

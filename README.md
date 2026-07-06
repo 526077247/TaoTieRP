@@ -18,10 +18,57 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 ### Rendering Paths
 
-| Path | Description |
-|------|-------------|
-| **Forward** | Default path with MSAA support, suitable for most platforms |
-| **Deferred** | GBuffer-based path (requires MRT ≥ 3), disabled on WebGL/GLES2 |
+TaoTie RP supports two rendering paths with optional Forward+ tile-based light culling. The combination of rendering path, Forward+ toggle, and target platform determines how opaque and transparent queues are rendered.
+
+#### Path Selection
+
+| Setting | Condition | Native | WebGL2 | WebGL1 |
+|---------|-----------|:------:|:------:|:------:|
+| **Forward** | Default; always available | ✅ | ✅ | ✅ |
+| **Deferred** | Requires `supportedRenderTargetCount ≥ 3` (MRT); not a reflection camera; forces MSAA off. The `DeferredLighting` shader uses `#pragma exclude_renderers gles`, so even if the runtime check is bypassed, the shader is stripped from WebGL builds. | ✅ | ❌ (forced Forward) | ❌ (forced Forward) |
+| **Forward+** | Enabled when `useForwardPlus = true` and graphics API is not OpenGLES2. Uses ComputeBuffer on native, Texture2D fallback on WebGL2. | ✅ | ✅ (Texture2D fallback) | ❌ |
+
+> When Deferred is selected but the platform doesn't support it (all WebGL runtimes, or insufficient MRT on native), the pipeline automatically falls back to Forward rendering. In the Editor, Deferred is available on all platforms for testing purposes (`UNITY_EDITOR` bypasses the WebGL exclusion).
+
+#### Opaque Queue
+
+| Path | Forward+ | Shader LightMode | Lighting Method | Notes |
+|------|----------|-----------------|-----------------|-------|
+| Forward | Off | `CustomLit` | Per-pixel, up to 8 other lights (CPU loop) | Default on WebGL1 |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights (ComputeBuffer/Texture2D) | Not available on WebGL1 |
+| Deferred | Off | `DeferredGBuffer` | GBuffer MRT (albedo/normal/emission) → fullscreen `DeferredLightingPass` | Forward+ **not used**; lighting resolved in fullscreen pass |
+| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` | Forward+ **not used** on opaque; lighting resolved in fullscreen pass regardless of `useForwardPlus` |
+
+> In Deferred path, opaque geometry writes to GBuffer textures via `DeferredGBuffer` shader pass. Lighting is computed in a separate fullscreen `DeferredLightingPass` using the GBuffer data and depth. Forward+ does not apply to the deferred opaque pass — the `DeferredGBuffer` shader pass does not include the `_TAOTIE_FORWARD_PLUS` keyword, and lighting is resolved entirely in the fullscreen lighting pass rather than per-pixel during geometry rendering.
+
+#### Transparent Queue
+
+| Path | Forward+ | Shader LightMode | Lighting Method | Notes |
+|------|----------|-----------------|-----------------|-------|
+| Forward | Off | `CustomLit` | Per-pixel, up to 8 other lights | Same as opaque |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights | Same as opaque |
+| Deferred | Off | `CustomLit` | Per-pixel, up to 8 other lights | **Always forward** — deferred cannot handle transparency |
+| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights | **Always forward** — Forward+ applies to transparents even in deferred mode |
+
+> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. This is because GBuffer-based deferred lighting cannot handle transparency. When `useForwardPlus` is enabled, transparent objects in the deferred path also benefit from Forward+ tile-based light culling.
+
+#### Full Pass Sequences
+
+**Forward path:**
+```
+LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → OutLinePass → SkyboxPass
+→ [ResolvePass(MSAA)] → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
+→ UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → PostFX → Final
+```
+
+**Deferred path:**
+```
+LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass → SkyboxPass
+→ OutLinePass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
+→ UnsupportedShadersPass → [TAAResolvePass] → PostFX → Final
+```
+
+> `[...]` = optional, depends on settings. DepthPrePass runs when MSAA + Copy Depth is enabled. TAAResolvePass runs when TAA is enabled.
 
 ### Lighting
 
@@ -44,9 +91,41 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 - **Bloom** — Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling
 - **Tone Mapping** — ACES, Neutral, Reinhard
 - **Color Grading** — Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights
-- **FXAA** — Fast approximate anti-aliasing
 - **Bicubic Rescaling** — Off / Up-only / Up-and-down
 - Post-processing overrides per camera
+
+### Anti-Aliasing
+
+TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
+
+**High-Quality AA** (pipeline-level, mutually exclusive):
+
+| Mode | Description | Forward | Deferred | WebGL1 |
+|------|-------------|:-------:|:-------:|:------:|
+| **MSAA** | Hardware multi-sample anti-aliasing (2x/4x/8x) | ✅ | ❌ | ❌ |
+| **TAA** | Temporal anti-aliasing with Halton jitter, depth-based reprojection, neighborhood clamping | ✅ | ✅ | ❌ |
+
+- MSAA and TAA are mutually exclusive — enabling one disables the other
+- MSAA is disabled in Deferred mode (MRT + MSAA not reliably supported)
+- TAA is disabled on WebGL1/GLES2 (requires depth texture sampling)
+- When MSAA + Copy Depth is enabled, a Depth Pre-Pass renders opaque depth to a non-MSAA texture
+- TAA parameters: Jitter Scale, Anti-Flicker, Base Blend Factor, Jitter Spread
+
+**Post-Process AA** (pipeline-level, mutually exclusive):
+
+| Mode | Description |
+|------|-------------|
+| **FXAA** | Fast approximate anti-aliasing (NVIDIA FXAA 3.11 console variant) |
+| **SMAA** | Subpixel Morphological Anti-Aliasing (full 3-pass: edge detection → blend weight calculation → neighborhood blending, with precomputed area/search lookup textures) |
+
+- FXAA and SMAA are mutually exclusive
+- SMAA uses the original precomputed lookup textures (areaTex 160×560, searchTex 64×16) embedded as byte arrays
+- When SMAA is not selected, SMAA shader passes and lookup data are stripped from builds via `SMAA_DISABLED` define
+
+**Per-Camera Control:**
+
+- `allowHighQualityAA` — enables/disables MSAA or TAA for this camera
+- `allowPostProcessAA` — enables/disables FXAA or SMAA for this camera
 
 ### Shaders
 
@@ -71,7 +150,7 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 - **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
 - **HDR** — Per-camera HDR support
 - **Shader Stripping** — Automatic stripping of unused shader variants (debug shaders, Meta passes, WebGL compute buffer variants)
-- **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on GLES2, graphics format fallbacks
+- **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on WebGL1/GLES2 (`supportedRenderTargetCount == 1`), graphics format fallbacks
 
 ### Depth Texture (Copy Depth)
 

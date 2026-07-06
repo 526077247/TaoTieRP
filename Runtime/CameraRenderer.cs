@@ -101,7 +101,8 @@ namespace TaoTie.RenderPipelines
                 bufferSize.y = camera.pixelHeight;
             }
 
-            bufferSettings.fxaa &= cameraSettings.allowFXAA;
+            if (!cameraSettings.allowPostProcessAA)
+                bufferSettings.postProcessAA = CameraBufferSettings.PostProcessAA.Off;
 
             bool useMSAA = false;
             bool useTAA = false;
@@ -173,7 +174,7 @@ namespace TaoTie.RenderPipelines
                         -1, useForwardPlus);
 
                 // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.
-                // GLES2/WebGL1 does not support MRT, so always use forward there.
+                // WebGL does not support deferred (shader excludes GLES renderers, including GLES3/WebGL2).
 #if !UNITY_WEBGL || UNITY_EDITOR
                 bool useDeferred = !isReflectionCamera && settings.renderingMode switch
                 {
@@ -365,6 +366,7 @@ namespace TaoTie.RenderPipelines
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
+            SMAATextures.Dispose();
         }
     }
 }

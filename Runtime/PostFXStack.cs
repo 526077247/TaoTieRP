@@ -19,9 +19,8 @@ namespace TaoTie.RenderPipelines
             ColorGradingACES,
             ColorGradingNeutral,
             ColorGradingReinhard,
-            ApplyColorGrading,
-            FinalRescale,
-            FXAA
+            ApplyColorGrading, FinalRescale, FXAA,
+            SMAAEdgeDetection, SMAABlendWeightCalculation, SMAANeighborhoodBlending
         }
 
         public static readonly int

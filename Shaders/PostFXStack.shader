@@ -151,5 +151,38 @@
 				#include "FXAAPass.hlsl"
 			ENDHLSL
 		}
+		Pass {
+			Name "SMAA Edge Detection"
+
+			Blend Off
+
+			HLSLPROGRAM
+				#pragma vertex DefaultPassVertex
+				#pragma fragment SMAAEdgeDetectionPassFragment
+				#include "SMAAPass.hlsl"
+			ENDHLSL
+		}
+		Pass {
+			Name "SMAA Blend Weight"
+
+			Blend Off
+
+			HLSLPROGRAM
+				#pragma vertex DefaultPassVertex
+				#pragma fragment SMAABlendingWeightCalculationPassFragment
+				#include "SMAAPass.hlsl"
+			ENDHLSL
+		}
+		Pass {
+			Name "SMAA Neighborhood Blending"
+
+			Blend [_FinalSrcBlend] [_FinalDstBlend]
+
+			HLSLPROGRAM
+				#pragma vertex DefaultPassVertex
+				#pragma fragment SMAANeighborhoodBlendingPassFragment
+				#include "SMAAPass.hlsl"
+			ENDHLSL
+		}
 	}
 }
