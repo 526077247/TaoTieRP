@@ -2,10 +2,10 @@
 #define TAOTIE_LIGHT_INCLUDED
 
 #define MAX_DIRECTIONAL_LIGHT_COUNT 4
-#if defined(TAOTIE_FORWARD_PLUS)
-    #define MAX_OTHER_LIGHT_COUNT 256
-#else
+#if defined(SHADER_API_GLES)
     #define MAX_OTHER_LIGHT_COUNT 8
+#else
+    #define MAX_OTHER_LIGHT_COUNT 256
 #endif
 
 #include "ShaderLibrary/Cookies.hlsl"

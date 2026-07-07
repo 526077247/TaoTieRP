@@ -8,6 +8,11 @@
 // Forward+ with 256 lights would exceed CBUFFER size limits.
 #define MAX_COOKIE_OTHER_LIGHT_COUNT 8
 
+// On GLES2, each TEXTURE2D creates a separate combined sampler2D that consumes
+// one sampler register (limit: 16). 12 cookie textures would push the Lit shader
+// over the limit, so cookie textures and sampling are disabled on GLES2.
+#if !defined(SHADER_API_GLES) || defined(SHADER_API_GLES3)
+
 // Cookie textures — per-light global textures
 TEXTURE2D(_DirLightCookie0); TEXTURE2D(_DirLightCookie1);
 TEXTURE2D(_DirLightCookie2); TEXTURE2D(_DirLightCookie3);
@@ -58,5 +63,19 @@ float3 SampleSpotCookie(int index, float3 positionWS)
     [flatten] if (index == 6) return SAMPLE_TEXTURE2D(_OtherLightCookie6, sampler_linear_clamp, uv).rgb;
     return SAMPLE_TEXTURE2D(_OtherLightCookie7, sampler_linear_clamp, uv).rgb;
 }
+
+#else // GLES2: skip cookie textures to stay within 16-sampler limit
+
+float3 SampleDirectionalCookie(int index, float3 positionWS)
+{
+    return float3(1, 1, 1);
+}
+
+float3 SampleSpotCookie(int index, float3 positionWS)
+{
+    return float3(1, 1, 1);
+}
+
+#endif
 
 #endif // TAOTIE_COOKIES_INCLUDED

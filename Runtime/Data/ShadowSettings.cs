@@ -91,7 +91,7 @@ namespace TaoTie.RenderPipelines
             [EnumLabel]
             public MapSize atlasSize;
         }
-        [Tooltip("In the Forward rendering path, support is provided for up to 8 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256.")]
+        [Tooltip("In the Forward rendering path, support is provided for up to 64 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256.")]
         public bool useForwardPlus = true;
         [ShowIf(nameof(useForwardPlus))]
         public Other other = new()
@@ -99,5 +99,10 @@ namespace TaoTie.RenderPipelines
             maxLightsPerTile = 128,
             atlasSize = MapSize._1024,
         };
+        
+        [Range(0, 64)]
+        [Tooltip("Max other lights supported (capped at 8 on WebGL1).")]
+        [ShowIf(nameof(useForwardPlus), ShowIfOperator.NotEqual, 1)]
+        public int maxOtherLights = 32;
     }
 }

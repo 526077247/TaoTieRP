@@ -13,7 +13,7 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCount = 256, maxForwardOtherLightCount = 8;
+		private const int maxDirLightCount = 4, maxOtherLightCount = 256, maxOtherLightCountOpenGLES2 = 8;
 
 		// WebGL does not support ComputeBuffer; use Texture2D fallback on those platforms.
 		static readonly bool useComputeBuffer = SystemInfo.supportsComputeShaders;
@@ -52,11 +52,11 @@ namespace TaoTie.RenderPipelines
 			otherLightShadowData = new Vector4[maxOtherLightCount];
 
 		static readonly Vector4[]
-			forwardOtherLightColors = new Vector4[maxForwardOtherLightCount],
-			forwardOtherLightPositions = new Vector4[maxForwardOtherLightCount],
-			forwardOtherLightDirectionsAndMasks = new Vector4[maxForwardOtherLightCount],
-			forwardOtherLightSpotAngles = new Vector4[maxForwardOtherLightCount],
-			forwardOtherLightShadowData = new Vector4[maxForwardOtherLightCount];
+			forwardOtherLightColors = new Vector4[maxOtherLightCountOpenGLES2],
+			forwardOtherLightPositions = new Vector4[maxOtherLightCountOpenGLES2],
+			forwardOtherLightDirectionsAndMasks = new Vector4[maxOtherLightCountOpenGLES2],
+			forwardOtherLightSpotAngles = new Vector4[maxOtherLightCountOpenGLES2],
+			forwardOtherLightShadowData = new Vector4[maxOtherLightCountOpenGLES2];
 
 		// Cookie support
 		static readonly int
@@ -68,12 +68,12 @@ namespace TaoTie.RenderPipelines
 		static readonly Matrix4x4[]
 			dirCookieMatrices = new Matrix4x4[maxDirLightCount],
 			otherCookieMatrices = new Matrix4x4[maxOtherLightCount],
-			forwardOtherCookieMatrices = new Matrix4x4[maxForwardOtherLightCount];
+			forwardOtherCookieMatrices = new Matrix4x4[maxOtherLightCountOpenGLES2];
 
 		static readonly float[]
 			dirCookieEnabled = new float[maxDirLightCount],
 			otherCookieEnabled = new float[maxOtherLightCount],
-			forwardOtherCookieEnabled = new float[maxForwardOtherLightCount];
+			forwardOtherCookieEnabled = new float[maxOtherLightCountOpenGLES2];
 
 		static readonly int[] dirCookieTexIDs =
 		{
@@ -98,7 +98,7 @@ namespace TaoTie.RenderPipelines
 
 		static readonly Texture[] dirCookieTextures = new Texture[maxDirLightCount];
 		static readonly Texture[] otherCookieTextures = new Texture[maxOtherLightCount];
-		static readonly Texture[] forwardOtherCookieTextures = new Texture[maxForwardOtherLightCount];
+		static readonly Texture[] forwardOtherCookieTextures = new Texture[maxOtherLightCountOpenGLES2];
 
 		CullingResults cullingResults;
 
@@ -176,7 +176,11 @@ namespace TaoTie.RenderPipelines
 			}
 			else
 			{
-				max = maxForwardOtherLightCount;
+				max = shadowSettings.maxOtherLights;
+				if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2 && max > maxOtherLightCountOpenGLES2)
+				{
+					max = maxOtherLightCountOpenGLES2;
+				}
 			}
 
 			for (i = 0; i < visibleLights.Length; i++)
@@ -369,7 +373,7 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalFloat(otherLightCountId, otherLightCount);
 			if (otherLightCount > 0)
 			{
-				if (useForwardPlus)
+				if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
 				{
 					buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
 					buffer.SetGlobalVectorArray(
@@ -409,7 +413,7 @@ namespace TaoTie.RenderPipelines
 				buffer.SetGlobalTexture(dirCookieTexIDs[ci],
 					dirCookieTextures[ci] != null ? dirCookieTextures[ci] : whiteCookieTexture);
 
-			if (useForwardPlus)
+			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
 			{
 				buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
 				buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
@@ -419,7 +423,7 @@ namespace TaoTie.RenderPipelines
 				buffer.SetGlobalMatrixArray(otherCookieMatrixId, forwardOtherCookieMatrices);
 				buffer.SetGlobalFloatArray(otherCookieEnabledId, forwardOtherCookieEnabled);
 			}
-			for (int ci = 0; ci < maxForwardOtherLightCount; ci++)
+			for (int ci = 0; ci < maxOtherLightCountOpenGLES2; ci++)
 			{
 				Texture tex = useForwardPlus ? otherCookieTextures[ci] : forwardOtherCookieTextures[ci];
 				buffer.SetGlobalTexture(otherCookieTexIDs[ci],
@@ -530,7 +534,7 @@ namespace TaoTie.RenderPipelines
 			dirAndmask.w = (float)light.renderingLayerMask;
 			Vector4 shadowData = shadows.ReserveOtherShadows(light, visibleIndex);
 
-			if (useForwardPlus)
+			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
 			{
 				otherLightColors[index] = color;
 				otherLightPositions[index] = position;
@@ -585,7 +589,7 @@ namespace TaoTie.RenderPipelines
 				cookieTex = light.cookie;
 			}
 
-			if (useForwardPlus)
+			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
 			{
 				otherLightColors[index] = color;
 				otherLightPositions[index] = position;

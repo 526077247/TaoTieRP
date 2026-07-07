@@ -31,7 +31,7 @@ namespace TaoTie.RenderPipelines.Editor
             if (rpAsset == null) return true;
 
             // Check user setting
-            if (!rpAsset.settings.stripSMAAWhenUnused)
+            if (!rpAsset.settings.cameraBuffer.stripSMAAWhenUnused)
                 return false;
 
             // Strip when Post-Process AA is not SMAA

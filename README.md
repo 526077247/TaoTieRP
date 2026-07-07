@@ -4,7 +4,6 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 ## Requirements
 
-- Unity 2022.3.53f1 or later
 - Render Pipelines Core 14.0.10+
 - Unity Mathematics 1.2.6+
 
@@ -32,25 +31,25 @@ TaoTie RP supports two rendering paths with optional Forward+ tile-based light c
 
 #### Opaque Queue
 
-| Path | Forward+ | Shader LightMode | Lighting Method | Notes |
-|------|----------|-----------------|-----------------|-------|
-| Forward | Off | `CustomLit` | Per-pixel, up to 8 other lights (CPU loop) | Default on WebGL1 |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights (ComputeBuffer/Texture2D) | Not available on WebGL1 |
-| Deferred | Off | `DeferredGBuffer` | GBuffer MRT (albedo/normal/emission) → fullscreen `DeferredLightingPass` | Forward+ **not used**; lighting resolved in fullscreen pass |
-| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` | Forward+ **not used** on opaque; lighting resolved in fullscreen pass regardless of `useForwardPlus` |
+| Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
+|------|----------|-----------------|-----------------|:------:|:------:|:------:|
+| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 64, max 64) other lights | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights | ✅ (ComputeBuffer) | ✅ (Texture2D fallback) | ❌ (FP disabled → Off) |
+| Deferred | Off | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights) | ✅ | ❌ (no deferred) | ❌ |
+| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights) | ✅ | ❌ | ❌ |
 
 > In Deferred path, opaque geometry writes to GBuffer textures via `DeferredGBuffer` shader pass. Lighting is computed in a separate fullscreen `DeferredLightingPass` using the GBuffer data and depth. Forward+ does not apply to the deferred opaque pass — the `DeferredGBuffer` shader pass does not include the `_TAOTIE_FORWARD_PLUS` keyword, and lighting is resolved entirely in the fullscreen lighting pass rather than per-pixel during geometry rendering.
 
 #### Transparent Queue
 
-| Path | Forward+ | Shader LightMode | Lighting Method | Notes |
-|------|----------|-----------------|-----------------|-------|
-| Forward | Off | `CustomLit` | Per-pixel, up to 8 other lights | Same as opaque |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights | Same as opaque |
-| Deferred | Off | `CustomLit` | Per-pixel, up to 8 other lights | **Always forward** — deferred cannot handle transparency |
-| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights | **Always forward** — Forward+ applies to transparents even in deferred mode |
+| Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
+|------|----------|-----------------|-----------------|:------:|:------:|:------:|
+| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 64) | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 | ✅ | ✅ | ❌ (falls back to Off) |
+| Deferred | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 64) | ✅ | ❌ | ❌ |
+| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 | ✅ | ❌ | ❌ |
 
-> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. This is because GBuffer-based deferred lighting cannot handle transparency. When `useForwardPlus` is enabled, transparent objects in the deferred path also benefit from Forward+ tile-based light culling.
+> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `useForwardPlus` is enabled, transparent objects in the deferred path also benefit from Forward+ tile-based light culling. On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
 
 #### Full Pass Sequences
 
@@ -194,39 +193,45 @@ SetupPass → DepthPrePass → GeometryPass(opaque) → Skybox → ResolvePass
 ## Project Structure
 
 ```
-TaoTieRP/
-├── Assets/
-│   ├── Examples/                  # Example scripts (MeshBall, PerObjectMaterialProperties)
-│   ├── Scenes/                    # Example scenes
-│   │   ├── Baked Light/
-│   │   ├── Circuitry/
-│   │   ├── Common Materials/
-│   │   ├── LOD/
-│   │   ├── Many Lights/
-│   │   ├── Multiple Cameras/
-│   │   ├── Particles/
-│   │   └── Tone Mapping/
-│   ├── Post FX *.asset            # Post-processing preset assets
-│   └── Tao Tie RP.asset           # Render pipeline asset
-├── Packages/
-│   └── com.taotie.render-pipelines/
-│       ├── Runtime/
-│       │   ├── Data/               # Pipeline settings (camera, shadow, post-FX, etc.)
-│       │   ├── Passes/             # Render graph passes (18 passes)
-│       │   ├── Debugger/          # Debug passes (depth, forward+)
-│       │   ├── Attribute/          # Custom inspector attributes
-│       │   └── Materials/         # Internal materials
-│       ├── Editor/                 # Editor tools, property drawers, shader stripper
-│       ├── Shaders/
-│       │   ├── ShaderLibrary/     # HLSL include files (Common, Lighting, Cookies, TAA, Outline, etc.)
-│       │   ├── Lit.shader
-│       │   ├── Unlit.shader
-│       │   ├── UnlitParticles.shader
-│       │   ├── Outline.shader
-│       │   ├── TAA.shader
-│       │   └── ...
-│       └── LWGUI/                 # Material inspector (Light Weight Shader GUI)
-└── ProjectSettings/
+com.taotie.render-pipelines/
+├── package.json                   # Package manifest (samples, description, dependencies)
+├── README.md
+├── LICENSE
+├── Runtime/
+│   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, AA, etc.)
+│   ├── Passes/                    # Render graph passes (Lighting, Geometry, GBuffer, TAA, SMAA, PostFX, etc.)
+│   ├── Debugger/                 # Debug passes (depth, forward+)
+│   ├── Attribute/                 # Custom inspector attributes (ShowIf, MSAAField, EnumLabel, etc.)
+│   ├── Materials/                 # Internal materials
+│   ├── CameraRenderer.cs          # Main camera renderer (pass orchestration, AA/depth/TAA integration)
+│   ├── PostFXStack.cs             # Post-processing stack (bloom, color grading, FXAA, SMAA passes)
+│   ├── Shadows.cs                 # Shadow rendering
+│   ├── TAAData.cs                 # TAA per-camera history & jitter management
+│   ├── SMAATextures.cs            # SMAA precomputed lookup textures (embedded byte arrays)
+│   └── TaoTieRenderPipeline.cs    # Pipeline asset & render entry point
+├── Editor/
+│   ├── ShaderStripper.cs          # Build-time shader/SMAA stripping
+│   ├── HighQualityAAModeDrawer.cs # AA mode dropdown (MSAA disabled in Deferred)
+│   ├── TaoTieAssetCreator.cs      # One-click pipeline + Post FX asset creation
+│   └── ...                        # Property drawers (ShowIf, EnumLabel, RenderingMode, etc.)
+├── Shaders/
+│   ├── ShaderLibrary/             # HLSL includes (Common, Lighting, BRDF, GI, ForwardPlus, etc.)
+│   ├── Lit.shader                 # PBR lit shader (CustomLit, DeferredGBuffer, ShadowCaster, DepthOnly, Outline, Meta)
+│   ├── Unlit.shader               # Unlit shader
+│   ├── UnlitParticles.shader      # Particle shader (flipbook, soft particles, distortion)
+│   ├── UIBlending.shader          # UI shader with custom blending
+│   ├── DeferredLighting.shader   # Fullscreen deferred lighting pass
+│   ├── PostFXStack.shader         # Post-processing (bloom, color grading, FXAA, SMAA)
+│   ├── CameraRenderer.shader      # Internal blit/copy/depth operations
+│   ├── TAA.shader                 # Temporal AA resolve
+│   ├── Outline.shader             # Outline effect
+│   ├── FXAAPass.hlsl              # FXAA fragment
+│   ├── SMAAPass.hlsl              # SMAA 3-pass fragments
+│   └── DepthOnlyPass.hlsl         # Depth-only pass for pre-pass
+├── LWGUI/                         # Light Weight Shader GUI (material inspector)
+└── Samples~/                      # Sample content (hidden from AssetDatabase, imported via Package Manager)
+    ├── Examples/                  # Example scripts, pipeline asset, post-FX presets
+    └── Scenes/                    # Example scenes (8 scenes)
 ```
 
 ### Render Pass Sequence
@@ -249,9 +254,20 @@ LightingPass → SetupPass → GBufferPass → DeferredLightingPass
 
 ## Getting Started
 
-1. Open the project in Unity 2022.3.53f1 or later
-2. The pipeline asset (`Tao Tie RP.asset`) is assigned in **Project Settings > Graphics > Scriptable Render Pipeline Asset**
-3. Open any scene under `Assets/Scenes/` to explore features
+1. Clone this repository (or add as a submodule) into your Unity project's `Packages/` directory:
+   ```bash
+   cd YourUnityProject/Packages
+   git clone https://github.com/526077247/TaoTieRP.git
+   ```
+   Or add it via `manifest.json`:
+   ```json
+   "com.taotie.render-pipelines": "https://github.com/526077247/TaoTieRP.git"
+   ```
+2. Open the project in Unity 2022.3.x or later
+3. Import samples via **Window > Package Manager > TaoTie RP > Samples > Import** (or menu **TaoTie RP > Samples Importer...**)
+4. Assign the pipeline asset (`Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Examples/Tao Tie RP.asset`) in **Project Settings > Graphics > Scriptable Render Pipeline Asset**
+   - Alternatively, use **Assets > Create > Rendering/TaoTie Pipeline** to create a new pipeline asset with default Post FX Settings in one click
+5. Open any scene under `Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Scenes/` to explore features
 
 ### Example Scenes
 
