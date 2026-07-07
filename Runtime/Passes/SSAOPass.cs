@@ -1,0 +1,179 @@
+using UnityEngine;
+using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
+using UnityEngine.Rendering;
+
+namespace TaoTie.RenderPipelines
+{
+    public class SSAOPass
+    {
+        static readonly ProfilingSampler sampler = new("SSAO");
+
+        static Material ssaoMaterial;
+        static readonly int
+            texelSizeID = Shader.PropertyToID("_SSAOTexelSize"),
+            paramsID = Shader.PropertyToID("_SSAOParams"),
+            inverseViewProjID = Shader.PropertyToID("_SSAOInverseViewProj"),
+            viewProjID = Shader.PropertyToID("_SSAOViewProj"),
+            sourceID = Shader.PropertyToID("_SSAOSource"),
+            ssaoTexID = Shader.PropertyToID("_ScreenSpaceOcclusionTexture");
+
+        TextureHandle depthTexture;
+        TextureHandle ssaoTemp;
+        TextureHandle ssaoResult;
+        Vector2Int bufferSize;
+        Vector2Int ssaoSize;
+        SSAOSettings settings;
+        Matrix4x4 inverseViewProj;
+        Matrix4x4 viewProj;
+        Matrix4x4 cameraView;
+        Matrix4x4 cameraProj;
+        TextureHandle rtColor;
+        TextureHandle rtDepth;
+
+        static void EnsureMaterial()
+        {
+            if (ssaoMaterial == null || ssaoMaterial.shader == null || ssaoMaterial.shader.name != "Hidden/TaoTie RP/SSAO")
+            {
+                if (ssaoMaterial != null) Object.DestroyImmediate(ssaoMaterial);
+                var shader = Shader.Find("Hidden/TaoTie RP/SSAO");
+                if (shader == null || shader.passCount < 3) { ssaoMaterial = null; return; }
+                ssaoMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+            }
+        }
+
+        void Render(RenderGraphContext context)
+        {
+            EnsureMaterial();
+            if (ssaoMaterial == null) return;
+
+            CommandBuffer cmd = context.cmd;
+
+            // Set parameters
+            cmd.SetGlobalVector(texelSizeID, new Vector4(
+                1f / ssaoSize.x, 1f / ssaoSize.y, ssaoSize.x, ssaoSize.y));
+            cmd.SetGlobalVector(paramsID, new Vector4(
+                settings.intensity, settings.radius, settings.falloff, settings.downsample));
+            cmd.SetGlobalMatrix(inverseViewProjID, inverseViewProj);
+            cmd.SetGlobalMatrix(viewProjID, viewProj);
+
+            // Pass 0: Generate SSAO
+            cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+            cmd.SetRenderTarget(ssaoTemp,
+                RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.SetViewport(new Rect(0, 0, ssaoSize.x, ssaoSize.y));
+            cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
+            cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 0);
+
+            // Pass 1: Horizontal blur
+            cmd.SetGlobalTexture(sourceID, ssaoTemp);
+            cmd.SetRenderTarget(ssaoResult,
+                RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 1);
+
+            // Pass 2: Vertical blur (into ssaoTemp for reuse)
+            cmd.SetGlobalTexture(sourceID, ssaoResult);
+            cmd.SetRenderTarget(ssaoTemp,
+                RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 2);
+
+            // Copy result to final output
+            cmd.CopyTexture(ssaoTemp, ssaoResult);
+
+            // Set global for lighting shaders
+            cmd.SetGlobalTexture(ssaoTexID, ssaoResult);
+
+            // Restore render target for subsequent passes (transparent geometry, etc.)
+            cmd.SetRenderTarget(
+                rtColor,
+                RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
+                rtDepth,
+                RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+
+            // Restore VP
+            cmd.SetViewProjectionMatrices(cameraView, cameraProj);
+
+            context.renderContext.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+        }
+
+        public static TextureHandle Record(
+            RenderGraph renderGraph,
+            in CameraRendererTextures textures,
+            Vector2Int bufferSize,
+            SSAOSettings settings,
+            Camera camera)
+        {
+            EnsureMaterial();
+            if (ssaoMaterial == null || !settings.enabled)
+                return default;
+
+            int ssaoW = Mathf.Max(1, Mathf.CeilToInt(bufferSize.x * settings.downsample));
+            int ssaoH = Mathf.Max(1, Mathf.CeilToInt(bufferSize.y * settings.downsample));
+            Vector2Int ssaoSize = new(ssaoW, ssaoH);
+
+            // Enable keyword on material
+            string kw = settings.sampleCount switch
+            {
+                SSAOSettings.SampleCount.High => "SSAO_HIGH",
+                SSAOSettings.SampleCount.Medium => "SSAO_MEDIUM",
+                _ => "SSAO_LOW"
+            };
+            ssaoMaterial.DisableKeyword("SSAO_HIGH");
+            ssaoMaterial.DisableKeyword("SSAO_MEDIUM");
+            ssaoMaterial.DisableKeyword("SSAO_LOW");
+            ssaoMaterial.EnableKeyword(kw);
+
+            // Compute view matrices (non-jittered)
+            Matrix4x4 view = camera.worldToCameraMatrix;
+            Matrix4x4 proj = camera.projectionMatrix;
+            Matrix4x4 gpuProj = GL.GetGPUProjectionMatrix(proj, true);
+            Matrix4x4 vp = gpuProj * view;
+            Matrix4x4 invVP = Matrix4x4.Inverse(vp);
+
+            using RenderGraphBuilder builder = renderGraph.AddRenderPass(
+                sampler.name, out SSAOPass pass, sampler);
+
+            TextureHandle depthHandle = textures.depthCopy.IsValid()
+                ? textures.depthCopy : textures.depthAttachment;
+            pass.depthTexture = builder.ReadTexture(depthHandle);
+
+            var format = SystemInfo.IsFormatSupported(GraphicsFormat.R8_UNorm, FormatUsage.Render)
+                ? GraphicsFormat.R8_UNorm : GraphicsFormat.R8G8B8A8_UNorm;
+
+            var desc = new TextureDesc(ssaoSize.x, ssaoSize.y)
+            {
+                colorFormat = format,
+                name = "SSAO Temp"
+            };
+            pass.ssaoTemp = builder.WriteTexture(renderGraph.CreateTexture(desc));
+            desc.name = "SSAO Result";
+            pass.ssaoResult = builder.WriteTexture(renderGraph.CreateTexture(desc));
+
+            pass.bufferSize = bufferSize;
+            pass.ssaoSize = ssaoSize;
+            pass.settings = settings;
+            pass.inverseViewProj = invVP;
+            pass.viewProj = vp;
+            pass.cameraView = camera.worldToCameraMatrix;
+            pass.cameraProj = camera.projectionMatrix;
+            pass.rtColor = textures.colorAttachment;
+            pass.rtDepth = textures.depthAttachment;
+
+            builder.AllowPassCulling(false);
+            builder.SetRenderFunc<SSAOPass>(
+                static (pass, context) => pass.Render(context));
+
+            return pass.ssaoResult;
+        }
+
+        public static void Dispose()
+        {
+            if (ssaoMaterial != null)
+            {
+                Object.DestroyImmediate(ssaoMaterial);
+                ssaoMaterial = null;
+            }
+        }
+    }
+}

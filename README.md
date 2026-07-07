@@ -91,6 +91,17 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - 3 shadow filter quality levels (Hard / Medium / Soft)
 - Configurable shadow atlas resolution (256–8192)
 
+### SSAO (Screen Space Ambient Occlusion)
+
+- Alchemy/Horizon-based AO algorithm with depth-reconstructed normals
+- 3 quality presets: Low (4 samples), Medium (8 samples), High (12 samples)
+- Bilateral blur (horizontal + vertical, 5-tap each) to reduce noise while preserving edges
+- Configurable radius, intensity, and distance falloff
+- Configurable resolution downsample (0.25×–1×) for performance scaling
+- Applied to ambient/indirect lighting only (multiplies `surface.occlusion`), does not affect direct lighting
+- Works in both Forward and Deferred paths (applied after opaque queue, before transparent queue)
+- Configured under **Shadows > SSAO** in the pipeline asset
+
 ### Outline (Post-Process)
 
 - Roberts Cross depth edge detection
@@ -154,6 +165,7 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 | `Hidden/TaoTie RP/Camera Renderer` | Internal blit/copy operations |
 | `Hidden/TaoTie RP/TAA` | Temporal anti-aliasing resolve |
 | `Hidden/TaoTie RP/Outline` | Post-process outline (depth + normal edge detection) |
+| `Hidden/TaoTie RP/SSAO` | Screen Space Ambient Occlusion (generate + horizontal/vertical bilateral blur) |
 | `Hidden/ForwardPlus Debugger` | Debug overlay |
 | `Hidden/Depth Debugger` | Depth visualization (Linear Eye / 01 / Raw, split-screen, opacity) |
 
@@ -166,6 +178,7 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 - **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
 - **HDR** — Per-camera HDR support
 - **Shader Stripping** — Automatic stripping of unused shader variants (debug shaders, Meta passes, WebGL compute buffer variants, SMAA passes)
+- **SSAO** — Screen Space Ambient Occlusion with Alchemy AO algorithm, depth-reconstructed normals, bilateral blur, configurable quality/radius/intensity/falloff/downsample
 - **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on WebGL1/GLES2 (`supportedRenderTargetCount == 1`), graphics format fallbacks
 - **Rendering Layer Mask** — Per-light rendering layer mask for selective lighting (custom SRP layer names, works alongside Unity's built-in Culling Mask)
 - **Rendering Layer Mask Names** — 31 custom rendering layers exposed via `TaoTieRenderPipelineAsset.renderingLayerMaskNames`
@@ -198,7 +211,7 @@ com.taotie.render-pipelines/
 ├── README.md
 ├── LICENSE
 ├── Runtime/
-│   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, AA, etc.)
+│   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, AA, SSAO, etc.)
 │   ├── Passes/                    # Render graph passes (Lighting, Geometry, GBuffer, TAA, SMAA, PostFX, etc.)
 │   ├── Debugger/                 # Debug passes (depth, forward+)
 │   ├── Attribute/                 # Custom inspector attributes (ShowIf, MSAAField, EnumLabel, etc.)
@@ -208,6 +221,7 @@ com.taotie.render-pipelines/
 │   ├── Shadows.cs                 # Shadow rendering
 │   ├── TAAData.cs                 # TAA per-camera history & jitter management
 │   ├── SMAATextures.cs            # SMAA precomputed lookup textures (embedded byte arrays)
+│   ├── SSAOPass.cs               # SSAO render graph pass (generate + bilateral blur)
 │   └── TaoTieRenderPipeline.cs    # Pipeline asset & render entry point
 ├── Editor/
 │   ├── ShaderStripper.cs          # Build-time shader/SMAA stripping
@@ -225,6 +239,7 @@ com.taotie.render-pipelines/
 │   ├── CameraRenderer.shader      # Internal blit/copy/depth operations
 │   ├── TAA.shader                 # Temporal AA resolve
 │   ├── Outline.shader             # Outline effect
+│   ├── SSAO.shader               # SSAO (generate + horizontal/vertical bilateral blur)
 │   ├── FXAAPass.hlsl              # FXAA fragment
 │   ├── SMAAPass.hlsl              # SMAA 3-pass fragments
 │   └── DepthOnlyPass.hlsl         # Depth-only pass for pre-pass
@@ -239,14 +254,14 @@ com.taotie.render-pipelines/
 **Forward Path:**
 ```
 LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque) → SkyboxPass
-→ ResolvePass(MSAA) → CopyAttachments → GeometryPass(transparent)
+→ ResolvePass(MSAA) → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
 → UnsupportedShaders → ResolvePass → OutLinePass → TAAResolvePass → PostFX → Final → Debug → Gizmos
 ```
 
 **Deferred Path:**
 ```
 LightingPass → SetupPass → GBufferPass → DeferredLightingPass
-→ SkyboxPass → OutLinePass → CopyAttachments → GeometryPass(transparent)
+→ SkyboxPass → OutLinePass → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
 → PostFX → Final → Debug → Gizmos
 ```
 

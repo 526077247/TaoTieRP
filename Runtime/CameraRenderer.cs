@@ -274,6 +274,14 @@ namespace TaoTie.RenderPipelines
                         renderGraph, useColorTexture, useDepthTexture, copier, textures,
                         false);
 
+                    // SSAO (after depth copy, before transparent)
+                    bool useSSAO = shadowSettings.ssao.enabled && useDepthTexture &&
+                                   !isReflectionCamera;
+                    if (useSSAO)
+                        SSAOPass.Record(renderGraph, textures, bufferSize, shadowSettings.ssao, camera);
+                    Shader.EnableKeyword("_SSAO_ENABLED");
+                    if (!useSSAO) Shader.DisableKeyword("_SSAO_ENABLED");
+
                     // Transparent objects always use forward path (with Forward+ if available).
                     GeometryPass.Record(
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
@@ -314,6 +322,14 @@ namespace TaoTie.RenderPipelines
                         CopyAttachmentsPass.Record(
                             renderGraph, useColorTexture, useDepthTexture && !useDepthPrePass,
                             copier, textures, useMSAA);
+
+                        // SSAO (after depth copy, before transparent)
+                        bool useSSAO = shadowSettings.ssao.enabled && useDepthTexture &&
+                                       !isReflectionCamera;
+                        if (useSSAO)
+                            SSAOPass.Record(renderGraph, textures, bufferSize, shadowSettings.ssao, camera);
+                        Shader.EnableKeyword("_SSAO_ENABLED");
+                        if (!useSSAO) Shader.DisableKeyword("_SSAO_ENABLED");
 
                         GeometryPass.Record(
                             renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
@@ -377,6 +393,7 @@ namespace TaoTie.RenderPipelines
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
             SMAATextures.Dispose();
+            SSAOPass.Dispose();
             CameraRendererCopier.Cleanup();
         }
     }

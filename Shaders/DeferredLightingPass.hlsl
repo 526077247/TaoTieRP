@@ -69,6 +69,10 @@ float4 DeferredLightingFragment (DeferredVaryings input) : SV_TARGET {
     surface.alpha = 1.0;
     surface.metallic = normalMS.z;
     surface.occlusion = albedoAO.a;
+    #if defined(_SSAO_ENABLED)
+        surface.occlusion *= SAMPLE_TEXTURE2D(_ScreenSpaceOcclusionTexture,
+            sampler_ScreenSpaceOcclusionTexture, texUV).r;
+    #endif
     surface.smoothness = normalMS.w;
     surface.fresnelStrength = 1.0;
     surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);

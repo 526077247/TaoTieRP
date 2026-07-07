@@ -90,6 +90,10 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	surface.alpha = base.a;
 	surface.metallic = GetMetallic(config);
 	surface.occlusion = GetOcclusion(config);
+	#if defined(_SSAO_ENABLED)
+		surface.occlusion *= SAMPLE_TEXTURE2D(_ScreenSpaceOcclusionTexture,
+			sampler_ScreenSpaceOcclusionTexture, config.fragment.screenUV).r;
+	#endif
 	surface.smoothness = GetSmoothness(config);
 	surface.fresnelStrength = GetFresnel(config);
 	surface.dither = InterleavedGradientNoise(config.fragment.positionSS, 0);

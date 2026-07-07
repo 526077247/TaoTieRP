@@ -31,6 +31,9 @@ SamplerState _Sampler_ClampU_ClampV_Point;
 SAMPLER(sampler_linear_clamp);
 SAMPLER(sampler_point_clamp);
 
+TEXTURE2D(_ScreenSpaceOcclusionTexture);
+SAMPLER(sampler_ScreenSpaceOcclusionTexture);
+
 bool IsOrthographicCamera () {
     return unity_OrthoParams.w;
 }

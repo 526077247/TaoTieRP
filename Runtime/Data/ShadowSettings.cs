@@ -100,9 +100,11 @@ namespace TaoTie.RenderPipelines
             atlasSize = MapSize._1024,
         };
         
+        [ShowIf(nameof(useForwardPlus), ShowIfOperator.Equal, 0)]
         [Range(0, 64)]
         [Tooltip("Max other lights supported (capped at 8 on WebGL1).")]
-        [ShowIf(nameof(useForwardPlus), ShowIfOperator.NotEqual, 1)]
         public int maxOtherLights = 32;
+
+        public SSAOSettings ssao = new SSAOSettings();
     }
 }
