@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tao Tie RP
   m_EditorClassIdentifier: 
   settings:
-    renderingMode: 1
+    renderingMode: 0
     useSRPBatcher: 1
     cameraBuffer:
       allowHDR: 1
@@ -27,12 +27,10 @@ MonoBehaviour:
       msaaSamples: 2
       taaSettings:
         jitterScale: 0.5
-        antiFlicker: 0.125
         baseBlendFactor: 0.9
-        jitterSpread: 1
-        sharpening: 0.15
-      postProcessAA: 2
-      outLine: 0
+        varianceClampScale: 0.9
+      postProcessAA: 1
+      stripSMAAWhenUnused: 0
     shadows:
       maxDistance: 30
       distanceFade: 0.1
@@ -51,8 +49,15 @@ MonoBehaviour:
         maxLightsPerTile: 128
         tileSize: 0
         atlasSize: 1024
+      maxOtherLights: 64
+      ssao:
+        enabled: 0
+        sampleCount: 12
+        radius: 0.5
+        intensity: 1
+        falloff: 3
+        downsample: 0.5
     postFXSettings: {fileID: 11400000, guid: d78384e16e845f340a75fe167b39b86d, type: 2}
     colorLUTResolution: 32
-    stripSMAAWhenUnused: 1
     defaultMaterial: {fileID: 2100000, guid: 154398cb26997bf4ebf4af5ff1db036e, type: 2}
     cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}

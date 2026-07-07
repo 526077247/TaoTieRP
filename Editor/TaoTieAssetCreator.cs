@@ -59,22 +59,24 @@ namespace TaoTie.RenderPipelines.Editor
         static PostFXSettings CreatePostFXSettingsAsset(string path)
         {
             var postFX = ScriptableObject.CreateInstance<PostFXSettings>();
-            var so = new SerializedObject(postFX);
+            // OnEnable has been called — effects list is populated with default effects
 
-            var shaderProp = so.FindProperty("shader");
-            if (shaderProp != null)
-                shaderProp.objectReferenceValue = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
+            postFX.shader = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
 
-            // Cold preset overrides
-            so.FindProperty("colorAdjustments.saturation").floatValue = 0f;
-            so.FindProperty("whiteBalance.temperature").floatValue = -50f;
-            so.FindProperty("toneMapping.mode").enumValueIndex = 2; // Neutral
+            // Apply Cold preset overrides via direct C# access
+            foreach (var effect in postFX.Effects)
+            {
+                if (effect is ColorGradingEffect cg)
+                {
+                    cg.colorAdjustments.saturation = 0f;
+                    cg.whiteBalance.temperature = -50f;
+                    cg.toneMapping.mode = ColorGradingEffect.ToneMappingSettings.Mode.Neutral;
+                    cg.shadowsMidtonesHighlights.shadows = Color.white;
+                    cg.shadowsMidtonesHighlights.midtones = Color.white;
+                    cg.shadowsMidtonesHighlights.highlights = Color.white;
+                }
+            }
 
-            so.FindProperty("shadowsMidtonesHighlights.shadows").colorValue = Color.white;
-            so.FindProperty("shadowsMidtonesHighlights.midtones").colorValue = Color.white;
-            so.FindProperty("shadowsMidtonesHighlights.highlights").colorValue = Color.white;
-
-            so.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(postFX, path);
             return postFX;
         }

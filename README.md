@@ -57,13 +57,13 @@ TaoTie RP supports two rendering paths with optional Forward+ tile-based light c
 ```
 LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → SkyboxPass
 → [ResolvePass(MSAA)] → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
-→ UnsupportedShadersPass → [ResolvePass] → OutLinePass → [TAAResolvePass] → PostFX → Final
+→ UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → PostFX → Final
 ```
 
 **Deferred path:**
 ```
 LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
-→ SkyboxPass → OutLinePass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
+→ SkyboxPass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [TAAResolvePass] → PostFX → Final
 ```
 
@@ -102,7 +102,9 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - Works in both Forward and Deferred paths (applied after opaque queue, before transparent queue)
 - Configured under **Shadows > SSAO** in the pipeline asset
 
-### Outline (Post-Process)
+### Outline (Post-Process Effect)
+
+Outline is now a modular PostFX effect (`OutlineEffect`) integrated into the Post FX Settings effects list, alongside Bloom and Color Grading. It can be individually enabled/disabled, reordered, and added via the Inspector's `+` dropdown.
 
 - Roberts Cross depth edge detection
 - Optional G-Buffer normal edge detection (Deferred path)
@@ -112,9 +114,21 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 
 ### Post-Processing
 
-- **Bloom** — Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling
-- **Tone Mapping** — ACES, Neutral, Reinhard
-- **Color Grading** — Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights
+The post-processing stack uses a modular effect architecture. Each effect is an independent `[Serializable]` class inheriting from `PostFXEffect`, registered in the Post FX Settings asset's effects list. Effects can be individually enabled/disabled, reordered to change execution order, and added via the Inspector's `+` dropdown menu (which auto-discovers all `PostFXEffect` subclasses via reflection).
+
+Shader pass indices are resolved dynamically at runtime by name (via `Material.GetPassName`), eliminating the fragile hardcoded enum-to-shader-pass-index coupling.
+
+Built-in effects:
+
+| Effect | Description |
+|--------|-------------|
+| **Bloom** | Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling |
+| **Color Grading** | Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights, tone mapping (ACES, Neutral, Reinhard) |
+| **Outline** | Roberts Cross depth + optional G-Buffer normal edge detection, configurable color/sensitivity/width |
+
+> Extensibility: to add a new post-processing effect, create a class inheriting from `PostFXEffect`, override `DisplayName` and `Execute()`, and it will automatically appear in the Inspector's `+` dropdown. No changes to PostFXStack, PostFXPass, or shader pass enums are needed.
+
+**Additional post-processing features:**
 - **Bicubic Rescaling** — Off / Up-only / Up-and-down
 - Post-processing overrides per camera
 
@@ -217,7 +231,14 @@ com.taotie.render-pipelines/
 │   ├── Attribute/                 # Custom inspector attributes (ShowIf, MSAAField, EnumLabel, etc.)
 │   ├── Materials/                 # Internal materials
 │   ├── CameraRenderer.cs          # Main camera renderer (pass orchestration, AA/depth/TAA integration)
-│   ├── PostFXStack.cs             # Post-processing stack (bloom, color grading, FXAA, SMAA passes)
+│   ├── PostFXStack.cs             # Post-processing stack (dynamic pass lookup, draw helpers)
+│   ├── PostFX/                    # Modular post-processing effect system
+│   │   ├── PostFXEffect.cs        # Abstract base class for all post-FX effects
+│   │   ├── PostFXPassNames.cs     # Shader pass name constants (replaces hardcoded enum)
+│   │   ├── PostFXEffectRegistry.cs# Reflection-based discovery of all PostFXEffect subclasses
+│   │   ├── BloomEffect.cs         # Bloom effect (pyramid down/up-sampling)
+│   │   ├── ColorGradingEffect.cs  # Color grading + tone mapping (LUT generation)
+│   │   └── OutlineEffect.cs       # Outline effect (depth + normal edge detection)
 │   ├── Shadows.cs                 # Shadow rendering
 │   ├── TAAData.cs                 # TAA per-camera history & jitter management
 │   ├── SMAATextures.cs            # SMAA precomputed lookup textures (embedded byte arrays)
@@ -255,13 +276,13 @@ com.taotie.render-pipelines/
 ```
 LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque) → SkyboxPass
 → ResolvePass(MSAA) → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
-→ UnsupportedShaders → ResolvePass → OutLinePass → TAAResolvePass → PostFX → Final → Debug → Gizmos
+→ UnsupportedShaders → ResolvePass → TAAResolvePass → PostFX → Final → Debug → Gizmos
 ```
 
 **Deferred Path:**
 ```
 LightingPass → SetupPass → GBufferPass → DeferredLightingPass
-→ SkyboxPass → OutLinePass → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
+→ SkyboxPass → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
 → PostFX → Final → Debug → Gizmos
 ```
 

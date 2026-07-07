@@ -49,16 +49,16 @@ namespace TaoTie.RenderPipelines
 			var postProcessAA = stack.BufferSettings.postProcessAA;
 
 			RenderTargetIdentifier finalSource;
-			PostFXStack.Pass finalPass;
+			int finalPass;
 
 			if (postProcessAA == CameraBufferSettings.PostProcessAA.FXAA)
 			{
 				finalSource = colorGradingResult;
-				finalPass = PostFXStack.Pass.FXAA;
+				finalPass = stack.GetPassIndex(PostFXPassNames.FXAA);
 				if (colorLUTResolution > 0)
-					stack.Draw(buffer, colorSource, finalSource, PostFXStack.Pass.ApplyColorGrading);
+					stack.Draw(buffer, colorSource, finalSource, stack.GetPassIndex(PostFXPassNames.ApplyColorGrading));
 				else
-					stack.Draw(buffer, colorSource, finalSource, PostFXStack.Pass.Copy);
+					stack.Draw(buffer, colorSource, finalSource, stack.GetPassIndex(PostFXPassNames.Copy));
 			}
 			else if (postProcessAA == CameraBufferSettings.PostProcessAA.SMAA)
 			{
@@ -69,27 +69,29 @@ namespace TaoTie.RenderPipelines
 
 				// Apply color grading first into colorGradingResult
 				if (colorLUTResolution > 0)
-					stack.Draw(buffer, colorSource, colorGradingResult, PostFXStack.Pass.ApplyColorGrading);
+					stack.Draw(buffer, colorSource, colorGradingResult, stack.GetPassIndex(PostFXPassNames.ApplyColorGrading));
 				else
-					stack.Draw(buffer, colorSource, colorGradingResult, PostFXStack.Pass.Copy);
+					stack.Draw(buffer, colorSource, colorGradingResult, stack.GetPassIndex(PostFXPassNames.Copy));
 
-				// SMAA Pass 1: Edge Detection (color → edges)
-				stack.Draw(buffer, colorGradingResult, smaaEdges, PostFXStack.Pass.SMAAEdgeDetection);
+				// SMAA Pass 1: Edge Detection (color -> edges)
+				stack.Draw(buffer, colorGradingResult, smaaEdges, stack.GetPassIndex(PostFXPassNames.SMAAEdgeDetection));
 
-				// SMAA Pass 2: Blend Weight Calculation (edges → weights)
-				stack.Draw(buffer, smaaEdges, smaaWeights, PostFXStack.Pass.SMAABlendWeightCalculation);
+				// SMAA Pass 2: Blend Weight Calculation (edges -> weights)
+				stack.Draw(buffer, smaaEdges, smaaWeights, stack.GetPassIndex(PostFXPassNames.SMAABlendWeightCalculation));
 
-				// SMAA Pass 3: Neighborhood Blending (color + weights → smaaResult)
+				// SMAA Pass 3: Neighborhood Blending (color + weights -> smaaResult)
 				buffer.SetGlobalTexture(PostFXStack.fxSource2Id, smaaWeights);
-				stack.Draw(buffer, colorGradingResult, smaaResult, PostFXStack.Pass.SMAANeighborhoodBlending);
+				stack.Draw(buffer, colorGradingResult, smaaResult, stack.GetPassIndex(PostFXPassNames.SMAANeighborhoodBlending));
 
 				finalSource = smaaResult;
-				finalPass = PostFXStack.Pass.Copy;
+				finalPass = stack.GetPassIndex(PostFXPassNames.Copy);
 			}
 			else
 			{
 				finalSource = colorSource;
-				finalPass = colorLUTResolution > 0 ? PostFXStack.Pass.ApplyColorGrading : PostFXStack.Pass.Copy;
+				finalPass = colorLUTResolution > 0
+					? stack.GetPassIndex(PostFXPassNames.ApplyColorGrading)
+					: stack.GetPassIndex(PostFXPassNames.Copy);
 			}
 
 			if (scaleMode == ScaleMode.None)
@@ -100,7 +102,9 @@ namespace TaoTie.RenderPipelines
 			{
 				stack.Draw(buffer, finalSource, scaledResult, finalPass);
 				stack.DrawFinal(buffer, scaledResult,
-					scaleMode == ScaleMode.Bicubic ? PostFXStack.Pass.FinalRescale : PostFXStack.Pass.Copy);
+					scaleMode == ScaleMode.Bicubic
+						? stack.GetPassIndex(PostFXPassNames.FinalRescale)
+						: stack.GetPassIndex(PostFXPassNames.Copy));
 			}
 
 			context.renderContext.ExecuteCommandBuffer(buffer);
@@ -115,20 +119,34 @@ namespace TaoTie.RenderPipelines
 		{
 			using var _ = new RenderGraphProfilingScope(renderGraph, groupSampler);
 
-			TextureHandle colorSource = BloomPass.Record(renderGraph, stack, textures);
+			stack.ColorLUTResolution = colorLUTResolution;
 
+			TextureHandle source = textures.resolvedColorAttachment;
 			TextureHandle colorLUT = default;
-			if (colorLUTResolution > 0)
+			bool hasColorGrading = false;
+
+			// Iterate over PostFXSettings effects list (in serialized order)
+			foreach (var effect in stack.Settings.Effects)
 			{
-				colorLUT = ColorLUTPass.Record(renderGraph, stack, colorLUTResolution);
+				if (effect == null) continue;
+				source = effect.Execute(renderGraph, stack, source, textures);
+
+				if (effect is ColorGradingEffect cgEffect)
+				{
+					hasColorGrading = cgEffect.IsEnabled;
+					colorLUT = cgEffect.ColorGradingLUT;
+				}
 			}
+
+			int effectiveLUTResolution = (hasColorGrading && colorLUTResolution > 0)
+				? colorLUTResolution : 0;
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				finalSampler.name, out PostFXPass pass, finalSampler);
 			pass.stack = stack;
-			pass.colorSource = builder.ReadTexture(colorSource);
-			pass.colorLUTResolution = colorLUTResolution;
-			if (colorLUTResolution > 0)
+			pass.colorSource = builder.ReadTexture(source);
+			pass.colorLUTResolution = effectiveLUTResolution;
+			if (effectiveLUTResolution > 0)
 			{
 				builder.ReadTexture(colorLUT);
 			}

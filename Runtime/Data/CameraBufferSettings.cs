@@ -75,11 +75,5 @@ namespace TaoTie.RenderPipelines
         [Tooltip("Strip SMAA shader passes and lookup textures from builds when Post-Process AA is not set to SMAA. " +
                  "Reduces build size by ~180KB. Disable if you plan to switch to SMAA at runtime.")]
         public bool stripSMAAWhenUnused;
-        
-        public bool outLine;
-        [ShowIf(nameof(outLine))] public Color outLineColor;
-        [ShowIf(nameof(outLine))] [Range(0.0001f, 1f)] public float outLineDepthSensitivity;
-        [ShowIf(nameof(outLine))] [Range(0.0001f, 1f)] public float outLineNormalSensitivity;
-        [ShowIf(nameof(outLine))] [Range(1f, 5f)] public float outLineWidth;
     }
 }

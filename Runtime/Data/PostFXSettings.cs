@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEditor;
@@ -6,169 +7,23 @@ namespace TaoTie.RenderPipelines
 {
     public class PostFXSettings : ScriptableObject
     {
+        [SerializeReference]
+        [SerializeField]
+        List<PostFXEffect> effects = new();
+
+        public IReadOnlyList<PostFXEffect> Effects => effects;
+
+        // 旧字段保留用于自动迁移 (使用效果类中的新类型)
+        [HideInInspector] [SerializeField] BloomEffect.BloomSettings bloom;
+        [HideInInspector] [SerializeField] ColorGradingEffect.ToneMappingSettings toneMapping;
+        [HideInInspector] [SerializeField] ColorGradingEffect.ColorAdjustmentsSettings colorAdjustments;
+        [HideInInspector] [SerializeField] ColorGradingEffect.WhiteBalanceSettings whiteBalance;
+        [HideInInspector] [SerializeField] ColorGradingEffect.SplitToningSettings splitToning;
+        [HideInInspector] [SerializeField] ColorGradingEffect.ChannelMixerSettings channelMixer;
+        [HideInInspector] [SerializeField] ColorGradingEffect.ShadowsMidtonesHighlightsSettings shadowsMidtonesHighlights;
 
         [HideInInspector]
-        [SerializeField] Shader shader = default;
-
-        [Serializable]
-        public struct BloomSettings
-        {
-            [Range(0f, 16f)] public int maxIterations;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public bool ignoreRenderScale;
-            [Min(1f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public int downscaleLimit;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public bool bicubicUpsampling;
-
-            [Min(0f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public float threshold;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            [Range(0f, 1f)] public float thresholdKnee;
-            [Min(0f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public float intensity;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public bool fadeFireflies;
-
-            public enum Mode
-            {
-                Additive,
-                Scattering
-            }
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            public Mode mode;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            [Range(0.05f, 0.95f)] public float scatter;
-        }
-
-        [SerializeField] BloomSettings bloom = new BloomSettings
-        {
-            maxIterations = 16,
-            downscaleLimit = 2,
-            bicubicUpsampling = true,
-            threshold = 1f,
-            thresholdKnee = 0.5f,
-            intensity = 0.2f,
-            fadeFireflies = true,
-            mode = BloomSettings.Mode.Scattering,
-            scatter = 0.7f
-        };
-
-        public BloomSettings Bloom => bloom;
-
-        [System.Serializable]
-        public struct ToneMappingSettings
-        {
-            public enum Mode
-            {
-                None,
-                ACES,
-                Neutral,
-                Reinhard
-            }
-
-            public Mode mode;
-        }
-
-        [Serializable]
-        public struct ColorAdjustmentsSettings
-        {
-            public float postExposure;
-
-            [Range(-100f, 100f)] public float contrast;
-
-            [ColorUsage(false, true)] public Color colorFilter;
-
-            [Range(-180f, 180f)] public float hueShift;
-
-            [Range(-100f, 100f)] public float saturation;
-        }
-
-        [SerializeField] ColorAdjustmentsSettings colorAdjustments = new ColorAdjustmentsSettings
-        {
-            colorFilter = Color.white,
-            saturation = 28f
-        };
-
-        public ColorAdjustmentsSettings ColorAdjustments => colorAdjustments;
-
-        [Serializable]
-        public struct WhiteBalanceSettings
-        {
-
-            [Range(-100f, 100f)] public float temperature, tint;
-        }
-
-        [SerializeField] WhiteBalanceSettings whiteBalance = default;
-
-        public WhiteBalanceSettings WhiteBalance => whiteBalance;
-
-        [Serializable]
-        public struct SplitToningSettings
-        {
-
-            [ColorUsage(false)] public Color shadows, highlights;
-
-            [Range(-100f, 100f)] public float balance;
-        }
-
-        [SerializeField] SplitToningSettings splitToning = new SplitToningSettings
-        {
-            shadows = Color.gray,
-            highlights = Color.gray
-        };
-
-        public SplitToningSettings SplitToning => splitToning;
-
-        [Serializable]
-        public struct ChannelMixerSettings
-        {
-
-            public Vector3 red, green, blue;
-        }
-
-        [SerializeField] ChannelMixerSettings channelMixer = new ChannelMixerSettings
-        {
-            red = Vector3.right,
-            green = Vector3.up,
-            blue = Vector3.forward
-        };
-
-        public ChannelMixerSettings ChannelMixer => channelMixer;
-
-        [Serializable]
-        public struct ShadowsMidtonesHighlightsSettings
-        {
-
-            [ColorUsage(false, true)] public Color shadows, midtones, highlights;
-
-            [Range(0f, 2f)] public float shadowsStart, shadowsEnd, highlightsStart, highLightsEnd;
-        }
-
-        [SerializeField] ShadowsMidtonesHighlightsSettings
-            shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings
-            {
-                shadows = new Color(0.7490196f, 0.6156863f, 1f, 1f),
-                midtones = new Color(1f, 0.8509804f, 0.8509804f, 1f),
-                highlights = new Color(1f, 0.89411765f, 0.7921569f, 1f),
-                shadowsEnd = 0.3f,
-                highlightsStart = 0.55f,
-                highLightsEnd = 1f
-            };
-
-        public ShadowsMidtonesHighlightsSettings ShadowsMidtonesHighlights =>
-            shadowsMidtonesHighlights;
-
-        [SerializeField] ToneMappingSettings toneMapping = new ToneMappingSettings
-        {
-            mode = ToneMappingSettings.Mode.ACES
-        };
-
-        public ToneMappingSettings ToneMapping => toneMapping;
-
+        public Shader shader = default;
 
         [System.NonSerialized] Material material;
 
@@ -176,13 +31,16 @@ namespace TaoTie.RenderPipelines
         {
             get
             {
-                if (shader == null)
+                if (shader == null || shader.name != "Hidden/TaoTie RP/Post FX Stack")
                 {
                     shader = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
-                    if (shader == null)
+                    if (shader == null || shader.name != "Hidden/TaoTie RP/Post FX Stack")
                     {
                         Debug.LogError("Hidden/TaoTie RP/Post FX Stack shader not found!");
+                        return null;
                     }
+                    // shader changed — discard stale material so it gets recreated
+                    material = null;
                 }
                 if (material == null && shader != null)
                 {
@@ -204,6 +62,27 @@ namespace TaoTie.RenderPipelines
             }
 #endif
             return true;
+        }
+
+        void OnEnable()
+        {
+            if (effects == null || effects.Count == 0)
+            {
+                effects = new List<PostFXEffect>();
+                effects.Add(new BloomEffect { settings = bloom });
+                effects.Add(new ColorGradingEffect
+                {
+                    toneMapping = toneMapping,
+                    colorAdjustments = colorAdjustments,
+                    whiteBalance = whiteBalance,
+                    splitToning = splitToning,
+                    channelMixer = channelMixer,
+                    shadowsMidtonesHighlights = shadowsMidtonesHighlights
+                });
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.SetDirty(this);
+#endif
+            }
         }
 
 #if UNITY_EDITOR

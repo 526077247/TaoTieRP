@@ -28,13 +28,19 @@ namespace TaoTie.RenderPipelines
         void SetupPostFXStack(
             Camera camera, CameraSettings cameraSettings,
             in CameraBufferSettings bufferSettings, PostFXSettings postFXSettings,
-            Vector2Int bufferSize)
+            Vector2Int bufferSize, bool useGBufferNormals,
+            TextureHandle gBufferNormalMS, bool useHDR, MSAASamples msaaSamples)
         {
             postFXStack.BufferSettings = bufferSettings;
             postFXStack.BufferSize = bufferSize;
             postFXStack.Camera = camera;
             postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
             postFXStack.Settings = postFXSettings;
+            postFXStack.UseGBufferNormals = useGBufferNormals;
+            postFXStack.GBufferNormalMS = gBufferNormalMS;
+            postFXStack.UseHDR = useHDR;
+            postFXStack.MSAA = msaaSamples;
+            postFXStack.InitializePassMap();
         }
 
         void RecordTAA(
@@ -265,11 +271,6 @@ namespace TaoTie.RenderPipelines
                     // Skybox renders after deferred lighting, only where depth is far
                     SkyboxPass.Record(renderGraph, camera, textures);
 
-                    if(bufferSettings.outLine && camera.cameraType != CameraType.SceneView && camera.cameraType != CameraType.Preview) OutLinePass.Record(
-                        renderGraph, camera, textures, bufferSettings,
-                        true, gBuffer.normalMetallicSmoothness,
-                        bufferSize, useHDR, msaaSamples);
-
                     CopyAttachmentsPass.Record(
                         renderGraph, useColorTexture, useDepthTexture, copier, textures,
                         false);
@@ -293,7 +294,8 @@ namespace TaoTie.RenderPipelines
                             taaSettings, nonJitteredProj, camera, useHDR);
                     }
 
-                    SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize);
+                    SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize,
+                        true, gBuffer.normalMetallicSmoothness, useHDR, msaaSamples);
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
                         settings, camera, hasActivePostFX);
@@ -339,18 +341,14 @@ namespace TaoTie.RenderPipelines
                             ResolvePass.Record(renderGraph, textures);
                         }
 
-                        if(bufferSettings.outLine && camera.cameraType != CameraType.SceneView && camera.cameraType != CameraType.Preview) OutLinePass.Record(
-                            renderGraph, camera, textures, bufferSettings,
-                            false, default,
-                            bufferSize, useHDR, MSAASamples.None);
-
                         if (useTAA)
                         {
                             RecordTAA(renderGraph, textures, taaData, bufferSize,
                                 taaSettings, nonJitteredProj, camera, useHDR);
                         }
 
-                        SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize);
+                        SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize,
+                            false, default, useHDR, MSAASamples.None);
                         RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                             postFXStack, (int) settings.colorLUTResolution,
                             settings, camera, hasActivePostFX);
@@ -388,7 +386,7 @@ namespace TaoTie.RenderPipelines
             ForwardPlusDebugger.Cleanup();
             LightingPass.Dispose();
             DeferredLightingPass.Dispose();
-            OutLinePass.Dispose();
+            OutlineEffect.Dispose();
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
