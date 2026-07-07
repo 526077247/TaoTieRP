@@ -21,6 +21,9 @@ namespace TaoTie.RenderPipelines
             outlineWidthID = Shader.PropertyToID("_OutlineWidth");
 
         static Material outlineMaterial;
+        static Shader outlineShaderSource;
+
+        public static void SetShader(Shader shader) => outlineShaderSource = shader;
 
         [System.Serializable]
         public struct OutlineSettings
@@ -109,17 +112,16 @@ namespace TaoTie.RenderPipelines
 
         static void EnsureMaterial()
         {
-            if (outlineMaterial == null || outlineMaterial.shader.name != "Hidden/TaoTie RP/Outline")
+            if (outlineShaderSource == null)
             {
-                Shader shader = Shader.Find("Hidden/TaoTie RP/Outline");
-                if (shader == null || shader.name != "Hidden/TaoTie RP/Outline")
-                {
-                    outlineMaterial = null;
-                    return;
-                }
+                outlineMaterial = null;
+                return;
+            }
+            if (outlineMaterial == null || outlineMaterial.shader != outlineShaderSource)
+            {
                 if (outlineMaterial != null)
                     CoreUtils.Destroy(outlineMaterial);
-                outlineMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+                outlineMaterial = new Material(outlineShaderSource) { hideFlags = HideFlags.HideAndDontSave };
             }
         }
 

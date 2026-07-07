@@ -124,6 +124,8 @@ GI GetGI (float2 lightMapUV, Surface surfaceWS, BRDF brdf) {
     gi.shadowMask.shadows = 1.0;
 
     // _ShadowMaskMode: 0 = off, 1 = Shadowmask (always), 2 = Distance Shadowmask
+    // Deferred fullscreen pass has no lightmap UVs — skip baked shadow sampling.
+    #if !defined(TAOTIE_DEFERRED_LIGHTING)
     if (_ShadowMaskMode > 0.5) {
         gi.shadowMask.shadows = SampleBakedShadows(lightMapUV, surfaceWS);
         if (_ShadowMaskMode > 1.5) {
@@ -132,6 +134,7 @@ GI GetGI (float2 lightMapUV, Surface surfaceWS, BRDF brdf) {
             gi.shadowMask.always = true;
         }
     }
+    #endif
     return gi;
 }
 #endif

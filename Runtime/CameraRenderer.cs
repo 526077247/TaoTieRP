@@ -17,12 +17,16 @@ namespace TaoTie.RenderPipelines
         Material material;
         Shader deferredLightingShader;
 
-        public CameraRenderer(Shader shader, Shader deferredLightingShader)
+        public CameraRenderer(Shader shader, Shader deferredLightingShader,
+            Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
+            Shader taaShader, Shader outlineShader)
         {
             material = CoreUtils.CreateEngineMaterial(shader);
-            ForwardPlusDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/ForwardPlus Debugger"));
+            ForwardPlusDebugger.Initialize(forwardPlusDebuggerShader);
             this.deferredLightingShader = deferredLightingShader;
-            DepthDebugger.Initialize(Shader.Find("Hidden/TaoTie RP/Depth Debugger"));
+            DepthDebugger.Initialize(depthDebuggerShader);
+            TAAResolvePass.SetShader(taaShader);
+            OutlineEffect.SetShader(outlineShader);
         }
 
         void SetupPostFXStack(

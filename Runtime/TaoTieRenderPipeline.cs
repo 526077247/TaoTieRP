@@ -18,21 +18,16 @@ namespace TaoTie.RenderPipelines
                 settings.useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
 
-            // WebGL does not support ComputeBuffer; use Texture2D fallback there.
-            if (SystemInfo.supportsComputeShaders)
-                Shader.EnableKeyword("_COMPUTE_BUFFER");
-            else
-                Shader.DisableKeyword("_COMPUTE_BUFFER");
-
             UpdateForwardPlusKeyword();
 
             InitializeForEditor();
-            var deferredShader = Shader.Find("Hidden/TaoTie RP/Deferred Lighting");
-            if (deferredShader == null)
-                Debug.LogWarning("Hidden/TaoTie RP/Deferred Lighting shader not found — Deferred path will fall back to Forward.");
             renderer = new(
                 settings.cameraRendererShader,
-                deferredShader);
+                settings.deferredLightingShader,
+                settings.forwardPlusDebuggerShader,
+                settings.depthDebuggerShader,
+                settings.taaShader,
+                settings.outlineShader);
         }
 
         void UpdateForwardPlusKeyword()

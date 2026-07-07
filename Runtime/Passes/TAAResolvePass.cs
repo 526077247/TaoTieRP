@@ -20,6 +20,9 @@ namespace TaoTie.RenderPipelines
             prevViewProjID = Shader.PropertyToID("_PrevViewProj");
 
         static Material taaMaterial;
+        static Shader taaShaderSource;
+
+        public static void SetShader(Shader shader) => taaShaderSource = shader;
 
         TextureHandle currentColor;
         TextureHandle historyColor;
@@ -41,15 +44,14 @@ namespace TaoTie.RenderPipelines
         {
             CommandBuffer cmd = context.cmd;
 
+            if (taaMaterial == null && taaShaderSource != null)
+            {
+                taaMaterial = new Material(taaShaderSource) { hideFlags = HideFlags.HideAndDontSave };
+            }
             if (taaMaterial == null)
             {
-                var shader = Shader.Find("Hidden/TaoTie RP/TAA");
-                if (shader == null)
-                {
-                    Debug.LogError("Hidden/TaoTie RP/TAA shader not found!");
-                    return;
-                }
-                taaMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+                Debug.LogError("TAA shader not available!");
+                return;
             }
 
             cmd.SetGlobalTexture(taaCurrentColorID, currentColor);

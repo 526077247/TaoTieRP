@@ -20,7 +20,6 @@
 			HLSLPROGRAM
 				#pragma target 4.5
 				#pragma multi_compile _ _TAOTIE_FORWARD_PLUS
-				#pragma multi_compile _ _COMPUTE_BUFFER
 				#pragma vertex DefaultPassVertex
 				#pragma fragment ForwardPlusTilesPassFragment
 			ENDHLSL
