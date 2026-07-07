@@ -76,13 +76,24 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct Other
         {
+#if UNITY_WEBGL
+            [Range(0, 64)]
+#else
             [Range(0, 128)]
+#endif
             [Tooltip("Maximum allowed lights per tile")]
             public int maxLightsPerTile;
             
             public enum TileSize
             {
-                Default, Small = 32, Normal = 64, Mid = 128, Large = 256, Off = 8192
+                Default, 
+                [LabelText("8")] _8 = 8, 
+                [LabelText("16")] _16 = 16, 
+                [LabelText("32")] _32 = 32, 
+                [LabelText("64")] _64 = 64, 
+                [LabelText("128")] _128 = 128, 
+                [LabelText("256")] _256 = 256, 
+                Off = 8192
             }
             [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [Tooltip("Tile size in pixels per dimension, default is Normal.")]
@@ -91,7 +102,7 @@ namespace TaoTie.RenderPipelines
             [EnumLabel]
             public MapSize atlasSize;
         }
-        [Tooltip("In the Forward rendering path, support is provided for up to 64 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256.")]
+        [Tooltip("In the Forward rendering path, support is provided for up to 64 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256 (64 on WebGL2).")]
         public bool useForwardPlus = true;
         [ShowIf(nameof(useForwardPlus))]
         public Other other = new()
@@ -102,7 +113,7 @@ namespace TaoTie.RenderPipelines
         
         [ShowIf(nameof(useForwardPlus), ShowIfOperator.Equal, 0)]
         [Range(0, 64)]
-        [Tooltip("Max other lights supported (capped at 8 on WebGL1).")]
+        [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
         public int maxOtherLights = 32;
 
         public SSAOSettings ssao = new SSAOSettings();

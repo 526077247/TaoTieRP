@@ -31,14 +31,22 @@ namespace TaoTie.RenderPipelines
         TextureHandle rtColor;
         TextureHandle rtDepth;
 
+        static Shader cachedShader;
+
         static void EnsureMaterial()
         {
-            if (ssaoMaterial == null || ssaoMaterial.shader == null || ssaoMaterial.shader.name != "Hidden/TaoTie RP/SSAO")
+            if (cachedShader == null)
+                cachedShader = Shader.Find("Hidden/TaoTie RP/SSAO");
+            if (cachedShader == null)
             {
+                ssaoMaterial = null;
+                return;
+            }
+            if (ssaoMaterial == null || ssaoMaterial.shader != cachedShader)
+            {
+                if (cachedShader.passCount < 3) { ssaoMaterial = null; return; }
                 if (ssaoMaterial != null) Object.DestroyImmediate(ssaoMaterial);
-                var shader = Shader.Find("Hidden/TaoTie RP/SSAO");
-                if (shader == null || shader.passCount < 3) { ssaoMaterial = null; return; }
-                ssaoMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+                ssaoMaterial = new Material(cachedShader) { hideFlags = HideFlags.HideAndDontSave };
             }
         }
 
@@ -137,6 +145,10 @@ namespace TaoTie.RenderPipelines
             TextureHandle depthHandle = textures.depthCopy.IsValid()
                 ? textures.depthCopy : textures.depthAttachment;
             pass.depthTexture = builder.ReadTexture(depthHandle);
+
+            // Declare color and depth as render targets for restore at end of pass
+            pass.rtColor = builder.UseColorBuffer(textures.colorAttachment, 0);
+            pass.rtDepth = textures.depthAttachment;
 
             var format = SystemInfo.IsFormatSupported(GraphicsFormat.R8_UNorm, FormatUsage.Render)
                 ? GraphicsFormat.R8_UNorm : GraphicsFormat.R8G8B8A8_UNorm;

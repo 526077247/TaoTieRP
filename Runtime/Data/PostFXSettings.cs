@@ -13,36 +13,30 @@ namespace TaoTie.RenderPipelines
 
         public IReadOnlyList<PostFXEffect> Effects => effects;
 
-        // 旧字段保留用于自动迁移 (使用效果类中的新类型)
-        [HideInInspector] [SerializeField] BloomEffect.BloomSettings bloom;
-        [HideInInspector] [SerializeField] ColorGradingEffect.ToneMappingSettings toneMapping;
-        [HideInInspector] [SerializeField] ColorGradingEffect.ColorAdjustmentsSettings colorAdjustments;
-        [HideInInspector] [SerializeField] ColorGradingEffect.WhiteBalanceSettings whiteBalance;
-        [HideInInspector] [SerializeField] ColorGradingEffect.SplitToningSettings splitToning;
-        [HideInInspector] [SerializeField] ColorGradingEffect.ChannelMixerSettings channelMixer;
-        [HideInInspector] [SerializeField] ColorGradingEffect.ShadowsMidtonesHighlightsSettings shadowsMidtonesHighlights;
-
         [HideInInspector]
         public Shader shader = default;
 
         [System.NonSerialized] Material material;
 
+        static Shader cachedShader;
+
         public Material Material
         {
             get
             {
-                if (shader == null || shader.name != "Hidden/TaoTie RP/Post FX Stack")
+                if (cachedShader == null)
+                    cachedShader = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
+                if (cachedShader == null)
                 {
-                    shader = Shader.Find("Hidden/TaoTie RP/Post FX Stack");
-                    if (shader == null || shader.name != "Hidden/TaoTie RP/Post FX Stack")
-                    {
-                        Debug.LogError("Hidden/TaoTie RP/Post FX Stack shader not found!");
-                        return null;
-                    }
-                    // shader changed — discard stale material so it gets recreated
+                    Debug.LogError("Hidden/TaoTie RP/Post FX Stack shader not found!");
+                    return null;
+                }
+                if (shader == null || shader != cachedShader)
+                {
+                    shader = cachedShader;
                     material = null;
                 }
-                if (material == null && shader != null)
+                if (material == null)
                 {
                     material = new Material(shader);
                     material.hideFlags = HideFlags.HideAndDontSave;
@@ -69,25 +63,28 @@ namespace TaoTie.RenderPipelines
             if (effects == null || effects.Count == 0)
             {
                 effects = new List<PostFXEffect>();
-                effects.Add(new BloomEffect { settings = bloom });
-                effects.Add(new ColorGradingEffect
-                {
-                    toneMapping = toneMapping,
-                    colorAdjustments = colorAdjustments,
-                    whiteBalance = whiteBalance,
-                    splitToning = splitToning,
-                    channelMixer = channelMixer,
-                    shadowsMidtonesHighlights = shadowsMidtonesHighlights
-                });
 #if UNITY_EDITOR
                 UnityEditor.EditorUtility.SetDirty(this);
 #endif
             }
+#if UNITY_EDITOR
+            EnsureEffectShaders();
+#endif
         }
 
 #if UNITY_EDITOR
+        void EnsureEffectShaders()
+        {
+            if (effects == null) return;
+            foreach (var effect in effects)
+            {
+                effect?.EnsureShaderReference();
+            }
+        }
+
         void OnValidate()
         {
+            EnsureEffectShaders();
             UnityEditor.SceneView.RepaintAll();
             UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
         }

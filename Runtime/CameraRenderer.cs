@@ -19,14 +19,13 @@ namespace TaoTie.RenderPipelines
 
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
-            Shader taaShader, Shader outlineShader)
+            Shader taaShader)
         {
             material = CoreUtils.CreateEngineMaterial(shader);
             ForwardPlusDebugger.Initialize(forwardPlusDebuggerShader);
             this.deferredLightingShader = deferredLightingShader;
             DepthDebugger.Initialize(depthDebuggerShader);
             TAAResolvePass.SetShader(taaShader);
-            OutlineEffect.SetShader(outlineShader);
         }
 
         void SetupPostFXStack(
@@ -68,8 +67,11 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, CameraRendererCopier copier,
             in CameraRendererTextures textures, bool useDepthTexture,
             PostFXStack postFXStack, int colorLUTResolution,
-            TaoTieRenderPipelineSettings settings, Camera camera, bool hasActivePostFX)
+            TaoTieRenderPipelineSettings settings, Camera camera, bool hasActivePostFX,
+            Vector2Int bufferSize, bool useHDR)
         {
+            LensFlarePass.Record(renderGraph, camera, textures, useDepthTexture, bufferSize, useHDR);
+
             if (hasActivePostFX)
             {
                 PostFXPass.Record(
@@ -84,6 +86,15 @@ namespace TaoTie.RenderPipelines
             GizmosPass.Record(renderGraph, copier, textures);
         }
 
+        /// <summary>
+        /// Main render entry point. Render pipeline order:
+        /// Forward: Lighting → Setup → [DepthPrePass] → Geometry(opaque) → Skybox
+        ///          → [Resolve(MSAA)] → CopyAttachments → [SSAO] → Geometry(transparent)
+        ///          → [Resolve] → [TAA] → LensFlare → PostFX → Final → Debug → Gizmos
+        /// Deferred: Lighting → Setup → GBuffer → DeferredLighting → Skybox
+        ///          → CopyAttachments → [SSAO] → Geometry(transparent)
+        ///          → [TAA] → LensFlare → PostFX → Final → Debug → Gizmos
+        /// </summary>
         public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera,
             TaoTieRenderPipelineSettings settings)
         {
@@ -302,7 +313,7 @@ namespace TaoTie.RenderPipelines
                         true, gBuffer.normalMetallicSmoothness, useHDR, msaaSamples);
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
-                        settings, camera, hasActivePostFX);
+                        settings, camera, hasActivePostFX, bufferSize, useHDR);
                 }
                 else
                 {
@@ -355,7 +366,7 @@ namespace TaoTie.RenderPipelines
                             false, default, useHDR, MSAASamples.None);
                         RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                             postFXStack, (int) settings.colorLUTResolution,
-                            settings, camera, hasActivePostFX);
+                            settings, camera, hasActivePostFX, bufferSize, useHDR);
                     }
                     else
                     {
@@ -390,12 +401,12 @@ namespace TaoTie.RenderPipelines
             ForwardPlusDebugger.Cleanup();
             LightingPass.Dispose();
             DeferredLightingPass.Dispose();
-            OutlineEffect.Dispose();
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
             SMAATextures.Dispose();
             SSAOPass.Dispose();
+            LensFlarePass.Dispose();
             CameraRendererCopier.Cleanup();
         }
     }

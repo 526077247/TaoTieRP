@@ -26,8 +26,7 @@ namespace TaoTie.RenderPipelines
                 settings.deferredLightingShader,
                 settings.forwardPlusDebuggerShader,
                 settings.depthDebuggerShader,
-                settings.taaShader,
-                settings.outlineShader);
+                settings.taaShader);
         }
 
         void UpdateForwardPlusKeyword()

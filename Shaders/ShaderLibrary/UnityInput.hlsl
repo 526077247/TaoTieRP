@@ -40,7 +40,6 @@ float4x4 glstate_matrix_projection;
 
 float3 _WorldSpaceCameraPos;
 
-
 float4 unity_OrthoParams;
 float4 _ProjectionParams;
 float4 _ScreenParams;
@@ -48,4 +47,11 @@ float4 _ZBufferParams;
 
 float4x4 unity_CameraProjection;
 float4x4 unity_CameraInvProjection;
+
+// Per-frame globals (populated by Unity engine)
+float4 _Time;       // (t/20, t, t*2, t*3)
+float4 _SinTime;    // (sin(t/8), sin(t/4), sin(t/2), sin(t))
+float4 _CosTime;    // (cos(t/8), cos(t/4), cos(t/2), cos(t))
+float4 unity_DeltaTime; // (dt, 1/dt, smoothDt, 1/smoothDt)
+float4 _LastImageEffectsEnabledVideo;
 #endif

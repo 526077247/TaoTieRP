@@ -13,7 +13,13 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCount = 256, maxOtherLightCountOpenGLES2 = 8;
+		private const int maxDirLightCount = 4, maxOtherLightCountOpenGLES2 = 8;
+		
+#if UNITY_WEBGL && !UNITY_EDITOR
+		private const int maxOtherLightCount = 64;
+#else
+		private const int maxOtherLightCount = 256;
+#endif
 
 		// WebGL does not support ComputeBuffer; use Texture2D fallback on those platforms.
 		static readonly bool useComputeBuffer = SystemInfo.supportsComputeShaders;

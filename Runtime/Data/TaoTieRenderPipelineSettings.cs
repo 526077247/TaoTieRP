@@ -50,7 +50,6 @@ namespace TaoTie.RenderPipelines
         [HideInInspector] public Shader cameraRendererShader;
         [HideInInspector] public Shader deferredLightingShader;
         [HideInInspector] public Shader taaShader;
-        [HideInInspector] public Shader outlineShader;
         [HideInInspector] public Shader forwardPlusDebuggerShader;
         [HideInInspector] public Shader depthDebuggerShader;
     }

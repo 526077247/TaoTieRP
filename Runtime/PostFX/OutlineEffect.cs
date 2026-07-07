@@ -21,9 +21,10 @@ namespace TaoTie.RenderPipelines
             outlineWidthID = Shader.PropertyToID("_OutlineWidth");
 
         static Material outlineMaterial;
-        static Shader outlineShaderSource;
 
-        public static void SetShader(Shader shader) => outlineShaderSource = shader;
+        [HideInInspector] public Shader outlineShader;
+        static Shader cachedShader;
+        static bool disposedRegistered;
 
         [System.Serializable]
         public struct OutlineSettings
@@ -46,7 +47,15 @@ namespace TaoTie.RenderPipelines
 
         public override string DisplayName => "Outline";
 
+        public override string ShaderName => "Hidden/TaoTie RP/Outline";
+
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
+
+        public override void EnsureShaderReference()
+        {
+            if (outlineShader == null)
+                outlineShader = Shader.Find(ShaderName);
+        }
 
         public override TextureHandle Execute(
             RenderGraph renderGraph,
@@ -110,22 +119,40 @@ namespace TaoTie.RenderPipelines
             return pass.colorAttachment;
         }
 
-        static void EnsureMaterial()
+        void EnsureMaterial()
         {
-            if (outlineShaderSource == null)
+            Shader shader = outlineShader;
+            if (shader == null)
+            {
+                if (cachedShader == null)
+                    cachedShader = Shader.Find(ShaderName);
+                shader = cachedShader;
+            }
+            else
+            {
+                cachedShader = shader;
+            }
+            if (shader == null)
             {
                 outlineMaterial = null;
                 return;
             }
-            if (outlineMaterial == null || outlineMaterial.shader != outlineShaderSource)
+            if (outlineMaterial == null || outlineMaterial.shader != shader)
             {
                 if (outlineMaterial != null)
                     CoreUtils.Destroy(outlineMaterial);
-                outlineMaterial = new Material(outlineShaderSource) { hideFlags = HideFlags.HideAndDontSave };
+                outlineMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+            }
+            if (!disposedRegistered)
+            {
+                disposedRegistered = true;
+                RegisterDispose(Dispose);
             }
         }
 
-        public static void Dispose()
+        protected override void DisposeInternal() => Dispose();
+
+        static void Dispose()
         {
             if (outlineMaterial != null)
             {

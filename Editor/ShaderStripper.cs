@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Build;
@@ -45,6 +46,23 @@ namespace TaoTie.RenderPipelines.Editor
             "ColorGrading ACES",
             "ColorGrading Neutral",
             "ColorGrading Reinhard"
+        };
+
+        static readonly Dictionary<string, Type> dedicatedPostFXShaders = new()
+        {
+            { "Hidden/TaoTie RP/Depth Of Field", typeof(DepthOfFieldEffect) },
+            { "Hidden/TaoTie RP/Chromatic Aberration", typeof(ChromaticAberrationEffect) },
+            { "Hidden/TaoTie RP/Color Curves", typeof(ColorCurvesEffect) },
+            { "Hidden/TaoTie RP/Film Grain", typeof(FilmGrainEffect) },
+            { "Hidden/TaoTie RP/Lens Distortion", typeof(LensDistortionEffect) },
+            { "Hidden/TaoTie RP/Motion Blur", typeof(MotionBlurEffect) },
+            { "Hidden/TaoTie RP/Panini Projection", typeof(PaniniProjectionEffect) },
+            { "Hidden/TaoTie RP/Pixelate", typeof(PixelateEffect) },
+            { "Hidden/TaoTie RP/Posterize", typeof(PosterizeEffect) },
+            { "Hidden/TaoTie RP/Sharpen", typeof(SharpenEffect) },
+            { "Hidden/TaoTie RP/Vignette", typeof(VignetteEffect) },
+            { "Hidden/TaoTie RP/Volumetric Fog", typeof(VolumetricFogEffect) },
+            { "Hidden/TaoTie RP/Outline", typeof(OutlineEffect) },
         };
 
         const string SMAA_DISABLED_DEFINE = "SMAA_DISABLED";
@@ -126,10 +144,54 @@ namespace TaoTie.RenderPipelines.Editor
             return s.postFXSettings == null;
         }
 
+        HashSet<Type> effectTypesInUse;
+        bool effectTypesCached;
+
+        HashSet<Type> GetEffectTypesInUse()
+        {
+            if (effectTypesCached) return effectTypesInUse;
+            effectTypesCached = true;
+            effectTypesInUse = new HashSet<Type>();
+
+            // Check pipeline-level PostFXSettings
+            var s = GetSettings();
+            if (s?.postFXSettings != null)
+                CollectEffectTypes(s.postFXSettings, effectTypesInUse);
+
+            // Check all PostFXSettings assets in the project (camera-level overrides)
+            var guids = AssetDatabase.FindAssets("t:PostFXSettings");
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var postFX = AssetDatabase.LoadAssetAtPath<PostFXSettings>(path);
+                if (postFX != null)
+                    CollectEffectTypes(postFX, effectTypesInUse);
+            }
+            return effectTypesInUse;
+        }
+
+        static void CollectEffectTypes(PostFXSettings settings, HashSet<Type> set)
+        {
+            foreach (var effect in settings.Effects)
+            {
+                if (effect != null)
+                    set.Add(effect.GetType());
+            }
+        }
+
+        bool IsEffectInUse(Type effectType)
+        {
+            return GetEffectTypesInUse().Contains(effectType);
+        }
+
         public int callbackOrder => 0;
 
         public void OnPreprocessBuild(BuildReport report)
         {
+            // Reset effect type cache for fresh build
+            effectTypesCached = false;
+            effectTypesInUse = null;
+
             bool stripSMAA = ShouldStripSMAA();
             bool stripFXAA = ShouldStripFXAA();
             bool stripTAA = ShouldStripTAA();
@@ -183,6 +245,17 @@ namespace TaoTie.RenderPipelines.Editor
             if (snippet.passType == PassType.Meta)
             {
                 data.Clear();
+                return;
+            }
+
+            // --- Strip dedicated PostFX shaders if their effect is not in any PostFXSettings queue ---
+            if (dedicatedPostFXShaders.TryGetValue(shader.name, out var effectType))
+            {
+                if (!IsEffectInUse(effectType))
+                {
+                    data.Clear();
+                    return;
+                }
                 return;
             }
 
@@ -260,6 +333,20 @@ namespace TaoTie.RenderPipelines.Editor
 
             // Strip FXAA pass
             if (fxaaPassNames.Contains(snippet.passName) && ShouldStripFXAA())
+            {
+                data.Clear();
+                return;
+            }
+
+            // Strip Bloom passes if BloomEffect not in any PostFXSettings queue
+            if (bloomPassNames.Contains(snippet.passName) && !IsEffectInUse(typeof(BloomEffect)))
+            {
+                data.Clear();
+                return;
+            }
+
+            // Strip ColorGrading passes if ColorGradingEffect not in any PostFXSettings queue
+            if (colorGradingPassNames.Contains(snippet.passName) && !IsEffectInUse(typeof(ColorGradingEffect)))
             {
                 data.Clear();
                 return;

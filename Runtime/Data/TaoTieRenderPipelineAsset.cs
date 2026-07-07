@@ -12,7 +12,6 @@ namespace TaoTie.RenderPipelines
             EnsureShader(ref settings.cameraRendererShader, "Hidden/TaoTie RP/Camera Renderer");
             EnsureShader(ref settings.deferredLightingShader, "Hidden/TaoTie RP/Deferred Lighting");
             EnsureShader(ref settings.taaShader, "Hidden/TaoTie RP/TAA");
-            EnsureShader(ref settings.outlineShader, "Hidden/TaoTie RP/Outline");
             EnsureShader(ref settings.forwardPlusDebuggerShader, "Hidden/TaoTie RP/ForwardPlus Debugger");
             EnsureShader(ref settings.depthDebuggerShader, "Hidden/TaoTie RP/Depth Debugger");
             return new TaoTieRenderPipeline(settings);

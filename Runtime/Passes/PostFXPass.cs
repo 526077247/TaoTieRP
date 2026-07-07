@@ -126,8 +126,11 @@ namespace TaoTie.RenderPipelines
 			bool hasColorGrading = false;
 
 			// Iterate over PostFXSettings effects list (in serialized order)
-			foreach (var effect in stack.Settings.Effects)
+			var effects = stack.Settings.Effects;
+			int effectCount = effects.Count;
+			for (int i = 0; i < effectCount; i++)
 			{
+				var effect = effects[i];
 				if (effect == null) continue;
 				source = effect.Execute(renderGraph, stack, source, textures);
 

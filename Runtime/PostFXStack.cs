@@ -45,15 +45,15 @@ namespace TaoTie.RenderPipelines
         /// <summary>MSAA sample count for temp textures.</summary>
         public MSAASamples MSAA { get; set; }
 
-        /// <summary>
-        /// 从 Material 的 shader 中构建 pass 名称→索引映射。
-        /// 在 Settings 赋值后、渲染前调用。
-        /// </summary>
+        Material lastMaterial;
+
         public void InitializePassMap()
         {
-            passIndexMap.Clear();
             Material mat = Settings.Material;
             if (mat == null) return;
+            if (mat == lastMaterial && passIndexMap.Count > 0) return;
+            lastMaterial = mat;
+            passIndexMap.Clear();
             for (int i = 0; i < mat.passCount; i++)
             {
                 string name = mat.GetPassName(i);
@@ -62,10 +62,6 @@ namespace TaoTie.RenderPipelines
             }
         }
 
-        /// <summary>
-        /// 通过名称查找 shader pass 索引。
-        /// 找不到时回退到 0 (Copy) 并警告。
-        /// </summary>
         public int GetPassIndex(string passName)
         {
             if (passIndexMap.TryGetValue(passName, out int index))
