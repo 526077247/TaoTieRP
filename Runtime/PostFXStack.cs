@@ -49,6 +49,7 @@ namespace TaoTie.RenderPipelines
 
         public void InitializePassMap()
         {
+            if (Settings == null) return;
             Material mat = Settings.Material;
             if (mat == null) return;
             if (mat == lastMaterial && passIndexMap.Count > 0) return;
@@ -72,6 +73,7 @@ namespace TaoTie.RenderPipelines
 
         public void Draw(CommandBuffer buffer, RenderTargetIdentifier to, int passIndex)
         {
+            if (Settings == null) return;
             Material mat = Settings.Material;
             if (mat == null || passIndex >= mat.passCount) return;
             buffer.SetRenderTarget(
@@ -85,6 +87,7 @@ namespace TaoTie.RenderPipelines
             RenderTargetIdentifier to,
             int passIndex)
         {
+            if (Settings == null) return;
             Material mat = Settings.Material;
             if (mat == null || passIndex >= mat.passCount) return;
             buffer.SetGlobalTexture(fxSourceId, from);
@@ -101,6 +104,7 @@ namespace TaoTie.RenderPipelines
             RenderTargetIdentifier from,
             int passIndex)
         {
+            if (Settings == null) return;
             Material mat = Settings.Material;
             if (mat == null || passIndex >= mat.passCount) return;
             buffer.SetGlobalFloat(finalSrcBlendId, (float) FinalBlendMode.source);

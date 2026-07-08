@@ -10,9 +10,9 @@ namespace TaoTie.RenderPipelines
 
         public bool copyColor = true, copyDepth = true;
 
-        public bool maskLights = false;
+        public bool useRenderingLayerMask = false;
+        [ShowIf(nameof(useRenderingLayerMask))]
         [RenderingLayerMaskField]
-        [ShowIf(nameof(maskLights))]
         public int renderingLayerMask = -1;
 
         public enum RenderScaleMode

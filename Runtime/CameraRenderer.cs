@@ -182,8 +182,10 @@ namespace TaoTie.RenderPipelines
             {
                 switch (bufferSettings.highQualityAA)
                 {
-                    case CameraBufferSettings.HighQualityAAMode.MSAA:
-                        msaaSamples = bufferSettings.msaaSamples;
+                    case CameraBufferSettings.HighQualityAAMode.MSAA2x:
+                    case CameraBufferSettings.HighQualityAAMode.MSAA4x:
+                    case CameraBufferSettings.HighQualityAAMode.MSAA8x:
+                        msaaSamples = (MSAASamples)bufferSettings.highQualityAA;
                         if (camera.cameraType == CameraType.SceneView ||
                             camera.cameraType == CameraType.Preview ||
                             camera.targetTexture != null)
@@ -209,7 +211,12 @@ namespace TaoTie.RenderPipelines
                 useDepthTexture = true;
             }
 
-            bool useDepthPrePass = useMSAA && useDepthTexture;
+            bool useDepthPrePass = bufferSettings.depthPrimingMode switch
+            {
+                CameraBufferSettings.DepthPrimingMode.Auto => useMSAA && useDepthTexture,
+                CameraBufferSettings.DepthPrimingMode.Forced => useDepthTexture,
+                _ => false
+            };
 
             TAACameraData taaData = null;
             Matrix4x4 nonJitteredProj = camera.projectionMatrix;
@@ -240,7 +247,7 @@ namespace TaoTie.RenderPipelines
                                       SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
-                    cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
+                    cameraSettings.useRenderingLayerMask ? cameraSettings.renderingLayerMask :
                         -1, useForwardPlus);
 
                 // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.

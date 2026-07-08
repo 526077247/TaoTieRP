@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Rendering;
 using System;
 
@@ -16,6 +16,18 @@ namespace TaoTie.RenderPipelines
                  "No MSAA: CopyTexture. MSAA: depth pre-pass (DepthOnly shader pass).")]
         public bool copyDepth, copyDepthReflection;
 
+        public enum DepthPrimingMode
+        {
+            Auto,
+            Forced
+        }
+
+        [Tooltip("Controls depth pre-pass (depth priming) for generating _CameraDepthTexture.\n" +
+                 "Disabled: Never use a depth pre-pass; depth is copied from the camera depth attachment.\n" +
+                 "Auto: Use a depth pre-pass only when the pipeline already needs one (e.g., MSAA with depth texture).\n" +
+                 "Forced: Always use a depth pre-pass when a depth texture is needed, regardless of MSAA.")]
+        public DepthPrimingMode depthPrimingMode;
+
         [Range(0.1f, 2f)] public float renderScale;
 
         public enum BicubicRescalingMode
@@ -30,18 +42,15 @@ namespace TaoTie.RenderPipelines
         public enum HighQualityAAMode
         {
             Off,
-            MSAA,
-            TAA
+            TAA = 1,
+            MSAA2x = 2,
+            MSAA4x = 4,
+            MSAA8x = 8,
         }
 
         [MSAAField]
         [Tooltip("High-quality anti-aliasing. MSAA not available in deferred mode.")]
         public HighQualityAAMode highQualityAA;
-
-        [Tooltip("MSAA sample count when High-Quality AA is set to MSAA.")]
-        [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.MSAA)]
-        [MSAAField]
-        public MSAASamples msaaSamples;
 
         [Serializable]
         public class TAASettings

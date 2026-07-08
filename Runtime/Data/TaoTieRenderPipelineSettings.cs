@@ -23,6 +23,7 @@ namespace TaoTie.RenderPipelines
             allowHDR = true,
             copyColor = true,
             copyDepth = true,
+            depthPrimingMode = CameraBufferSettings.DepthPrimingMode.Auto,
             renderScale = 1f,
             bicubicRescaling = CameraBufferSettings.BicubicRescalingMode.UpOnly,
             highQualityAA = CameraBufferSettings.HighQualityAAMode.Off,

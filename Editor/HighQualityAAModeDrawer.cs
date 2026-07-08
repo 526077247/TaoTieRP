@@ -31,10 +31,9 @@ namespace TaoTie.RenderPipelines.Editor
         bool IsHighQualityAAMode(SerializedProperty property)
         {
             return property.type == "Enum" &&
-                property.enumNames.Length == 3 &&
+                property.enumNames.Length == 5 &&
                 property.enumDisplayNames[0] == "Off" &&
-                property.enumDisplayNames[1] == "MSAA" &&
-                property.enumDisplayNames[2] == "TAA";
+                property.enumDisplayNames[1] == "TAA";
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -70,7 +69,7 @@ namespace TaoTie.RenderPipelines.Editor
 
                 Rect popupRect = EditorGUI.PrefixLabel(position, label);
                 GUIContent displayLabel = new GUIContent(names[current]);
-                if (deferred && current == 1)
+                if (deferred && current > 1)
                     displayLabel.text = "Off";
 
                 if (EditorGUI.DropdownButton(popupRect, displayLabel, FocusType.Keyboard, EditorStyles.popup))
@@ -78,7 +77,7 @@ namespace TaoTie.RenderPipelines.Editor
                     var menu = new GenericMenu();
                     for (int i = 0; i < names.Length; i++)
                     {
-                        if (deferred && i == 1)
+                        if (deferred && i > 1)
                         {
                             menu.AddDisabledItem(new GUIContent(names[i]));
                         }
