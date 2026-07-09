@@ -117,6 +117,24 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	#else
 		color += GetEmission(config);
 	#endif
+
+	// DEBUG: 0=off, 1=worldPos, 2=viewDir, 3=normal, 4=albedo, 5=GI diffuse, 6=direct light only
+	#define DEBUG_STAGE 0
+	#if DEBUG_STAGE == 1
+		return float4(frac(surface.position * 0.5), 1.0);
+	#elif DEBUG_STAGE == 2
+		return float4(surface.viewDirection * 0.5 + 0.5, 1.0);
+	#elif DEBUG_STAGE == 3
+		return float4(surface.normal * 0.5 + 0.5, 1.0);
+	#elif DEBUG_STAGE == 4
+		return float4(surface.color, 1.0);
+	#elif DEBUG_STAGE == 5
+		return float4(gi.diffuse, 1.0);
+	#elif DEBUG_STAGE == 6
+		float3 indirect = IndirectBRDF(surface, brdf, gi.diffuse, gi.specular);
+		return float4(color - indirect, 1.0);
+	#endif
+
 	return float4(color, GetFinalAlpha(surface.alpha));
 }
 

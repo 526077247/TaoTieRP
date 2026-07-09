@@ -156,7 +156,7 @@ namespace TaoTie.RenderPipelines
 				}
 			}
 
-			if (!anyEffectRan)
+			if (!anyEffectRan && !hasColorGrading)
 				return false;
 
 			int effectiveLUTResolution = (hasColorGrading && colorLUT.IsValid() && colorLUTResolution > 0)

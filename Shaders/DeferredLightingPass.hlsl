@@ -87,20 +87,40 @@ float4 DeferredLightingFragment (DeferredVaryings input) : SV_TARGET {
     fragment.depth = surface.depth;
     fragment.bufferDepth = 0.0;
 
-    GI gi = GetGI(0.0, surface, brdf);
-    #if UNITY_COLORSPACE_GAMMA
-        #if !defined(LIGHTMAP_ON)
-            gi.diffuse = SRGBToLinear(gi.diffuse);
-        #endif
-    #endif
+    // GI diffuse is already baked into the emission G-Buffer by DeferredGBufferPass.
+    // Only reflection probe specular is computed here.
+    GI gi;
+    gi.diffuse = 0.0;
+    gi.specular = SampleEnvironment(surface, brdf);
+    gi.shadowMask.always = false;
+    gi.shadowMask.distance = false;
+    gi.shadowMask.shadows = 1.0;
 
     float3 color = GetLighting(fragment, surface, brdf, gi);
     #if UNITY_COLORSPACE_GAMMA
-        color += SRGBToLinear(emission.rgb);
+        color += SRGBToLinear(emission.rgb) * surface.occlusion;
         color = LinearToSRGB(color);
     #else
-        color += emission.rgb;
+        color += emission.rgb * surface.occlusion;
     #endif
+
+    // DEBUG: 0=off, 1=worldPos, 2=viewDir, 3=normal, 4=albedo, 5=GI diffuse, 6=direct light only
+    #define DEBUG_STAGE 0
+    #if DEBUG_STAGE == 1
+        return float4(frac(surface.position * 0.5), 1.0);
+    #elif DEBUG_STAGE == 2
+        return float4(surface.viewDirection * 0.5 + 0.5, 1.0);
+    #elif DEBUG_STAGE == 3
+        return float4(surface.normal * 0.5 + 0.5, 1.0);
+    #elif DEBUG_STAGE == 4
+        return float4(surface.color, 1.0);
+    #elif DEBUG_STAGE == 5
+        return float4(gi.diffuse, 1.0);
+    #elif DEBUG_STAGE == 6
+        float3 indirect = IndirectBRDF(surface, brdf, gi.diffuse, gi.specular);
+        return float4(color - indirect, 1.0);
+    #endif
+
     return float4(color, 1.0);
 }
 

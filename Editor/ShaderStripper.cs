@@ -83,14 +83,22 @@ namespace TaoTie.RenderPipelines.Editor
 
         bool IsForward()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return true;
+#else
             var s = GetSettings();
             return s != null && s.renderingMode == TaoTieRenderPipelineSettings.RenderingMode.Forward;
+#endif
         }
 
         bool IsDeferred()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return false;
+#else
             var s = GetSettings();
             return s != null && s.renderingMode == TaoTieRenderPipelineSettings.RenderingMode.Deferred;
+#endif
         }
 
         bool ShouldStripSMAA()

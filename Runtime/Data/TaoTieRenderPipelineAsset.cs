@@ -10,7 +10,9 @@ namespace TaoTie.RenderPipelines
         protected override RenderPipeline CreatePipeline()
         {
             EnsureShader(ref settings.cameraRendererShader, "Hidden/TaoTie RP/Camera Renderer");
+#if !UNITY_WEBGL || UNITY_EDITOR
             EnsureShader(ref settings.deferredLightingShader, "Hidden/TaoTie RP/Deferred Lighting");
+#endif
             EnsureShader(ref settings.taaShader, "Hidden/TaoTie RP/TAA");
             EnsureShader(ref settings.forwardPlusDebuggerShader, "Hidden/TaoTie RP/ForwardPlus Debugger");
             EnsureShader(ref settings.depthDebuggerShader, "Hidden/TaoTie RP/Depth Debugger");

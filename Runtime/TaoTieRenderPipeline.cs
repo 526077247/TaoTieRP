@@ -25,10 +25,22 @@ namespace TaoTie.RenderPipelines
             InitializeForEditor();
             renderer = new(
                 settings.cameraRendererShader,
+#if !UNITY_WEBGL || UNITY_EDITOR
                 settings.deferredLightingShader,
+#else
+                null,
+#endif
                 settings.forwardPlusDebuggerShader,
                 settings.depthDebuggerShader,
                 settings.taaShader);
+
+            // Pre-warm PostFX material to avoid first-frame hitch
+            if (settings.postFXSettings != null)
+            {
+                _ = settings.postFXSettings.Material;
+                foreach (var effect in settings.postFXSettings.Effects)
+                    effect?.EnsureShaderReference();
+            }
         }
 
         void UpdateForwardPlusKeyword()

@@ -81,10 +81,51 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
         normalWS = normalize(input.normalWS);
     #endif
 
+    float3 viewDir = normalize(_WorldSpaceCameraPos - input.positionWS);
+    float metallic = GetMetallic(config);
+    float occlusion = GetOcclusion(config);
+    float smoothness = GetSmoothness(config);
+
+    // Build surface + BRDF to compute GI diffuse (deferred lighting pass can't access lightmap UVs)
+    Surface surface;
+    surface.position = input.positionWS;
+    surface.normal = normalWS;
+    surface.interpolatedNormal = normalWS;
+    surface.viewDirection = viewDir;
+    surface.depth = -TransformWorldToView(input.positionWS).z;
+    surface.color = base.rgb;
+    #if UNITY_COLORSPACE_GAMMA
+        surface.color = SRGBToLinear(surface.color);
+    #endif
+    surface.alpha = 1.0;
+    surface.metallic = metallic;
+    surface.occlusion = occlusion;
+    surface.smoothness = smoothness;
+    surface.fresnelStrength = GetFresnel(config);
+    surface.dither = InterleavedGradientNoise(input.positionCS_SS, 0);
+    surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
+    surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
+
+    BRDF brdf = GetBRDF(surface);
+    GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
+    #if UNITY_COLORSPACE_GAMMA
+        #if !defined(LIGHTMAP_ON)
+            gi.diffuse = SRGBToLinear(gi.diffuse);
+        #endif
+    #endif
+
+    // Bake GI diffuse into emission so deferred lighting pass can use it without lightmap UVs.
+    // Don't apply occlusion here — deferred lighting pass applies it via surface.occlusion (incl. SSAO).
+    float3 bakedGI = gi.diffuse * brdf.diffuse;
+
     GBufferOutput output;
-    output.albedoAO = float4(base.rgb, GetOcclusion(config));
-    output.normalMS = float4(EncodeNormal(normalWS), GetMetallic(config), GetSmoothness(config));
-    output.emission = float4(GetEmission(config), 1.0);
+    output.albedoAO = float4(base.rgb, occlusion);
+    output.normalMS = float4(EncodeNormal(normalWS), metallic, smoothness);
+    #if UNITY_COLORSPACE_GAMMA
+        output.emission = float4(GetEmission(config) + LinearToSRGB(bakedGI), 1.0);
+    #else
+        output.emission = float4(GetEmission(config) + bakedGI, 1.0);
+    #endif
     return output;
 }
 

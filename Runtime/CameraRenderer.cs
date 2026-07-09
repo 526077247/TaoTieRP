@@ -15,7 +15,9 @@ namespace TaoTie.RenderPipelines
         PostFXStack postFXStack = new PostFXStack();
 
         Material material;
+#if !UNITY_WEBGL || UNITY_EDITOR
         Shader deferredLightingShader;
+#endif
 
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
@@ -23,7 +25,9 @@ namespace TaoTie.RenderPipelines
         {
             material = CoreUtils.CreateEngineMaterial(shader);
             ForwardPlusDebugger.Initialize(forwardPlusDebuggerShader);
+#if !UNITY_WEBGL || UNITY_EDITOR
             this.deferredLightingShader = deferredLightingShader;
+#endif
             DepthDebugger.Initialize(depthDebuggerShader);
             TAAResolvePass.SetShader(taaShader);
         }
@@ -287,6 +291,7 @@ namespace TaoTie.RenderPipelines
 
                 if (useDeferred)
                 {
+#if !UNITY_WEBGL || UNITY_EDITOR
                     // --- Deferred path ---
                     GBufferTextures gBuffer = GBufferPass.Record(
                         renderGraph, camera, cullingResults,
@@ -328,6 +333,7 @@ namespace TaoTie.RenderPipelines
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
                         settings, camera, hasActivePostFX, bufferSize, useHDR);
+#endif
                 }
                 else
                 {
@@ -414,7 +420,9 @@ namespace TaoTie.RenderPipelines
             CoreUtils.Destroy(material);
             ForwardPlusDebugger.Cleanup();
             LightingPass.Dispose();
+#if !UNITY_WEBGL || UNITY_EDITOR
             DeferredLightingPass.Dispose();
+#endif
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();

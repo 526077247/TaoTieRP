@@ -170,7 +170,7 @@ namespace TaoTie.RenderPipelines
             pass.cameraView = camera.worldToCameraMatrix;
             pass.cameraProj = camera.projectionMatrix;
             pass.rtColor = textures.colorAttachment;
-            pass.rtDepth = textures.depthAttachment;
+            pass.rtDepth = builder.ReadTexture(textures.depthAttachment);
 
             builder.AllowPassCulling(false);
             builder.SetRenderFunc<SSAOPass>(
