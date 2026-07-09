@@ -11,6 +11,15 @@ namespace TaoTie.RenderPipelines
 			groupSampler = new("Post FX"),
 			finalSampler = new("Final Post FX");
 
+		/// <summary>Zero-GC comparison: reads the raw m_Value from TextureHandle's internal ResourceHandle.</summary>
+		static unsafe int GetHandleIndex(ref TextureHandle handle)
+		{
+			// TextureHandle contains ResourceHandle which starts with uint m_Value
+			fixed (TextureHandle* p = &handle)
+				return *(int*)p;
+		}
+
+
 		static readonly GraphicsFormat colorFormat =
 			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
 				? GraphicsFormat.R16G16B16A16_SFloat
@@ -111,7 +120,7 @@ namespace TaoTie.RenderPipelines
 			buffer.Clear();
 		}
 
-		public static void Record(
+		public static bool Record(
 			RenderGraph renderGraph,
 			PostFXStack stack,
 			int colorLUTResolution,
@@ -124,6 +133,7 @@ namespace TaoTie.RenderPipelines
 			TextureHandle source = textures.resolvedColorAttachment;
 			TextureHandle colorLUT = default;
 			bool hasColorGrading = false;
+			bool anyEffectRan = false;
 
 			// Iterate over PostFXSettings effects list (in serialized order)
 			var effects = stack.Settings.Effects;
@@ -132,7 +142,12 @@ namespace TaoTie.RenderPipelines
 			{
 				var effect = effects[i];
 				if (effect == null) continue;
+				// Track whether this effect changed source (zero-GC: compare raw struct bytes)
+				int prevIdx = GetHandleIndex(ref source);
 				source = effect.Execute(renderGraph, stack, source, textures);
+				int curIdx = GetHandleIndex(ref source);
+				if (curIdx != prevIdx)
+					anyEffectRan = true;
 
 				if (effect is ColorGradingEffect cgEffect)
 				{
@@ -141,7 +156,10 @@ namespace TaoTie.RenderPipelines
 				}
 			}
 
-			int effectiveLUTResolution = (hasColorGrading && colorLUTResolution > 0)
+			if (!anyEffectRan)
+				return false;
+
+			int effectiveLUTResolution = (hasColorGrading && colorLUT.IsValid() && colorLUTResolution > 0)
 				? colorLUTResolution : 0;
 
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
@@ -219,6 +237,8 @@ namespace TaoTie.RenderPipelines
 
 			builder.SetRenderFunc<PostFXPass>(
 				static (pass, context) => pass.Render(context));
+
+			return true;
 		}
 	}
 }

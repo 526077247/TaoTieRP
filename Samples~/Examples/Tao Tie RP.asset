@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tao Tie RP
   m_EditorClassIdentifier: 
   settings:
-    renderingMode: 0
+    renderingMode: 1
     useSRPBatcher: 1
     cameraBuffer:
       allowHDR: 1
@@ -21,10 +21,10 @@ MonoBehaviour:
       copyColorReflection: 0
       copyDepth: 1
       copyDepthReflection: 0
+      depthPrimingMode: 1
       renderScale: 1
       bicubicRescaling: 1
-      highQualityAA: 2
-      msaaSamples: 2
+      highQualityAA: 1
       taaSettings:
         jitterScale: 0.5
         baseBlendFactor: 0.9
@@ -46,7 +46,7 @@ MonoBehaviour:
         softCascadeBlend: 0
       useForwardPlus: 1
       other:
-        maxLightsPerTile: 128
+        maxLightsPerTile: 64
         tileSize: 0
         atlasSize: 1024
       maxOtherLights: 64
@@ -61,3 +61,7 @@ MonoBehaviour:
     colorLUTResolution: 32
     defaultMaterial: {fileID: 2100000, guid: 154398cb26997bf4ebf4af5ff1db036e, type: 2}
     cameraRendererShader: {fileID: 4800000, guid: 8430b3bb4f5046648bbee70bdf2e32a7, type: 3}
+    deferredLightingShader: {fileID: 4800000, guid: 82bd9ae0737ac6b40afacc0475d45dfa, type: 3}
+    taaShader: {fileID: 4800000, guid: 35b666756a5c8544a827c538a9e5dfe2, type: 3}
+    forwardPlusDebuggerShader: {fileID: 4800000, guid: 93996d35ad3144619c54bbc42c8f223b, type: 3}
+    depthDebuggerShader: {fileID: 4800000, guid: 16ef56564a8e4dd449a275d13b5212f5, type: 3}

@@ -38,7 +38,6 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.18028326, g: 0.22571333, b: 0.30692202, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -98,8 +97,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_LightingSettings: {fileID: 4890085278179872738, guid: 52eb0220a22cc4dae93904c6d26286ab,
-    type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: 52eb0220a22cc4dae93904c6d26286ab, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -243,7 +241,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 0.9839287, b: 0.3254717, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 1
   emissionColor: {r: 0, g: 0, b: 0, a: 1}
@@ -280,7 +278,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.3512927, g: 0.990566, b: 0, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 1
   emissionColor: {r: 0, g: 0, b: 0, a: 1}
@@ -489,7 +487,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.9811321, g: 0.5322179, b: 0.5322179, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 0.668
   emissionColor: {r: 0.11320752, g: 0.11320752, b: 0.11320752, a: 1}
@@ -620,7 +618,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 0.651
   emissionColor: {r: 1, g: 1, b: 1, a: 1}
@@ -818,14 +816,14 @@ MonoBehaviour:
   settings:
     copyColor: 0
     copyDepth: 0
-    renderingLayerMask: -1
     maskLights: 0
+    renderingLayerMask: -1
     renderScaleMode: 0
     renderScale: 1
     overridePostFX: 1
     postFXSettings: {fileID: 0}
-    allowFXAA: 0
-    keepAlpha: 0
+    allowPostProcessAA: 1
+    allowHighQualityAA: 1
     finalBlendMode:
       source: 1
       destination: 0
@@ -1158,7 +1156,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 1, g: 1, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 0
   smoothness: 0.5
   emissionColor: {r: 1, g: 0.5330188, b: 0.89452136, a: 1}
@@ -1281,7 +1279,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.5672537, g: 0.41037738, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 0.609
   emissionColor: {r: 0, g: 1, b: 0.7725673, a: 1}
@@ -1318,7 +1316,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.4575472, g: 0.521723, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 1
   emissionColor: {r: 1, g: 0, b: 0, a: 1}
@@ -1441,7 +1439,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.5672537, g: 0.41037738, b: 1, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 1
   smoothness: 0.609
   emissionColor: {r: 0.5849056, g: 0.5849056, b: 0.5849056, a: 1}
@@ -1531,6 +1529,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -0.48900002, y: 60.302002, z: -42.070004}
+--- !u!1 &1842318149
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1842318151}
+  - component: {fileID: 1842318150}
+  m_Layer: 0
+  m_Name: Global Volume
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1842318150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1842318149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: d5d225a9dd3670e4d842453232fd7d2b, type: 2}
+--- !u!4 &1842318151
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1842318149}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2047032004
 GameObject:
   m_ObjectHideFlags: 0
@@ -1651,7 +1698,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseColor: {r: 0.5754717, g: 0.28502136, b: 0.573692, a: 1}
-  alphaCutoff: 0.5
+  cutoff: 0.5
   metallic: 0.84
   smoothness: 1
   emissionColor: {r: 0.1792453, g: 0.1792453, b: 0.1792453, a: 1}
@@ -1672,3 +1719,4 @@ SceneRoots:
   - {fileID: 914156179}
   - {fileID: 517857296}
   - {fileID: 1403824619}
+  - {fileID: 1842318151}

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -22,15 +22,10 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct PixelateSettings
         {
-            [Range(2, 64)] public int cellSize;
+            public int cellSize;
         }
 
-        [SerializeField] public PixelateSettings settings = new PixelateSettings
-        {
-            cellSize = 8,
-        };
-
-        public PixelateSettings Settings => settings;
+        [System.NonSerialized] public PixelateSettings settings;
         public override string DisplayName => "Pixelate";
         public override string ShaderName => "Hidden/TaoTie RP/Pixelate";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
@@ -45,6 +40,12 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<PixelateVolume>();
+            if (vol == null) return source;
+            settings = new PixelateSettings
+            {
+                cellSize = vol.cellSize.value
+            };
             if (!IsEnabled) return source;
 
             Camera camera = stack.Camera;

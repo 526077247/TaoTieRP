@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -22,17 +22,12 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct CASettings
         {
-            [Range(0f, 1f)] public float intensity;
+            public float intensity;
             public Vector2 center;
         }
 
-        [SerializeField] public CASettings settings = new CASettings
-        {
-            intensity = 0.1f,
-            center = new Vector2(0.5f, 0.5f),
-        };
+        [System.NonSerialized] public CASettings settings;
 
-        public CASettings Settings => settings;
         public override string DisplayName => "Chromatic Aberration";
         public override string ShaderName => "Hidden/TaoTie RP/Chromatic Aberration";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
@@ -47,6 +42,14 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<ChromaticAberrationVolume>();
+            if (vol == null) return source;
+            settings = new CASettings
+            {
+                intensity = vol.intensity.value,
+                center = vol.center.value
+            };
+
             if (!IsEnabled || settings.intensity <= 0f) return source;
 
             EnsureMaterial();

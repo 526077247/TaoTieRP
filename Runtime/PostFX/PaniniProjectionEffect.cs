@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -24,18 +24,14 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct PPSettings
         {
-            [Range(0f, 1f)] public float distance;
-            [Range(0f, 1f)] public float cropToFit;
+            public float distance;
+            public float cropToFit;
         }
 
-        [SerializeField] public PPSettings settings = new PPSettings
-        {
-            distance = 0.5f,
-            cropToFit = 1f,
-        };
-
-        public PPSettings Settings => settings;
+        [System.NonSerialized] public PPSettings settings;
         public override string DisplayName => "Panini Projection";
+
+
         public override string ShaderName => "Hidden/TaoTie RP/Panini Projection";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
 
@@ -49,6 +45,14 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<PaniniProjectionVolume>();
+            if (vol == null) return source;
+            settings = new PPSettings
+            {
+                distance = vol.distance.value,
+                cropToFit = vol.cropToFit.value
+            };
+
             if (!IsEnabled || settings.distance <= 0f) return source;
 
             EnsureMaterial();

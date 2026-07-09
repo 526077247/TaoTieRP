@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -21,16 +21,12 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct PosterizeSettings
         {
-            [Range(2, 256)] public int levels;
+            public int levels;
         }
 
-        [SerializeField] public PosterizeSettings settings = new PosterizeSettings
-        {
-            levels = 8,
-        };
-
-        public PosterizeSettings Settings => settings;
+        [System.NonSerialized] public PosterizeSettings settings;
         public override string DisplayName => "Posterize";
+
         public override string ShaderName => "Hidden/TaoTie RP/Posterize";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
 
@@ -44,6 +40,12 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<PosterizeVolume>();
+            if (vol == null) return source;
+            settings = new PosterizeSettings
+            {
+                levels = vol.levels.value
+            };
             if (!IsEnabled) return source;
 
             Camera camera = stack.Camera;

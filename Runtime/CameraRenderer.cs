@@ -43,6 +43,8 @@ namespace TaoTie.RenderPipelines
             postFXStack.GBufferNormalMS = gBufferNormalMS;
             postFXStack.UseHDR = useHDR;
             postFXStack.MSAA = msaaSamples;
+            postFXStack.VolumeStack = VolumeManager.instance.stack;
+            postFXStack.VolumeLayerMask = cameraSettings.volumeLayerMask;
             postFXStack.InitializePassMap();
         }
 
@@ -74,8 +76,11 @@ namespace TaoTie.RenderPipelines
 
             if (hasActivePostFX)
             {
-                PostFXPass.Record(
-                    renderGraph, postFXStack, colorLUTResolution, textures);
+                if (!PostFXPass.Record(
+                    renderGraph, postFXStack, colorLUTResolution, textures))
+                {
+                    FinalPass.Record(renderGraph, copier, textures);
+                }
             }
             else
             {
@@ -230,6 +235,8 @@ namespace TaoTie.RenderPipelines
                 taaJitter = taaData.GetJitter();
             }
 
+            VolumeManager.instance.Update(camera.transform, cameraSettings.volumeLayerMask);
+
             var renderGraphParameters = new RenderGraphParameters
             {
                 commandBuffer = CommandBufferPool.Get(),
@@ -247,7 +254,7 @@ namespace TaoTie.RenderPipelines
                                       SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
-                    cameraSettings.useRenderingLayerMask ? cameraSettings.renderingLayerMask :
+                    cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
                         -1, useForwardPlus);
 
                 // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.

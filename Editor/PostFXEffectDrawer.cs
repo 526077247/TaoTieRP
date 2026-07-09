@@ -14,9 +14,23 @@ namespace TaoTie.RenderPipelines.Editor
         const float toggleWidth = 18f;
         const float padding = 4f;
 
+        static bool HasVisibleChildren(SerializedProperty property)
+        {
+            var child = property.Copy();
+            var end = property.GetEndProperty();
+            child.NextVisible(true);
+            while (!SerializedProperty.EqualContents(child, end))
+            {
+                if (child.name != "enabled")
+                    return true;
+                child.NextVisible(false);
+            }
+            return false;
+        }
+
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            if (property.managedReferenceValue == null)
+            if (property.managedReferenceValue == null || !HasVisibleChildren(property))
                 return headerHeight;
 
             float height = headerHeight;
@@ -27,7 +41,8 @@ namespace TaoTie.RenderPipelines.Editor
                 child.NextVisible(true);
                 while (!SerializedProperty.EqualContents(child, end))
                 {
-                    height += EditorGUI.GetPropertyHeight(child, true) + padding;
+                    if (child.name != "enabled")
+                        height += EditorGUI.GetPropertyHeight(child, true) + padding;
                     child.NextVisible(false);
                 }
             }
@@ -38,17 +53,19 @@ namespace TaoTie.RenderPipelines.Editor
         {
             Rect headerRect = new(position.x, position.y, position.width, headerHeight);
 
-            // Get display name from the managed reference value
             string displayName = label.text;
             var value = property.managedReferenceValue;
             if (value is PostFXEffect effect)
                 displayName = effect.DisplayName;
 
-            // Draw foldout + label
-            Rect foldoutRect = new(headerRect.x, headerRect.y, headerRect.width - toggleWidth, headerRect.height);
-            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, displayName, true);
+            bool hasChildren = HasVisibleChildren(property);
 
-            // Draw enabled toggle on the right
+            Rect foldoutRect = new(headerRect.x, headerRect.y, headerRect.width - toggleWidth, headerRect.height);
+            if (hasChildren)
+                property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, displayName, true);
+            else
+                EditorGUI.LabelField(foldoutRect, displayName);
+
             var enabledProp = property.FindPropertyRelative("enabled");
             if (enabledProp != null)
             {
@@ -60,8 +77,7 @@ namespace TaoTie.RenderPipelines.Editor
                 enabledProp.boolValue = EditorGUI.Toggle(toggleRect, enabledProp.boolValue);
             }
 
-            // Draw children if expanded
-            if (property.isExpanded && property.managedReferenceValue != null)
+            if (hasChildren && property.isExpanded && property.managedReferenceValue != null)
             {
                 Rect childRect = new(
                     position.x + 16f,
@@ -74,10 +90,13 @@ namespace TaoTie.RenderPipelines.Editor
                 child.NextVisible(true);
                 while (!SerializedProperty.EqualContents(child, end))
                 {
-                    float childHeight = EditorGUI.GetPropertyHeight(child, true);
-                    childRect.height = childHeight;
-                    EditorGUI.PropertyField(childRect, child, true);
-                    childRect.y += childHeight + padding;
+                    if (child.name != "enabled")
+                    {
+                        float childHeight = EditorGUI.GetPropertyHeight(child, true);
+                        childRect.height = childHeight;
+                        EditorGUI.PropertyField(childRect, child, true);
+                        childRect.y += childHeight + padding;
+                    }
                     child.NextVisible(false);
                 }
             }

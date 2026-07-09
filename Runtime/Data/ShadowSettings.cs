@@ -14,8 +14,11 @@ namespace TaoTie.RenderPipelines
             [LabelText("4096")] _4096 = 4096,
             [LabelText("8192")] _8192 = 8192
         }
-
+#if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.MinValue(0.001f)]
+#else
         [Min(0.001f)]
+#endif
         public float maxDistance = 30f;
 
         [Range(0.001f, 1f)] public float distanceFade = 0.1f;

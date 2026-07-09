@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -30,20 +30,12 @@ namespace TaoTie.RenderPipelines
         public struct OutlineSettings
         {
             public Color color;
-            [Range(0.0001f, 1f)] public float depthSensitivity;
-            [Range(0.0001f, 1f)] public float normalSensitivity;
-            [Range(1f, 5f)] public float width;
+            public float depthSensitivity;
+            public float normalSensitivity;
+            public float width;
         }
 
-        [SerializeField] public OutlineSettings settings = new OutlineSettings
-        {
-            color = Color.black,
-            depthSensitivity = 0.1f,
-            normalSensitivity = 0.1f,
-            width = 1f
-        };
-
-        public OutlineSettings Settings => settings;
+        [System.NonSerialized] public OutlineSettings settings;
 
         public override string DisplayName => "Outline";
 
@@ -63,6 +55,16 @@ namespace TaoTie.RenderPipelines
             TextureHandle source,
             in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<OutlineVolume>();
+            if (vol == null) return source;
+            settings = new OutlineSettings
+            {
+                color = vol.color.value,
+                depthSensitivity = vol.depthSensitivity.value,
+                normalSensitivity = vol.normalSensitivity.value,
+                width = vol.width.value
+            };
+
             if (!IsEnabled || settings.color.a <= 0f || settings.width <= 0f)
                 return source;
 

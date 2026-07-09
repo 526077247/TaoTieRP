@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -30,35 +30,20 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct FogSettings
         {
-            [Range(1, 64)] public int sampleCount;
-            [Range(0.01f, 5f)] public float minStep;
-            [Range(0.1f, 20f)] public float maxStep;
-            [Range(1f, 3f)] public float stepIncrement;
-            [Range(0f, 2f)] public float jitter;
-            [Range(0f, 5f)] public float scattering;
-            [Range(0f, 5f)] public float extinction;
-            [Range(0f, 0.99f)] public float mieG;
-            [Range(0f, 1f)] public float density;
-            [Range(10f, 2000f)] public float maxDistance;
+            public int sampleCount;
+            public float minStep;
+            public float maxStep;
+            public float stepIncrement;
+            public float jitter;
+            public float scattering;
+            public float extinction;
+            public float mieG;
+            public float density;
+            public float maxDistance;
             public Color color;
         }
 
-        [SerializeField] public FogSettings settings = new FogSettings
-        {
-            sampleCount = 32,
-            minStep = 0.2f,
-            maxStep = 3.0f,
-            stepIncrement = 1.3f,
-            jitter = 0.5f,
-            scattering = 0.5f,
-            extinction = 0.5f,
-            mieG = 0.3f,
-            density = 0.5f,
-            maxDistance = 200f,
-            color = new Color(0.5f, 0.6f, 0.7f, 1f),
-        };
-
-        public FogSettings Settings => settings;
+        [System.NonSerialized] public FogSettings settings;
 
         public override string DisplayName => "Volumetric Fog";
 
@@ -78,6 +63,23 @@ namespace TaoTie.RenderPipelines
             TextureHandle source,
             in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<VolumetricFogVolume>();
+            if (vol == null) return source;
+            settings = new FogSettings
+            {
+                sampleCount = vol.sampleCount.value,
+                minStep = vol.minStep.value,
+                maxStep = vol.maxStep.value,
+                stepIncrement = vol.stepIncrement.value,
+                jitter = vol.jitter.value,
+                scattering = vol.scattering.value,
+                extinction = vol.extinction.value,
+                mieG = vol.mieG.value,
+                density = vol.density.value,
+                maxDistance = vol.maxDistance.value,
+                color = vol.color.value
+            };
+
             if (!IsEnabled)
                 return source;
 

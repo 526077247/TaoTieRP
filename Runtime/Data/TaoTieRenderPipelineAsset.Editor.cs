@@ -1,5 +1,4 @@
 ﻿using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
@@ -21,7 +20,7 @@ namespace TaoTie.RenderPipelines
             }
             ObjectChangeEvents.changesPublished += OnObjectChanges;
             EditorApplication.projectChanged += OnProjectChanged;
-            EditorSceneManager.sceneOpened += OnSceneOpened;
+            UnityEditor.SceneManagement.EditorSceneManager.sceneOpened += OnSceneOpened;
             // Scan already-open scenes after compilation/domain reload
             EditorApplication.delayCall += EnsureCamerasInAllScenes;
         }
@@ -107,7 +106,7 @@ namespace TaoTie.RenderPipelines
             }
         }
 
-        static void OnSceneOpened(Scene scene, OpenSceneMode mode)
+        static void OnSceneOpened(Scene scene, UnityEditor.SceneManagement.OpenSceneMode mode)
         {
             EnsureCamerasInScene(scene);
         }
@@ -129,16 +128,16 @@ namespace TaoTie.RenderPipelines
                 }
             }
             if (changed)
-                EditorSceneManager.MarkSceneDirty(scene);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
         }
 
         static void EnsureCamerasInAllScenes()
         {
             if (GraphicsSettings.currentRenderPipeline is not TaoTieRenderPipelineAsset) return;
 
-            for (int i = 0; i < EditorSceneManager.sceneCount; i++)
+            for (int i = 0; i < UnityEditor.SceneManagement.EditorSceneManager.sceneCount; i++)
             {
-                EnsureCamerasInScene(EditorSceneManager.GetSceneAt(i));
+                EnsureCamerasInScene(UnityEditor.SceneManagement.EditorSceneManager.GetSceneAt(i));
             }
         }
 

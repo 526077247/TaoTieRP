@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -23,17 +23,12 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct GrainSettings
         {
-            [Range(0f, 1f)] public float intensity;
-            [Range(0f, 1f)] public float lumaResponse;
+            public float intensity;
+            public float lumaResponse;
         }
 
-        [SerializeField] public GrainSettings settings = new GrainSettings
-        {
-            intensity = 0.15f,
-            lumaResponse = 0.5f,
-        };
+        [System.NonSerialized] public GrainSettings settings;
 
-        public GrainSettings Settings => settings;
         public override string DisplayName => "Film Grain";
         public override string ShaderName => "Hidden/TaoTie RP/Film Grain";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
@@ -48,6 +43,14 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<FilmGrainVolume>();
+            if (vol == null) return source;
+            settings = new GrainSettings
+            {
+                intensity = vol.intensity.value,
+                lumaResponse = vol.lumaResponse.value
+            };
+
             if (!IsEnabled || settings.intensity <= 0f) return source;
 
             EnsureMaterial();

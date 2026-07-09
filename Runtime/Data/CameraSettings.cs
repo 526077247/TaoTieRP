@@ -10,11 +10,10 @@ namespace TaoTie.RenderPipelines
 
         public bool copyColor = true, copyDepth = true;
 
-        public bool useRenderingLayerMask = false;
-        [ShowIf(nameof(useRenderingLayerMask))]
+        public bool maskLights = false;
         [RenderingLayerMaskField]
         public int renderingLayerMask = -1;
-
+        
         public enum RenderScaleMode
         {
             Inherit,
@@ -26,16 +25,19 @@ namespace TaoTie.RenderPipelines
         [ShowIf(nameof(renderScaleMode), ShowIfOperator.NotEqual, (int)RenderScaleMode.Inherit)]
         [Range(0.1f, 2f)] public float renderScale = 1f;
 
+        [Tooltip("Which Volume layers affect this camera. Everything = all layers.")]
+        public LayerMask volumeLayerMask = ~0;
+
         public bool overridePostFX = false;
 
         [ShowIf(nameof(overridePostFX))]
         public PostFXSettings postFXSettings = default;
-
-        public bool allowPostProcessAA = true;
-
+        
         [MSAAField]
         [Tooltip("Allow high-quality anti-aliasing for this camera.")]
         public bool allowHighQualityAA = true;
+        
+        public bool allowPostProcessAA = true;
 
         [Serializable]
         public struct FinalBlendMode

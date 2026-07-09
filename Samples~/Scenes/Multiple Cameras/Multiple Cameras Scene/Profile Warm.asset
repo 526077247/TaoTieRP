@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6192840120903284357
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 366044cbbb0b26f4e9d4edd000aed28b, type: 3}
+  m_Name: ColorGradingVolume
+  m_EditorClassIdentifier:
+  active: 1
+  toneMappingMode:
+    m_OverrideState: 1
+    m_Value: 1
+  postExposure:
+    m_OverrideState: 1
+    m_Value: 0.2
+  contrast:
+    m_OverrideState: 1
+    m_Value: 5
+  colorFilter:
+    m_OverrideState: 1
+    m_Value: {r: 1, g: 0.95, b: 0.85, a: 1}
+  hueShift:
+    m_OverrideState: 0
+    m_Value: 0
+  saturation:
+    m_OverrideState: 1
+    m_Value: 40
+  temperature:
+    m_OverrideState: 1
+    m_Value: 60
+  tint:
+    m_OverrideState: 1
+    m_Value: 20
+  splitToningShadows:
+    m_OverrideState: 1
+    m_Value: {r: 0.6, g: 0.5, b: 0.4, a: 1}
+  splitToningHighlights:
+    m_OverrideState: 1
+    m_Value: {r: 1, g: 0.8, b: 0.5, a: 1}
+  splitToningBalance:
+    m_OverrideState: 1
+    m_Value: -20
+  channelMixerRed:
+    m_OverrideState: 0
+    m_Value: {x: 1, y: 0, z: 0}
+  channelMixerGreen:
+    m_OverrideState: 0
+    m_Value: {x: 0, y: 1, z: 0}
+  channelMixerBlue:
+    m_OverrideState: 0
+    m_Value: {x: 0, y: 0, z: 1}
+  smhShadows:
+    m_OverrideState: 0
+    m_Value: {r: 0.7490196, g: 0.6156863, b: 1, a: 1}
+  smhMidtones:
+    m_OverrideState: 0
+    m_Value: {r: 1, g: 0.8509804, b: 0.8509804, a: 1}
+  smhHighlights:
+    m_OverrideState: 0
+    m_Value: {r: 1, g: 0.89411765, b: 0.7921569, a: 1}
+  smhShadowsStart:
+    m_OverrideState: 0
+    m_Value: 0
+  smhShadowsEnd:
+    m_OverrideState: 0
+    m_Value: 0.3
+  smhHighlightsStart:
+    m_OverrideState: 0
+    m_Value: 0.55
+  smhHighlightsEnd:
+    m_OverrideState: 0
+    m_Value: 1
+--- !u!114 &-3085102689341857401
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ae0ab618b56bb941a5bf6ad64bb6b4c, type: 3}
+  m_Name: FilmGrainVolume
+  m_EditorClassIdentifier:
+  active: 1
+  intensity:
+    m_OverrideState: 1
+    m_Value: 0.3
+  lumaResponse:
+    m_OverrideState: 1
+    m_Value: 0.5
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7fd9488000d3734a9e00ee676215985, type: 3}
+  m_Name: Profile Warm
+  m_EditorClassIdentifier:
+  components:
+  - {fileID: -6192840120903284357}
+  - {fileID: -3085102689341857401}

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -23,18 +23,14 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct SharpenSettings
         {
-            [Range(0f, 2f)] public float intensity;
-            [Range(1f, 5f)] public float radius;
+            public float intensity;
+            public float radius;
         }
 
-        [SerializeField] public SharpenSettings settings = new SharpenSettings
-        {
-            intensity = 0.5f,
-            radius = 1f,
-        };
+        [System.NonSerialized] public SharpenSettings settings;
 
-        public SharpenSettings Settings => settings;
         public override string DisplayName => "Sharpen";
+
         public override string ShaderName => "Hidden/TaoTie RP/Sharpen";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
 
@@ -48,6 +44,14 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<SharpenVolume>();
+            if (vol == null) return source;
+            settings = new SharpenSettings
+            {
+                intensity = vol.intensity.value,
+                radius = vol.radius.value
+            };
+
             if (!IsEnabled || settings.intensity <= 0f) return source;
 
             Camera camera = stack.Camera;

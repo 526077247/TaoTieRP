@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -67,23 +67,23 @@ namespace TaoTie.RenderPipelines
         public struct ColorAdjustmentsSettings
         {
             public float postExposure;
-            [Range(-100f, 100f)] public float contrast;
+            public float contrast;
             [ColorUsage(false, true)] public Color colorFilter;
-            [Range(-180f, 180f)] public float hueShift;
-            [Range(-100f, 100f)] public float saturation;
+            public float hueShift;
+            public float saturation;
         }
 
         [System.Serializable]
         public struct WhiteBalanceSettings
         {
-            [Range(-100f, 100f)] public float temperature, tint;
+            public float temperature, tint;
         }
 
         [System.Serializable]
         public struct SplitToningSettings
         {
             [ColorUsage(false)] public Color shadows, highlights;
-            [Range(-100f, 100f)] public float balance;
+            public float balance;
         }
 
         [System.Serializable]
@@ -96,60 +96,21 @@ namespace TaoTie.RenderPipelines
         public struct ShadowsMidtonesHighlightsSettings
         {
             [ColorUsage(false, true)] public Color shadows, midtones, highlights;
-            [Range(0f, 2f)] public float shadowsStart, shadowsEnd, highlightsStart, highLightsEnd;
+            public float shadowsStart, shadowsEnd, highlightsStart, highLightsEnd;
         }
 
-        [SerializeField] public ToneMappingSettings toneMapping = new ToneMappingSettings
-        {
-            mode = ToneMappingSettings.Mode.ACES
-        };
-        public ToneMappingSettings ToneMapping => toneMapping;
-
-        [SerializeField] public ColorAdjustmentsSettings colorAdjustments = new ColorAdjustmentsSettings
-        {
-            colorFilter = Color.white,
-            saturation = 28f
-        };
-        public ColorAdjustmentsSettings ColorAdjustments => colorAdjustments;
-
-        [SerializeField] public WhiteBalanceSettings whiteBalance = default;
-        public WhiteBalanceSettings WhiteBalance => whiteBalance;
-
-        [SerializeField] public SplitToningSettings splitToning = new SplitToningSettings
-        {
-            shadows = Color.gray,
-            highlights = Color.gray
-        };
-        public SplitToningSettings SplitToning => splitToning;
-
-        [SerializeField] public ChannelMixerSettings channelMixer = new ChannelMixerSettings
-        {
-            red = Vector3.right,
-            green = Vector3.up,
-            blue = Vector3.forward
-        };
-        public ChannelMixerSettings ChannelMixer => channelMixer;
-
-        [SerializeField] public ShadowsMidtonesHighlightsSettings shadowsMidtonesHighlights =
-            new ShadowsMidtonesHighlightsSettings
-            {
-                shadows = new Color(0.7490196f, 0.6156863f, 1f, 1f),
-                midtones = new Color(1f, 0.8509804f, 0.8509804f, 1f),
-                highlights = new Color(1f, 0.89411765f, 0.7921569f, 1f),
-                shadowsEnd = 0.3f,
-                highlightsStart = 0.55f,
-                highLightsEnd = 1f
-            };
-        public ShadowsMidtonesHighlightsSettings ShadowsMidtonesHighlights => shadowsMidtonesHighlights;
+        [System.NonSerialized] public ToneMappingSettings toneMapping;
+        [System.NonSerialized] public ColorAdjustmentsSettings colorAdjustments;
+        [System.NonSerialized] public WhiteBalanceSettings whiteBalance;
+        [System.NonSerialized] public SplitToningSettings splitToning;
+        [System.NonSerialized] public ChannelMixerSettings channelMixer;
+        [System.NonSerialized] public ShadowsMidtonesHighlightsSettings shadowsMidtonesHighlights;
 
         public override string DisplayName => "Color Grading";
 
         public override IReadOnlyList<string> RequiredPassNames => requiredPasses;
 
-        /// <summary>是否启用了 ToneMapping（非 None 模式）</summary>
-        public bool HasToneMapping => IsEnabled && toneMapping.mode != ToneMappingSettings.Mode.None;
-
-        /// <summary>Execute 后生成的 Color LUT 纹理（如果 LUT 关闭则为 default）</summary>
+        /// <summary>Execute 后生成的 Color LUT 纹理（如�?LUT 关闭则为 default�?/summary>
         public TextureHandle ColorGradingLUT { get; private set; }
 
         public override TextureHandle Execute(
@@ -160,13 +121,58 @@ namespace TaoTie.RenderPipelines
         {
             ColorGradingLUT = default;
 
+            var vol = stack.GetActiveVolume<ColorGradingVolume>();
+            if (vol == null) return source;
+
+            toneMapping = new ToneMappingSettings { mode = vol.toneMappingMode.value };
+            colorAdjustments = new ColorAdjustmentsSettings
+            {
+                postExposure = vol.postExposure.value,
+                contrast = vol.contrast.value,
+                colorFilter = vol.colorFilter.value,
+                hueShift = vol.hueShift.value,
+                saturation = vol.saturation.value
+            };
+            whiteBalance = new WhiteBalanceSettings
+            {
+                temperature = vol.temperature.value,
+                tint = vol.tint.value
+            };
+            splitToning = new SplitToningSettings
+            {
+                shadows = vol.splitToningShadows.value,
+                highlights = vol.splitToningHighlights.value,
+                balance = vol.splitToningBalance.value
+            };
+            channelMixer = new ChannelMixerSettings
+            {
+                red = vol.channelMixerRed.value,
+                green = vol.channelMixerGreen.value,
+                blue = vol.channelMixerBlue.value
+            };
+            shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings
+            {
+                shadows = vol.smhShadows.value,
+                midtones = vol.smhMidtones.value,
+                highlights = vol.smhHighlights.value,
+                shadowsStart = vol.smhShadowsStart.value,
+                shadowsEnd = vol.smhShadowsEnd.value,
+                highlightsStart = vol.smhHighlightsStart.value,
+                highLightsEnd = vol.smhHighlightsEnd.value
+            };
+
             if (!IsEnabled || stack.ColorLUTResolution <= 0)
                 return source;
 
             using RenderGraphBuilder builder = renderGraph.AddRenderPass(
                 sampler.name, out ColorGradingRenderPass pass, sampler);
             pass.stack = stack;
-            pass.effect = this;
+            pass.toneMapping = toneMapping;
+            pass.colorAdjustments = colorAdjustments;
+            pass.whiteBalance = whiteBalance;
+            pass.splitToning = splitToning;
+            pass.channelMixer = channelMixer;
+            pass.shadowsMidtonesHighlights = shadowsMidtonesHighlights;
             pass.colorLUTResolution = stack.ColorLUTResolution;
 
             int lutHeight = stack.ColorLUTResolution;
@@ -189,13 +195,18 @@ namespace TaoTie.RenderPipelines
         class ColorGradingRenderPass
         {
             public PostFXStack stack;
-            public ColorGradingEffect effect;
+            public ToneMappingSettings toneMapping;
+            public ColorAdjustmentsSettings colorAdjustments;
+            public WhiteBalanceSettings whiteBalance;
+            public SplitToningSettings splitToning;
+            public ChannelMixerSettings channelMixer;
+            public ShadowsMidtonesHighlightsSettings shadowsMidtonesHighlights;
             public int colorLUTResolution;
             public TextureHandle colorLUT;
 
             void ConfigureColorAdjustments(CommandBuffer buffer)
             {
-                ColorAdjustmentsSettings ca = effect.ColorAdjustments;
+                ColorAdjustmentsSettings ca = colorAdjustments;
                 buffer.SetGlobalVector(colorAdjustmentsId, new Vector4(
                     Mathf.Pow(2f, ca.postExposure),
                     ca.contrast * 0.01f + 1f,
@@ -206,14 +217,14 @@ namespace TaoTie.RenderPipelines
 
             void ConfigureWhiteBalance(CommandBuffer buffer)
             {
-                WhiteBalanceSettings wb = effect.WhiteBalance;
+                WhiteBalanceSettings wb = whiteBalance;
                 buffer.SetGlobalVector(whiteBalanceId,
                     ColorUtils.ColorBalanceToLMSCoeffs(wb.temperature, wb.tint));
             }
 
             void ConfigureSplitToning(CommandBuffer buffer)
             {
-                SplitToningSettings st = effect.SplitToning;
+                SplitToningSettings st = splitToning;
                 Color splitColor = st.shadows;
                 splitColor.a = st.balance * 0.01f;
                 buffer.SetGlobalColor(splitToningShadowsId, splitColor);
@@ -222,7 +233,7 @@ namespace TaoTie.RenderPipelines
 
             void ConfigureChannelMixer(CommandBuffer buffer)
             {
-                ChannelMixerSettings cm = effect.ChannelMixer;
+                ChannelMixerSettings cm = channelMixer;
                 buffer.SetGlobalVector(channelMixerRedId, cm.red);
                 buffer.SetGlobalVector(channelMixerGreenId, cm.green);
                 buffer.SetGlobalVector(channelMixerBlueId, cm.blue);
@@ -230,7 +241,7 @@ namespace TaoTie.RenderPipelines
 
             void ConfigureShadowsMidtonesHighlights(CommandBuffer buffer)
             {
-                ShadowsMidtonesHighlightsSettings smh = effect.ShadowsMidtonesHighlights;
+                ShadowsMidtonesHighlightsSettings smh = shadowsMidtonesHighlights;
                 buffer.SetGlobalColor(smhShadowsId, smh.shadows.linear);
                 buffer.SetGlobalColor(smhMidtonesId, smh.midtones.linear);
                 buffer.SetGlobalColor(smhHighlightsId, smh.highlights.linear);
@@ -257,7 +268,7 @@ namespace TaoTie.RenderPipelines
                     0.5f / lutWidth, 0.5f / lutHeight,
                     lutHeight / (lutHeight - 1f)));
 
-                ToneMappingSettings.Mode mode = effect.ToneMapping.mode;
+                ToneMappingSettings.Mode mode = toneMapping.mode;
                 int passIndex = stack.GetPassIndex(colorGradingPassNames[(int) mode]);
                 buffer.SetGlobalFloat(colorGradingLUTInLogId,
                     stack.BufferSettings.allowHDR && mode != ToneMappingSettings.Mode.None ? 1f : 0f);

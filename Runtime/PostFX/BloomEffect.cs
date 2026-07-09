@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -32,24 +32,14 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct BloomSettings
         {
-            [Range(0f, 16f)] public int maxIterations;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
+            public int maxIterations;
             public bool ignoreRenderScale;
-            [Min(1f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public int downscaleLimit;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public bool bicubicUpsampling;
 
-            [Min(0f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public float threshold;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            [Range(0f, 1f)] public float thresholdKnee;
-            [Min(0f)]
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
+            public float thresholdKnee;
             public float intensity;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public bool fadeFireflies;
 
             public enum Mode
@@ -57,26 +47,11 @@ namespace TaoTie.RenderPipelines
                 Additive,
                 Scattering
             }
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
             public Mode mode;
-            [ShowIf(nameof(maxIterations), ShowIfOperator.NotEqual, 0)]
-            [Range(0.05f, 0.95f)] public float scatter;
+            public float scatter;
         }
 
-        [SerializeField] public BloomSettings settings = new BloomSettings
-        {
-            maxIterations = 16,
-            downscaleLimit = 2,
-            bicubicUpsampling = true,
-            threshold = 1f,
-            thresholdKnee = 0.5f,
-            intensity = 0.2f,
-            fadeFireflies = true,
-            mode = BloomSettings.Mode.Scattering,
-            scatter = 0.7f
-        };
-
-        public BloomSettings Settings => settings;
+        [System.NonSerialized] public BloomSettings settings;
 
         public override string DisplayName => "Bloom";
 
@@ -88,6 +63,22 @@ namespace TaoTie.RenderPipelines
             TextureHandle source,
             in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<BloomVolume>();
+            if (vol == null) return source;
+            settings = new BloomSettings
+            {
+                maxIterations = vol.maxIterations.value,
+                ignoreRenderScale = vol.ignoreRenderScale.value,
+                downscaleLimit = vol.downscaleLimit.value,
+                bicubicUpsampling = vol.bicubicUpsampling.value,
+                threshold = vol.threshold.value,
+                thresholdKnee = vol.thresholdKnee.value,
+                intensity = vol.intensity.value,
+                fadeFireflies = vol.fadeFireflies.value,
+                mode = vol.mode.value,
+                scatter = vol.scatter.value
+            };
+
             if (!IsEnabled || settings.maxIterations == 0 || settings.intensity <= 0f)
                 return source;
 

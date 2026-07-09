@@ -104,33 +104,54 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 
 ### Post-Processing
 
-The post-processing stack uses a modular effect architecture. Each effect is an independent `[Serializable]` class inheriting from `PostFXEffect`, registered in the Post FX Settings asset's effects list. Effects can be individually enabled/disabled, reordered to change execution order, and added via the Inspector's `+` dropdown menu (which auto-discovers all `PostFXEffect` subclasses via reflection).
+The post-processing stack uses a modular effect architecture with **Unity Volume system integration**. All post-processing parameters are controlled by `VolumeComponent` overrides in the scene — no parameters are serialized on the effects themselves.
 
-Shader pass indices are resolved dynamically at runtime by name (via `Material.GetPassName`), eliminating the fragile hardcoded enum-to-shader-pass-index coupling. Static resources (materials, shaders) are cached with reference comparison to avoid per-frame GC allocations.
+#### Volume System
 
-Each effect that uses a dedicated shader (not the shared PostFXStack shader) serializes a `[HideInInspector] public Shader` reference field — e.g. `DepthOfFieldEffect.dofShader`, `VignetteEffect.vignetteShader`, `OutlineEffect.outlineShader`. These are auto-assigned via `PostFXEffect.EnsureShaderReference()` (called by `PostFXSettings.OnEnable`/`OnValidate`) using `Shader.Find()` as fallback, mirroring the `[HideInInspector] public Shader cameraRendererShader` pattern on `TaoTieRenderPipelineSettings`. Effects using the shared Post FX Stack shader (Bloom, Color Grading) do not need their own shader field.
+Each post-processing effect has a corresponding `VolumeComponent` subclass (e.g. `BloomVolume`, `ColorGradingVolume`) in `Runtime/PostFX/Volume/`. These appear in the Volume Profile Inspector under **Add Override > TaoTie RP**. At runtime, effects read their parameters from the active `VolumeStack` via `PostFXStack.GetActiveVolume<T>()`, which checks `VolumeManager.instance.IsComponentActiveInMask<T>(layerMask)` — only components activated by a Volume on a matching layer are applied.
 
-Built-in effects:
+**Per-camera Volume filtering** is supported via the `volumeLayerMask` field on `CameraSettings` (on the `TaoTieRenderPipelineCamera` component). Set different Volume GameObjects to different Unity Layers, then assign each camera's `Volume Layer Mask` to control which Volumes affect it.
 
-| Effect | Description | Shader | Passes |
-|--------|-------------|--------|:------:|
-| **Bloom** | Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling | PostFXStack.shader | 7 |
-| **Color Grading** | Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights, tone mapping (ACES, Neutral, Reinhard) | PostFXStack.shader | 5 |
-| **Depth Of Field** | Circle of Confusion based depth blur, 13-tap Poisson disc, foreground/background blur, configurable focus distance/range | DepthOfField.shader | 3 |
-| **Outline** | Roberts Cross depth + optional G-Buffer normal edge detection (Deferred), configurable color/depth sensitivity/normal sensitivity/width | Outline.shader | 2 |
-| **Volumetric Fog** | Raymarched volumetric fog with exponential extinction, Mie scattering phase function, jitter-based anti-banding, adaptive step size | VolumetricFog.shader | 1 |
-| **Motion Blur** | Camera-motion-based blur via depth reconstruction + previous frame VP matrix, multi-sample velocity gather | MotionBlur.shader | 1 |
-| **Vignette** | Radial darkening toward screen edges, configurable center/roundness/smoothness/color | Vignette.shader | 1 |
-| **Chromatic Aberration** | Radial RGB channel offset simulating lens chromatic dispersion | ChromaticAberration.shader | 1 |
-| **Film Grain** | Animated procedural noise (hash-based), luma-weighted response for perceptual accuracy | FilmGrain.shader | 1 |
-| **Lens Distortion** | Barrel/pincushion distortion with scale compensation, configurable center | LensDistortion.shader | 1 |
-| **Sharpen** | Unsharp Mask edge enhancement, configurable radius and intensity | Sharpen.shader | 1 |
-| **Posterize** | Color quantization, reduces color levels for stylized look | Posterize.shader | 1 |
-| **Pixelate** | Grid-snap UV sampling for pixel art / retro mosaic effect | Pixelate.shader | 1 |
-| **Color Curves** | 8-channel AnimationCurve-based grading (Master, RGB, HueVsHue, HueVsSat, SatVsSat, LumVsSat), baked to 1D LUT textures | ColorCurves.shader | 1 |
-| **Panini Projection** | Cylindrical stereographic projection for wide-FOV scenes, keeps vertical/radial lines straight | PaniniProjection.shader | 1 |
+**`PostFXSettings`** (ScriptableObject) now only manages:
+- The effects list (which effects are enabled/disabled, execution order)
+- Shader references (shared PostFXStack shader + per-effect dedicated shaders)
+- Shader stripping information
 
-> **Extensibility**: to add a new post-processing effect, create a class inheriting from `PostFXEffect`, override `DisplayName` and `Execute()`, and it will automatically appear in the Inspector's `+` dropdown. No changes to PostFXStack, PostFXPass, or shader pass enums are needed. If the effect uses a dedicated shader, also override `ShaderName` (return the shader path) and `EnsureShaderReference()` (assign the serialized `Shader` field if null) — this enables automatic shader assignment and build-time shader stripping.
+All runtime parameter values come from the Volume system. The only exception is **Color Curves**, which retains serialized `AnimationCurve` fields (Volume system cannot interpolate curves).
+
+#### Effect Architecture
+
+Each effect is an independent `[Serializable]` class inheriting from `PostFXEffect`. Effects can be individually enabled/disabled, reordered, and added via the Inspector's `+` dropdown (auto-discovers all `PostFXEffect` subclasses via reflection). In the Inspector, effects with serialized parameters (Color Curves) show a foldout; effects with Volume-only parameters show just a header + enable toggle.
+
+Shader pass indices are resolved dynamically at runtime by name and cached per-Material in a static dictionary (`passMaps`), eliminating per-frame `Material.GetPassName` GC allocations even when multiple cameras use different `PostFXSettings` instances.
+
+When no Volume activates a given effect's `VolumeComponent`, `PostFXPass.Record` returns `false` and the pipeline falls back to `FinalPass` (simple blit to camera target), avoiding unnecessary render graph passes.
+
+Built-in effects and their Volume components:
+
+| Effect | VolumeComponent | Description | Shader | Passes |
+|--------|----------------|-------------|--------|:------:|
+| **Bloom** | `BloomVolume` | Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling | PostFXStack.shader | 7 |
+| **Color Grading** | `ColorGradingVolume` | Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights, tone mapping (ACES, Neutral, Reinhard) | PostFXStack.shader | 5 |
+| **Depth Of Field** | `DepthOfFieldVolume` | Circle of Confusion based depth blur, 13-tap Poisson disc, foreground/background blur, configurable focus distance/range | DepthOfField.shader | 3 |
+| **Outline** | `OutlineVolume` | Roberts Cross depth + optional G-Buffer normal edge detection (Deferred), configurable color/depth sensitivity/normal sensitivity/width | Outline.shader | 2 |
+| **Volumetric Fog** | `VolumetricFogVolume` | Raymarched volumetric fog with exponential extinction, Mie scattering phase function, jitter-based anti-banding, adaptive step size | VolumetricFog.shader | 1 |
+| **Motion Blur** | `MotionBlurVolume` | Camera-motion-based blur via depth reconstruction + previous frame VP matrix, multi-sample velocity gather | MotionBlur.shader | 1 |
+| **Vignette** | `VignetteVolume` | Radial darkening toward screen edges, configurable center/roundness/smoothness/color | Vignette.shader | 1 |
+| **Chromatic Aberration** | `ChromaticAberrationVolume` | Radial RGB channel offset simulating lens chromatic dispersion | ChromaticAberration.shader | 1 |
+| **Film Grain** | `FilmGrainVolume` | Animated procedural noise (hash-based), luma-weighted response for perceptual accuracy | FilmGrain.shader | 1 |
+| **Lens Distortion** | `LensDistortionVolume` | Barrel/pincushion distortion with scale compensation, configurable center | LensDistortion.shader | 1 |
+| **Sharpen** | `SharpenVolume` | Unsharp Mask edge enhancement, configurable radius and intensity | Sharpen.shader | 1 |
+| **Posterize** | `PosterizeVolume` | Color quantization, reduces color levels for stylized look | Posterize.shader | 1 |
+| **Pixelate** | `PixelateVolume` | Grid-snap UV sampling for pixel art / retro mosaic effect | Pixelate.shader | 1 |
+| **Color Curves** | *(serialized)* | 8-channel AnimationCurve-based grading (Master, RGB, HueVsHue, HueVsSat, SatVsSat, LumVsSat), baked to 1D LUT textures | ColorCurves.shader | 1 |
+| **Panini Projection** | `PaniniProjectionVolume` | Cylindrical stereographic projection for wide-FOV scenes, keeps vertical/radial lines straight | PaniniProjection.shader | 1 |
+
+> **Extensibility**: to add a new post-processing effect:
+> 1. Create a `VolumeComponent` subclass in `Runtime/PostFX/Volume/` with `[VolumeComponentMenu("TaoTie RP/Your Effect")]` and `VolumeParameter<T>` fields
+> 2. Create a `PostFXEffect` subclass — set `settings` as `[NonSerialized]`, read from `stack.GetActiveVolume<YourVolume>()` in `Execute()`
+> 3. Override `DisplayName`, `ShaderName`, `EnsureShaderReference()` if using a dedicated shader
+> 4. The effect automatically appears in PostFXSettings's `+` dropdown and in Volume Profile's Add Override menu
 
 **Additional post-processing features:**
 - **Bicubic Rescaling** — Off / Up-only / Up-and-down
@@ -207,6 +228,7 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 - **SRP Batcher** — Enabled by default for reduced draw call overhead
 - **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
 - **HDR** — Per-camera HDR support
+- **Volume-based Post-Processing** — All post-processing parameters controlled by Unity Volume system (`VolumeComponent` overrides), with per-camera `volumeLayerMask` filtering via Unity Layers
 - **Shader Stripping** — Automatic stripping of unused shader variants:
   - Debugger shaders and Meta passes always stripped
   - SMAA/FXAA passes stripped when not selected as post-process AA
@@ -256,9 +278,15 @@ com.taotie.render-pipelines/
 │   ├── PostFX/                    # Modular post-processing effect system
 │   │   ├── PostFXEffect.cs        # Abstract base class (ShaderName, EnsureShaderReference, dispose lifecycle)
 │   │   ├── PostFXPassNames.cs     # Shader pass name constants (replaces hardcoded enum)
-│   │   ├── PostFXEffectRegistry.cs# Reflection-based discovery of all PostFXEffect subclasses
-│   │   ├── BloomEffect.cs         # Bloom effect (pyramid down/up-sampling)
-│   │   ├── ColorGradingEffect.cs  # Color grading + tone mapping (LUT generation)
+│   │   ├── PostFXEffectRegistry.cs # Reflection-based discovery of all PostFXEffect subclasses
+│   │   ├── Volume/                # VolumeComponent subclasses for Unity Volume system
+│   │   │   ├── BloomVolume.cs     # Bloom parameters (intensity, threshold, scatter, etc.)
+│   │   │   ├── ColorGradingVolume.cs # Color grading + tone mapping parameters
+│   │   │   ├── DepthOfFieldVolume.cs # Depth of field parameters
+│   │   │   └── ...                # Vignette, ChromaticAberration, FilmGrain, etc. (14 total)
+│   │   ├── BloomEffect.cs         # Bloom effect (reads from BloomVolume at runtime)
+│   │   ├── ColorGradingEffect.cs  # Color grading + tone mapping (reads from ColorGradingVolume)
+│   │   ├── ColorCurvesEffect.cs   # Color curves (serialized AnimationCurve, not Volume-driven)
 │   │   ├── DepthOfFieldEffect.cs  # Depth of field (CoC + Gaussian blur + composite)
 │   │   ├── OutlineEffect.cs       # Outline effect (depth + normal edge detection)
 │   │   ├── VolumetricFogEffect.cs # Raymarched volumetric fog (Mie scattering)
@@ -360,6 +388,6 @@ LightingPass → SetupPass → GBufferPass → DeferredLightingPass
 | Common Materials | Lit/Unlit material presets |
 | LOD | LOD group and cross-fade |
 | Many Lights | Forward+ tile-based light culling |
-| Multiple Cameras | Per-camera overrides (render scale, post-FX, blend mode) |
-| Particles | Particle system with custom shader |
-| Tone Mapping | ACES / Neutral / Reinhard tone mapping |
+| Multiple Cameras | Per-camera Volume filtering via Layer Mask (Standard / Cold / Warm / Bloom profiles on different Layers) |
+| Particles | Particle system with custom shader, Global Volume with Bloom + Color Grading |
+| Tone Mapping | ACES / Neutral / Reinhard tone mapping via Volume overrides |

@@ -177,6 +177,7 @@ namespace TaoTie.RenderPipelines.Editor
             {
                 if (t is not Camera cam) continue;
                 cam.clearFlags = CameraClearFlags.Nothing;
+                cam.backgroundColor = Color.clear;
                 EditorUtility.SetDirty(cam);
             }
 

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -25,23 +25,14 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct VignetteSettings
         {
-            [Range(0f, 3f)] public float intensity;
-            [Range(0.01f, 1f)] public float smoothness;
+            public float intensity;
+            public float smoothness;
             public Vector2 center;
-            [Range(0.1f, 2f)] public float roundness;
+            public float roundness;
             [ColorUsage(false)] public Color color;
         }
 
-        [SerializeField] public VignetteSettings settings = new VignetteSettings
-        {
-            intensity = 0.8f,
-            smoothness = 0.5f,
-            center = new Vector2(0.5f, 0.5f),
-            roundness = 1f,
-            color = new Color(0f, 0f, 0f, 1f),
-        };
-
-        public VignetteSettings Settings => settings;
+        [System.NonSerialized] public VignetteSettings settings;
         public override string DisplayName => "Vignette";
         public override string ShaderName => "Hidden/TaoTie RP/Vignette";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
@@ -56,6 +47,16 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<VignetteVolume>();
+            if (vol == null) return source;
+            settings = new VignetteSettings
+            {
+                intensity = vol.intensity.value,
+                smoothness = vol.smoothness.value,
+                center = vol.center.value,
+                roundness = vol.roundness.value,
+                color = vol.color.value
+            };
             if (!IsEnabled) return source;
 
             EnsureMaterial();

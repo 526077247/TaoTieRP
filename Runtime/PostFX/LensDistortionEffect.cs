@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -23,20 +23,14 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct LDSettings
         {
-            [Range(-1f, 1f)] public float intensity;
+            public float intensity;
             public Vector2 center;
-            [Range(0.1f, 2f)] public float scale;
+            public float scale;
         }
 
-        [SerializeField] public LDSettings settings = new LDSettings
-        {
-            intensity = 0.3f,
-            center = new Vector2(0.5f, 0.5f),
-            scale = 1f,
-        };
-
-        public LDSettings Settings => settings;
+        [System.NonSerialized] public LDSettings settings;
         public override string DisplayName => "Lens Distortion";
+
         public override string ShaderName => "Hidden/TaoTie RP/Lens Distortion";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
 
@@ -50,6 +44,15 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<LensDistortionVolume>();
+            if (vol == null) return source;
+            settings = new LDSettings
+            {
+                intensity = vol.intensity.value,
+                center = vol.center.value,
+                scale = vol.scale.value
+            };
+
             if (!IsEnabled || Mathf.Abs(settings.intensity) < 0.001f) return source;
 
             EnsureMaterial();

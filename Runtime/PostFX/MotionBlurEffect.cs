@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -24,17 +24,12 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct MBSettings
         {
-            [Range(0f, 1f)] public float intensity;
-            [Range(4, 32)] public int sampleCount;
+            public float intensity;
+            public int sampleCount;
         }
 
-        [SerializeField] public MBSettings settings = new MBSettings
-        {
-            intensity = 0.3f,
-            sampleCount = 16,
-        };
+        [System.NonSerialized] public MBSettings settings;
 
-        public MBSettings Settings => settings;
         public override string DisplayName => "Motion Blur";
         public override string ShaderName => "Hidden/TaoTie RP/Motion Blur";
         public override IReadOnlyList<string> RequiredPassNames => System.Array.Empty<string>();
@@ -49,6 +44,14 @@ namespace TaoTie.RenderPipelines
             RenderGraph renderGraph, PostFXStack stack,
             TextureHandle source, in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<MotionBlurVolume>();
+            if (vol == null) return source;
+            settings = new MBSettings
+            {
+                intensity = vol.intensity.value,
+                sampleCount = vol.sampleCount.value
+            };
+
             if (!IsEnabled || settings.intensity <= 0f) return source;
 
             EnsureMaterial();
@@ -63,7 +66,7 @@ namespace TaoTie.RenderPipelines
             MotionCameraData motionData = MotionCameraData.Get(camera);
 
             // Compute current frame VP and inverse
-            // Current frame VP and inverse — use cameraToWorldMatrix (inverse view) instead of full Inverse(VP)
+            // Current frame VP and inverse �?use cameraToWorldMatrix (inverse view) instead of full Inverse(VP)
             Matrix4x4 gpuProj = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
             Matrix4x4 currentVP = gpuProj * camera.worldToCameraMatrix;
             // Inverse VP: inverse projection * inverse view = inverse(gpuProj) * cameraToWorld

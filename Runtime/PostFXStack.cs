@@ -17,7 +17,7 @@ namespace TaoTie.RenderPipelines
 
         static readonly Rect fullViewRect = new(0f, 0f, 1f, 1f);
 
-        readonly Dictionary<string, int> passIndexMap = new();
+        Dictionary<string, int> passIndexMap = new();
 
         public CameraBufferSettings BufferSettings { get; set; }
 
@@ -45,6 +45,25 @@ namespace TaoTie.RenderPipelines
         /// <summary>MSAA sample count for temp textures.</summary>
         public MSAASamples MSAA { get; set; }
 
+        /// <summary>当前相机的 Volume 堆栈（由 CameraRenderer 更新），供 PostFXEffect 读取覆盖值。</summary>
+        public VolumeStack VolumeStack { get; set; }
+
+        /// <summary>当前相机的 Volume LayerMask（由 CameraRenderer 更新）。</summary>
+        public LayerMask VolumeLayerMask { get; set; } = -1;
+
+        /// <summary>
+        /// 获取当前相机被 Volume 激活的 VolumeComponent。
+        /// 没有任何 Volume 激活该组件时返回 null。
+        /// </summary>
+        public T GetActiveVolume<T>() where T : VolumeComponent
+        {
+            if (VolumeStack == null) return null;
+            if (!VolumeManager.instance.IsComponentActiveInMask<T>(VolumeLayerMask)) return null;
+            return VolumeStack.GetComponent<T>();
+        }
+
+        static readonly Dictionary<Material, Dictionary<string, int>> passMaps = new();
+
         Material lastMaterial;
 
         public void InitializePassMap()
@@ -54,12 +73,16 @@ namespace TaoTie.RenderPipelines
             if (mat == null) return;
             if (mat == lastMaterial && passIndexMap.Count > 0) return;
             lastMaterial = mat;
-            passIndexMap.Clear();
-            for (int i = 0; i < mat.passCount; i++)
+            if (!passMaps.TryGetValue(mat, out passIndexMap))
             {
-                string name = mat.GetPassName(i);
-                if (!string.IsNullOrEmpty(name))
-                    passIndexMap[name] = i;
+                passIndexMap = new Dictionary<string, int>();
+                for (int i = 0; i < mat.passCount; i++)
+                {
+                    string name = mat.GetPassName(i);
+                    if (!string.IsNullOrEmpty(name))
+                        passIndexMap[name] = i;
+                }
+                passMaps[mat] = passIndexMap;
             }
         }
 

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
@@ -24,19 +24,12 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct DOFSettings
         {
-            [Range(0.1f, 100f)] public float focusDistance;
-            [Range(0.1f, 50f)] public float focusRange;
-            [Range(0f, 2f)] public float blurStrength;
+            public float focusDistance;
+            public float focusRange;
+            public float blurStrength;
         }
 
-        [SerializeField] public DOFSettings settings = new DOFSettings
-        {
-            focusDistance = 10f,
-            focusRange = 3f,
-            blurStrength = 1f,
-        };
-
-        public DOFSettings Settings => settings;
+        [System.NonSerialized] public DOFSettings settings;
 
         public override string DisplayName => "Depth Of Field";
 
@@ -56,6 +49,14 @@ namespace TaoTie.RenderPipelines
             TextureHandle source,
             in CameraRendererTextures textures)
         {
+            var vol = stack.GetActiveVolume<DepthOfFieldVolume>();
+            if (vol == null) return source;
+            settings = new DOFSettings
+            {
+                focusDistance = vol.focusDistance.value,
+                focusRange = vol.focusRange.value,
+                blurStrength = vol.blurStrength.value
+            };
             if (!IsEnabled)
                 return source;
 
@@ -113,7 +114,7 @@ namespace TaoTie.RenderPipelines
             builder.SetRenderFunc<DOFBlurPass>(
                 static (pass, context) => pass.Render(context));
 
-            // Pass 2: Composite — write to a NEW texture (not source) to avoid read-write hazard
+            // Pass 2: Composite �?write to a NEW texture (not source) to avoid read-write hazard
             using RenderGraphBuilder builder2 = renderGraph.AddRenderPass(
                 "DoF Composite", out DOFCompositePass compositePass, sampler);
 
@@ -214,7 +215,7 @@ namespace TaoTie.RenderPipelines
                 cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
                 cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, material, 0, 0);
 
-                // Pass 1: Blur — read from cocResult, write to blurResult
+                // Pass 1: Blur �?read from cocResult, write to blurResult
                 cmd.SetGlobalTexture(dofSourceID, cocResult);
                 cmd.SetGlobalVector(dofTexelSizeID, texelSize * blurStrength);
 

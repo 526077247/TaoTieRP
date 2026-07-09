@@ -18,6 +18,8 @@ namespace TaoTie.RenderPipelines
                 settings.useSRPBatcher;
             GraphicsSettings.lightsUseLinearIntensity = true;
 
+            VolumeManager.instance.CheckBaseTypes();
+
             UpdateForwardPlusKeyword();
 
             InitializeForEditor();
