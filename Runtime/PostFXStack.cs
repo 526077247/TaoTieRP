@@ -45,6 +45,12 @@ namespace TaoTie.RenderPipelines
         /// <summary>MSAA sample count for temp textures.</summary>
         public MSAASamples MSAA { get; set; }
 
+        /// <summary>方向光阴影图集，供需要采样阴影的后效使用 (如 Volumetric Fog)。</summary>
+        public TextureHandle ShadowDirectionalAtlas { get; set; }
+
+        /// <summary>点/聚光灯阴影图集。</summary>
+        public TextureHandle ShadowOtherAtlas { get; set; }
+
         /// <summary>当前相机的 Volume 堆栈（由 CameraRenderer 更新），供 PostFXEffect 读取覆盖值。</summary>
         public VolumeStack VolumeStack { get; set; }
 

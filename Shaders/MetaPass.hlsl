@@ -14,15 +14,19 @@ struct Attributes {
     float3 positionOS : POSITION;
     float2 baseUV : TEXCOORD0;
     float2 lightMapUV : TEXCOORD1;
+    UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 struct Varyings {
     float4 positionCS_SS : SV_POSITION;
     float2 baseUV : VAR_BASE_UV;
+    UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 Varyings MetaPassVertex (Attributes input) {
     Varyings output;
+    UNITY_SETUP_INSTANCE_ID(input);
+    UNITY_TRANSFER_INSTANCE_ID(input, output);
     input.positionOS.xy =
         input.lightMapUV * unity_LightmapST.xy + unity_LightmapST.zw;
     input.positionOS.z = input.positionOS.z > 0.0 ? FLT_MIN : 0.0;
@@ -32,6 +36,7 @@ Varyings MetaPassVertex (Attributes input) {
 }
 
 float4 MetaPassFragment (Varyings input) : SV_TARGET {
+    UNITY_SETUP_INSTANCE_ID(input);
     InputConfig config = GetInputConfig(input.positionCS_SS, input.baseUV);
     float4 base = GetBase(config);
     Surface surface;

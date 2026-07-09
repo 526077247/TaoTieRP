@@ -2,10 +2,13 @@
 #define TAOTIE_VOLUMETRIC_FOG_INCLUDED
 
 // Adapted from https://github.com/sinnwrig/URP-Fog-Volumes (MIT)
-// Simplified for TaoTie RP: no volume intersection, no per-light shadowing,
-// full-screen raymarch with exponential extinction, Mie scattering, fog color.
+// Enhanced for TaoTie RP: per-light shadow sampling, Beer-Lambert extinction,
+// height-based density variation, real light direction Mie scattering.
 
 #include "ShaderLibrary/Common.hlsl"
+#include "ShaderLibrary/Surface.hlsl"
+#include "ShaderLibrary/Shadows.hlsl"
+#include "ShaderLibrary/Light.hlsl"
 
 TEXTURE2D(_VFogSource);
 
@@ -16,8 +19,10 @@ float _VFogScattering;
 float _VFogExtinction;
 float _VFogMieG;
 float _VFogDensity;
-float4 _VFogColor;         // rgb = fog color, a = density multiplier
+float4 _VFogColor;         // rgb = fog albedo, a = density multiplier
 float _VFogMaxDistance;
+float _VFogBaseHeight;
+float _VFogHeightFalloff;
 
 struct VFogVaryings
 {
@@ -36,7 +41,6 @@ VFogVaryings VFogPassVertex(float3 positionOS : POSITION, float2 uv : TEXCOORD0)
 }
 
 float sqr(float v) { return v * v; }
-float sqrlen(float3 v) { return dot(v, v); }
 
 // Mie phase function — from https://github.com/SlightlyMad/VolumetricLights (BSD)
 float MiePhase(float cosAngle, float mieG)
@@ -62,16 +66,17 @@ float MathRand(float2 uv)
 half4 RayMarch(float3 rayStart, float3 rayDir, float rayLength, float2 uv)
 {
     float stepSize = _VFogStepParams.x;
-    float extinction = 0.0;
-    half3 vlight = 0.0;
+    float transmittance = 1.0;          // Beer-Lambert accumulated transmittance
+    half3 inScatteredLight = 0.0;      // Accumulated in-scattered radiance
     float distance = 0.0;
 
     // Jitter the start position to reduce banding
     float jitter = MathRand(uv) * _VFogJitter;
     distance = jitter;
 
-    half3 fogColor = _VFogColor.rgb;
-    float density = _VFogDensity * _VFogColor.a;
+    half3 fogAlbedo = _VFogColor.rgb;
+    float baseDensity = _VFogDensity * _VFogColor.a;
+    int dirLightCount = GetDirectionalLightCount();
 
     [loop]
     for (int i = 0; i < _VFogSampleCount; ++i)
@@ -79,29 +84,62 @@ half4 RayMarch(float3 rayStart, float3 rayDir, float rayLength, float2 uv)
         if (distance >= rayLength)
             break;
 
-        float3 currentPosition = rayStart + rayDir * distance;
+        float3 worldPos = rayStart + rayDir * distance;
 
-        // Simple density falloff — constant with distance-based fade
-        float distFade = saturate(distance / _VFogMaxDistance);
-        float localDensity = density * (1.0 - distFade * 0.3);
+        // Height-based density variation
+        float heightDensity = 1.0;
+        if (_VFogHeightFalloff > 0.0)
+        {
+            heightDensity = exp(-max(0.0, worldPos.y - _VFogBaseHeight) * _VFogHeightFalloff);
+        }
+        float localDensity = baseDensity * heightDensity;
 
-        float scattering = _VFogScattering * stepSize * localDensity;
-        extinction += _VFogExtinction * stepSize * localDensity;
+        // Beer-Lambert extinction: update transmittance
+        float extinctionStep = _VFogExtinction * stepSize * localDensity;
+        transmittance *= exp(-extinctionStep);
 
-        float influence = scattering * exp(-extinction);
+        // Build Surface for shadow sampling at this point in space
+        Surface surface = (Surface)0;
+        surface.position = worldPos;
+        surface.interpolatedNormal = float3(0.0, 1.0, 0.0);
+        surface.depth = -TransformWorldToView(worldPos).z;
+        surface.dither = InterleavedGradientNoise(uv * 64.0 + distance, 0);
+        surface.renderingLayerMask = ~0u;
+        surface.receiveShadows = true;
 
-        // Apply fog color with Mie scattering (use view direction as light direction approximation)
-        float cosAngle = dot(rayDir, -rayDir);
-        half3 lightColor = fogColor * MiePhase(cosAngle, _VFogMieG);
+        ShadowData shadowData = GetShadowData(surface);
 
-        vlight += lightColor * influence;
+        // Accumulate in-scattering from all directional lights
+        half3 lightContribution = 0.0;
+        [loop]
+        for (int j = 0; j < dirLightCount; j++)
+        {
+            DirectionalShadowData dirShadow =
+                GetDirectionalShadowData(j, shadowData);
+            float shadowAttenuation =
+                GetDirectionalShadowAttenuation(dirShadow, shadowData, surface);
 
+            float3 lightDir = _DirectionalLightDirectionsAndMasks[j].xyz;
+            float3 lightColor = _DirectionalLightColors[j].rgb;
+
+            // Mie phase using real light direction
+            float cosAngle = dot(rayDir, -lightDir);
+            half phase = MiePhase(cosAngle, _VFogMieG);
+
+            lightContribution += half3(lightColor * shadowAttenuation) * phase;
+        }
+
+        // In-scattering: T * sigma_scat * density * stepSize * Sigma(light * shadow * phase)
+        float scatteringStep = _VFogScattering * stepSize * localDensity;
+        inScatteredLight += transmittance * scatteringStep * lightContribution * fogAlbedo;
+
+        // Exponential step size
         distance += stepSize;
         stepSize = min(_VFogStepParams.y, stepSize * _VFogStepParams.z);
     }
 
-    float opacity = 1.0 - exp(-extinction);
-    return half4(vlight, opacity);
+    float opacity = 1.0 - transmittance;
+    return half4(inScatteredLight, opacity);
 }
 
 half4 CalculateVolumetricFog(float3 cameraPos, float3 viewDir, float linearDepth, float2 uv)
@@ -134,7 +172,7 @@ half4 VolumetricFogFragment(VFogVaryings input) : SV_Target
 
     half4 fog = CalculateVolumetricFog(_WorldSpaceCameraPos, viewDir, linearDepth, uv);
 
-    // Blend source with fog: fog.rgb is accumulated light, fog.a is opacity
+    // Beer-Lambert compositing: L_final = L_background * T + L_inscattered
     float3 result = source.rgb * (1.0 - fog.a) + fog.rgb;
     return float4(result, source.a);
 }

@@ -61,8 +61,12 @@ float Square (float v) {
 
 void ClipLOD (Fragment fragment, float fade) {
     #if defined(LOD_FADE_CROSSFADE)
+    // unity_LODFade.x: fade factor, negative = fading out, positive = fading in
+    // unity_LODFade.y: animated cross-fade time (0→1), used when animateCrossFading is enabled
     float dither = InterleavedGradientNoise(fragment.positionSS, 0);
-    clip(fade + (fade < 0.0 ? dither : -dither));
+    // Use the animated fade value if available (unity_LODFade.y > 0), otherwise use the static one
+    float actualFade = lerp(fade, unity_LODFade.y * sign(fade), unity_LODFade.y > 0.0);
+    clip(actualFade + (actualFade < 0.0 ? dither : -dither));
     #endif
 }
 

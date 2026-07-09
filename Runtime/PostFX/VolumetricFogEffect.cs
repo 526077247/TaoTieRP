@@ -21,7 +21,9 @@ namespace TaoTie.RenderPipelines
             vfogMieGID = Shader.PropertyToID("_VFogMieG"),
             vfogDensityID = Shader.PropertyToID("_VFogDensity"),
             vfogColorID = Shader.PropertyToID("_VFogColor"),
-            vfogMaxDistanceID = Shader.PropertyToID("_VFogMaxDistance");
+            vfogMaxDistanceID = Shader.PropertyToID("_VFogMaxDistance"),
+            vfogBaseHeightID = Shader.PropertyToID("_VFogBaseHeight"),
+            vfogHeightFalloffID = Shader.PropertyToID("_VFogHeightFalloff");
 
         static Material vfogMaterial;
 
@@ -41,6 +43,8 @@ namespace TaoTie.RenderPipelines
             public float density;
             public float maxDistance;
             public Color color;
+            public float fogBaseHeight;
+            public float heightFalloff;
         }
 
         [System.NonSerialized] public FogSettings settings;
@@ -77,7 +81,9 @@ namespace TaoTie.RenderPipelines
                 mieG = vol.mieG.value,
                 density = vol.density.value,
                 maxDistance = vol.maxDistance.value,
-                color = vol.color.value
+                color = vol.color.value,
+                fogBaseHeight = vol.fogBaseHeight.value,
+                heightFalloff = vol.heightFalloff.value
             };
 
             if (!IsEnabled)
@@ -118,6 +124,12 @@ namespace TaoTie.RenderPipelines
             pass.density = settings.density;
             pass.fogColor = settings.color;
             pass.maxDistance = settings.maxDistance;
+            pass.fogBaseHeight = settings.fogBaseHeight;
+            pass.heightFalloff = settings.heightFalloff;
+
+            // Declare read dependency on shadow atlases so RenderGraph keeps them alive
+            pass.shadowDirectionalAtlas = builder.ReadTexture(stack.ShadowDirectionalAtlas);
+            pass.shadowOtherAtlas = builder.ReadTexture(stack.ShadowOtherAtlas);
 
             var resultDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
             {
@@ -193,6 +205,10 @@ namespace TaoTie.RenderPipelines
             public float density;
             public Color fogColor;
             public float maxDistance;
+            public float fogBaseHeight;
+            public float heightFalloff;
+            public TextureHandle shadowDirectionalAtlas;
+            public TextureHandle shadowOtherAtlas;
             public TextureHandle resultTexture;
 
             public void Render(RenderGraphContext context)
@@ -209,6 +225,8 @@ namespace TaoTie.RenderPipelines
                 cmd.SetGlobalFloat(vfogDensityID, density);
                 cmd.SetGlobalColor(vfogColorID, fogColor);
                 cmd.SetGlobalFloat(vfogMaxDistanceID, maxDistance);
+                cmd.SetGlobalFloat(vfogBaseHeightID, fogBaseHeight);
+                cmd.SetGlobalFloat(vfogHeightFalloffID, heightFalloff);
 
                 cmd.SetRenderTarget(resultTexture,
                     RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);

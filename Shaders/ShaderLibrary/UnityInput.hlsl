@@ -14,6 +14,20 @@ float4 unity_ProbesOcclusion;
 
 float4 unity_SpecCube0_HDR;
 
+// Reflection probe blending + box projection (engine-managed globals)
+TEXTURECUBE(unity_SpecCube0);
+SAMPLER(samplerunity_SpecCube0);
+TEXTURECUBE(unity_SpecCube1);
+SAMPLER(samplerunity_SpecCube1);
+
+// Box projection: xyz = box center, w = enable flag (1 = box, 0 = infinite)
+float4 unity_SpecCube0_BoxMin;
+float4 unity_SpecCube0_BoxMax;
+float4 unity_SpecCube1_BoxMin;
+float4 unity_SpecCube1_BoxMax;
+// Blend weight for second probe: unity_SpecCube1_HDR.a or separate
+float4 unity_SpecCube1_HDR;
+
 float4 unity_LightmapST;
 float4 unity_DynamicLightmapST;
 

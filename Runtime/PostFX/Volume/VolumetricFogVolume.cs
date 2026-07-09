@@ -17,5 +17,7 @@ namespace TaoTie.RenderPipelines
         public ClampedFloatParameter density = new(0.5f, 0f, 1f);
         public ClampedFloatParameter maxDistance = new(200f, 10f, 2000f);
         public ColorParameter color = new(new Color(0.5f, 0.6f, 0.7f, 1f), false, true, true);
+        public ClampedFloatParameter fogBaseHeight = new(0f, -100f, 500f);
+        public ClampedFloatParameter heightFalloff = new(0.1f, 0f, 2f);
     }
 }

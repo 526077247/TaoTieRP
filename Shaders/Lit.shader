@@ -84,7 +84,7 @@
 			#pragma multi_compile _ _TAOTIE_FORWARD_PLUS
 			#pragma multi_compile _ _SSAO_ENABLED
 			#pragma multi_compile_local _ LIGHTMAP_ON
-			#pragma multi_compile_local _ LOD_FADE_CROSSFADE
+			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_instancing
 			#pragma vertex LitPassVertex
 			#pragma fragment LitPassFragment
@@ -146,7 +146,7 @@
 			#include "DeferredGBufferPass.hlsl"
 			ENDHLSL
 		}
-    	Pass {
+		Pass {
 			Tags {
 				"LightMode" = "Meta"
 			}
@@ -154,6 +154,7 @@
 			Cull Off
 
 			HLSLPROGRAM
+			#pragma multi_compile_instancing
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
 			#include "MetaPass.hlsl"

@@ -27,8 +27,7 @@ SAMPLER(samplerunity_ShadowMask);
 TEXTURE3D_FLOAT(unity_ProbeVolumeSH);
 SAMPLER(samplerunity_ProbeVolumeSH);
 
-TEXTURECUBE(unity_SpecCube0);
-SAMPLER(samplerunity_SpecCube0);
+// unity_SpecCube0/1 declared in UnityInput.hlsl
 
 struct GI {
     float3 diffuse;
@@ -106,13 +105,69 @@ float4 SampleBakedShadows (float2 lightMapUV, Surface surfaceWS) {
     #endif
 }
 
+// Box projection: reflect the sampling direction off the probe box boundaries
+// so reflections appear to come from the correct world-space position.
+float3 BoxProjection(float3 direction, float3 position,
+    float4 boxMin, float4 boxMax)
+{
+    // boxMin/boxMax: xyz = min/max bounds in probe-local space, w = unused
+    // Only apply if the box has valid bounds (max > min on any axis)
+    float3 boxMinXYZ = boxMin.xyz;
+    float3 boxMaxXYZ = boxMax.xyz;
+
+    // If bounds are all zero, skip box projection (infinite probe)
+    if (all(boxMaxXYZ == 0.0) && all(boxMinXYZ == 0.0))
+        return direction;
+
+    float3 factors = ((0.5 * (boxMaxXYZ + boxMinXYZ)) - position) / direction;
+    float3 center = 0.5 * (boxMaxXYZ + boxMinXYZ);
+
+    // Find the nearest intersection plane
+    float3 t = abs(factors);
+    float scalar = min(min(t.x, t.y), t.z);
+
+    // Project: new direction points from the box intersection to the probe center
+    float3 projected = (position + direction * scalar) - center;
+    return projected;
+}
+
+float3 SampleProbe(TEXTURECUBE_PARAM(tex, sampTex), float3 uvw, float mip,
+    float4 hdrDecode)
+{
+    float4 environment = SAMPLE_TEXTURECUBE_LOD(tex, sampTex, uvw, mip);
+    return DecodeHDREnvironment(environment, hdrDecode);
+}
+
 float3 SampleEnvironment (Surface surfaceWS, BRDF brdf) {
-    float3 uvw = reflect(-surfaceWS.viewDirection, surfaceWS.normal);
+    float3 reflectDir = reflect(-surfaceWS.viewDirection, surfaceWS.normal);
     float mip = PerceptualRoughnessToMipmapLevel(brdf.perceptualRoughness);
-    float4 environment = SAMPLE_TEXTURECUBE_LOD(
-        unity_SpecCube0, samplerunity_SpecCube0, uvw, mip
-    );
-    return DecodeHDREnvironment(environment, unity_SpecCube0_HDR);
+
+    // Box-projected reflection direction for probe 0
+    float3 uvw0 = BoxProjection(reflectDir, surfaceWS.position,
+        unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
+
+    float3 env0 = SampleProbe(
+        TEXTURECUBE_ARGS(unity_SpecCube0, samplerunity_SpecCube0),
+        uvw0, mip, unity_SpecCube0_HDR);
+
+    // Blend weight from unity_SpecCube1_HDR.a (engine sets this for probe blending)
+    // When .a is 0 or probe 1 has no valid data, only probe 0 is used.
+    float blendWeight = unity_SpecCube1_HDR.a;
+
+    if (blendWeight > 0.001)
+    {
+        // Box-projected reflection direction for probe 1
+        float3 uvw1 = BoxProjection(reflectDir, surfaceWS.position,
+            unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax);
+
+        float3 env1 = SampleProbe(
+            TEXTURECUBE_ARGS(unity_SpecCube1, samplerunity_SpecCube1),
+            uvw1, mip, unity_SpecCube1_HDR);
+
+        env0 = lerp(env0, env1, blendWeight);
+    }
+
+    return env0;
 }
 
 GI GetGI (float2 lightMapUV, Surface surfaceWS, BRDF brdf) {

@@ -63,17 +63,19 @@ float4 DeferredLightingFragment (DeferredVaryings input) : SV_TARGET {
     surface.viewDirection = normalize(_WorldSpaceCameraPos - worldPos);
     surface.depth = -TransformWorldToView(worldPos).z;
     surface.color = albedoAO.rgb;
+    surface.metallic = normalMS.z;
+    surface.occlusion = albedoAO.a;
+    surface.smoothness = normalMS.w;
+
     #if UNITY_COLORSPACE_GAMMA
         surface.color = SRGBToLinear(surface.color);
     #endif
     surface.alpha = 1.0;
-    surface.metallic = normalMS.z;
-    surface.occlusion = albedoAO.a;
+
     #if defined(_SSAO_ENABLED)
         surface.occlusion *= SAMPLE_TEXTURE2D(_ScreenSpaceOcclusionTexture,
             sampler_ScreenSpaceOcclusionTexture, texUV).r;
     #endif
-    surface.smoothness = normalMS.w;
     surface.fresnelStrength = 1.0;
     surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);
     surface.renderingLayerMask = ~0u;

@@ -52,6 +52,7 @@ Shader "TaoTie RP/Unlit"
 			HLSLPROGRAM
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
 			#pragma multi_compile_instancing
+			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
 			#include "ShadowCasterPass.hlsl"
@@ -82,6 +83,7 @@ Shader "TaoTie RP/Unlit"
 			Cull Off
 
 			HLSLPROGRAM
+			#pragma multi_compile_instancing
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
 			#include "MetaPass.hlsl"

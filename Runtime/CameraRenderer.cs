@@ -36,7 +36,8 @@ namespace TaoTie.RenderPipelines
             Camera camera, CameraSettings cameraSettings,
             in CameraBufferSettings bufferSettings, PostFXSettings postFXSettings,
             Vector2Int bufferSize, bool useGBufferNormals,
-            TextureHandle gBufferNormalMS, bool useHDR, MSAASamples msaaSamples)
+            TextureHandle gBufferNormalMS, bool useHDR, MSAASamples msaaSamples,
+            in ShadowTextures shadowTextures)
         {
             postFXStack.BufferSettings = bufferSettings;
             postFXStack.BufferSize = bufferSize;
@@ -47,6 +48,8 @@ namespace TaoTie.RenderPipelines
             postFXStack.GBufferNormalMS = gBufferNormalMS;
             postFXStack.UseHDR = useHDR;
             postFXStack.MSAA = msaaSamples;
+            postFXStack.ShadowDirectionalAtlas = shadowTextures.directionalAtlas;
+            postFXStack.ShadowOtherAtlas = shadowTextures.otherAtlas;
             postFXStack.VolumeStack = VolumeManager.instance.stack;
             postFXStack.VolumeLayerMask = cameraSettings.volumeLayerMask;
             postFXStack.InitializePassMap();
@@ -329,7 +332,8 @@ namespace TaoTie.RenderPipelines
                     }
 
                     SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize,
-                        true, gBuffer.normalMetallicSmoothness, useHDR, msaaSamples);
+                        true, gBuffer.normalMetallicSmoothness, useHDR, msaaSamples,
+                        shadowTextures);
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
                         settings, camera, hasActivePostFX, bufferSize, useHDR);
@@ -383,7 +387,8 @@ namespace TaoTie.RenderPipelines
                         }
 
                         SetupPostFXStack(camera, cameraSettings, bufferSettings, postFXSettings, bufferSize,
-                            false, default, useHDR, MSAASamples.None);
+                            false, default, useHDR, MSAASamples.None,
+                            shadowTextures);
                         RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                             postFXStack, (int) settings.colorLUTResolution,
                             settings, camera, hasActivePostFX, bufferSize, useHDR);
