@@ -11,7 +11,7 @@
 // On GLES2, each TEXTURE2D creates a separate combined sampler2D that consumes
 // one sampler register (limit: 16). 12 cookie textures would push the Lit shader
 // over the limit, so cookie textures and sampling are disabled on GLES2.
-#if !defined(SHADER_API_GLES) || defined(SHADER_API_GLES3)
+#if !defined(SHADER_API_GLES)
 
 // Cookie textures — per-light global textures
 TEXTURE2D(_DirLightCookie0); TEXTURE2D(_DirLightCookie1);

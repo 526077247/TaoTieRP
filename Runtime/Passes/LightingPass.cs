@@ -1,10 +1,11 @@
 using System;
 using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
-using Unity.Mathematics;
 using Object = UnityEngine.Object;
 
 namespace TaoTie.RenderPipelines
@@ -13,16 +14,18 @@ namespace TaoTie.RenderPipelines
 	{
 		static readonly ProfilingSampler sampler = new("Lighting");
 
-		private const int maxDirLightCount = 4, maxOtherLightCountOpenGLES2 = 8;
-		
-#if UNITY_WEBGL && !UNITY_EDITOR
-		private const int maxOtherLightCount = 64;
-#else
-		private const int maxOtherLightCount = 256;
-#endif
+		private const int maxDirLightCount = 4;
 
-		// WebGL does not support ComputeBuffer; use Texture2D fallback on those platforms.
-		static readonly bool useComputeBuffer = SystemInfo.supportsComputeShaders;
+		private static int maxOtherLightCount = SystemInfo.graphicsDeviceType switch
+		{
+			GraphicsDeviceType.OpenGLES2 => 8,
+			_ => 256,
+		};
+		
+		// use Texture2D fallback on those platforms.
+		private static readonly bool isOpenGLES = SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2 &&
+		                                          SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES3 &&
+		                                          SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLCore;
 
 		static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
@@ -57,13 +60,6 @@ namespace TaoTie.RenderPipelines
 			otherLightSpotAngles = new Vector4[maxOtherLightCount],
 			otherLightShadowData = new Vector4[maxOtherLightCount];
 
-		static readonly Vector4[]
-			forwardOtherLightColors = new Vector4[maxOtherLightCountOpenGLES2],
-			forwardOtherLightPositions = new Vector4[maxOtherLightCountOpenGLES2],
-			forwardOtherLightDirectionsAndMasks = new Vector4[maxOtherLightCountOpenGLES2],
-			forwardOtherLightSpotAngles = new Vector4[maxOtherLightCountOpenGLES2],
-			forwardOtherLightShadowData = new Vector4[maxOtherLightCountOpenGLES2];
-
 		// Cookie support
 		static readonly int
 			dirCookieMatrixId = Shader.PropertyToID("_DirLightCookieMatrix"),
@@ -73,13 +69,11 @@ namespace TaoTie.RenderPipelines
 
 		static readonly Matrix4x4[]
 			dirCookieMatrices = new Matrix4x4[maxDirLightCount],
-			otherCookieMatrices = new Matrix4x4[maxOtherLightCount],
-			forwardOtherCookieMatrices = new Matrix4x4[maxOtherLightCountOpenGLES2];
+			otherCookieMatrices = new Matrix4x4[maxOtherLightCount];
 
 		static readonly float[]
 			dirCookieEnabled = new float[maxDirLightCount],
-			otherCookieEnabled = new float[maxOtherLightCount],
-			forwardOtherCookieEnabled = new float[maxOtherLightCountOpenGLES2];
+			otherCookieEnabled = new float[maxOtherLightCount];
 
 		static readonly int[] dirCookieTexIDs =
 		{
@@ -104,7 +98,6 @@ namespace TaoTie.RenderPipelines
 
 		static readonly Texture[] dirCookieTextures = new Texture[maxDirLightCount];
 		static readonly Texture[] otherCookieTextures = new Texture[maxOtherLightCount];
-		static readonly Texture[] forwardOtherCookieTextures = new Texture[maxOtherLightCountOpenGLES2];
 
 		CullingResults cullingResults;
 
@@ -118,16 +111,21 @@ namespace TaoTie.RenderPipelines
 		int TileCount => tileCount.x * tileCount.y;
 
 		static Vector4[] lightBounds = new Vector4[maxOtherLightCount];
-		static NativeArray<Vector2> tileDataArray;
+		static NativeArray<float2> tileDataArray;
 		static NativeArray<float> tileLightArray;
 		private static Texture2D tileDataTexture;
 		private static Texture2D tileLightTexture;
 		private static ComputeBuffer tileDataBuffer, tileLightBuffer;
 		static int tileDataBufferSize, tileLightBufferSize;
 
-		// Light-centric tile culling temporaries
-		static int[] tileLightCounts;
-		static int[] tileLightFillPos;
+		// ComputeShader tile culling (desktop/console platforms)
+		public static ComputeShader CullComputeShader { get; set; }
+		static int cullKernel = -1;
+		static ComputeBuffer lightBoundsBuffer;
+		static int lightBoundsBufferSize;
+
+		// Job System tile culling (GLES3/WebGL2 fallback)
+		static NativeArray<float4> lightBoundsNative;
 
 		// Dirty-flag: skip GPU upload when tile data hasn't changed.
 		// Must be static because RenderGraph creates a new LightingPass instance each frame.
@@ -155,7 +153,12 @@ namespace TaoTie.RenderPipelines
 				if (maxLightsPerTile > 0)
 				{
 					tileScreenPixelSize =
-						shadowSettings.other.tileSize <= 0 ? 64f : (float) shadowSettings.other.tileSize;
+						shadowSettings.other.tileSize <= 0 ? 32f : (float) shadowSettings.other.tileSize;
+#if UNITY_WEBGL && !UNITY_EDITOR
+					tileScreenPixelSize = Mathf.Max(32f, tileScreenPixelSize);
+#else
+					if(!isOpenGLES) tileScreenPixelSize = Mathf.Max(32f, tileScreenPixelSize);
+#endif
 				}
 				tileScreenPixelSize *= Mathf.Pow(2,
 					Mathf.FloorToInt(Mathf.Sqrt((attachmentSize.x / 1366f) * (attachmentSize.y / 768f)) - 0.1f));
@@ -183,9 +186,9 @@ namespace TaoTie.RenderPipelines
 			else
 			{
 				max = shadowSettings.maxOtherLights;
-				if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2 && max > maxOtherLightCountOpenGLES2)
+				if (max > maxOtherLightCount)
 				{
-					max = maxOtherLightCountOpenGLES2;
+					max = maxOtherLightCount;
 				}
 			}
 
@@ -234,19 +237,39 @@ namespace TaoTie.RenderPipelines
 				int tileCountTotal = TileCount;
 				int maxLightIndices = Mathf.Max(tileCountTotal * maxLightsPerTile, 1);
 				EnsureTileTextures(tileCount, maxLightIndices);
+				EnsureComputeKernel();
+				EnsureLightBoundsNative();
+
+				bool useGpuCompute = SystemInfo.supportsComputeShaders && CullComputeShader != null && cullKernel >= 0;
 
 				#if UNITY_EDITOR
 				// In editor, always recompute and upload tile data per camera per frame
-				BuildTileLightLists(tileCountTotal);
-				tileDataDirty = true;
+				if (useGpuCompute)
+				{
+					tileDataDirty = true;
+					SaveTileDataState();
+				}
+				else
+				{
+					BuildTileLightListsJob(tileCountTotal);
+					tileDataDirty = true;
+				}
 				#else
 				// Dirty check: compare light bounds, count, and tile grid with last frame
 				bool needsRecompute = TileDataNeedsRecompute(tileCountTotal);
 
 				if (needsRecompute)
 				{
-					BuildTileLightLists(tileCountTotal);
-					tileDataDirty = true;
+					if (useGpuCompute)
+					{
+						tileDataDirty = true;
+						SaveTileDataState();
+					}
+					else
+					{
+						BuildTileLightListsJob(tileCountTotal);
+						tileDataDirty = true;
+					}
 				}
 				else
 				{
@@ -282,86 +305,6 @@ namespace TaoTie.RenderPipelines
 				lastLightBounds[j] = lightBounds[j];
 		}
 
-		/// <summary>
-		/// Light-centric tile culling: iterate lights, compute affected tile range,
-		/// then fill tile data. Complexity O(lights × avgTilesPerLight) vs original
-		/// O(tiles × lights).
-		/// </summary>
-		void BuildTileLightLists(int tileCountTotal)
-		{
-			int dataStride = tileDataTexSize.x;
-
-			// Pass 1: clear per-tile light counts
-			for (int j = 0; j < tileCountTotal; j++)
-				tileLightCounts[j] = 0;
-
-			// Pass 2: for each light, compute tile range and count
-			for (int i = 0; i < otherLightCount; i++)
-			{
-				float4 b = lightBounds[i];
-				int minTx = Mathf.Max(0, Mathf.CeilToInt(b.x * screenUVToTileCoordinates.x) - 1);
-				int maxTx = Mathf.Min(tileCount.x - 1, Mathf.FloorToInt(b.z * screenUVToTileCoordinates.x));
-				int minTy = Mathf.Max(0, Mathf.CeilToInt(b.y * screenUVToTileCoordinates.y) - 1);
-				int maxTy = Mathf.Min(tileCount.y - 1, Mathf.FloorToInt(b.w * screenUVToTileCoordinates.y));
-
-				for (int ty = minTy; ty <= maxTy; ty++)
-				{
-					for (int tx = minTx; tx <= maxTx; tx++)
-					{
-						int tileIdx = ty * tileCount.x + tx;
-						if (tileLightCounts[tileIdx] < maxLightsPerTile)
-							tileLightCounts[tileIdx]++;
-					}
-				}
-			}
-
-			// Pass 3: prefix sum → write headerIndex + count to tileDataArray
-			int runningOffset = 0;
-			for (int j = 0; j < tileCountTotal; j++)
-			{
-				int count = tileLightCounts[j];
-				int y = j / tileCount.x;
-				int x = j - y * tileCount.x;
-				int texIndex = y * dataStride + x;
-				tileDataArray[texIndex] = new Vector2(runningOffset, count);
-				tileLightFillPos[j] = runningOffset;
-				runningOffset += count;
-			}
-
-			// Pass 4: for each light, fill light indices into tileLightArray
-			for (int i = 0; i < otherLightCount; i++)
-			{
-				float4 b = lightBounds[i];
-				int minTx = Mathf.Max(0, Mathf.CeilToInt(b.x * screenUVToTileCoordinates.x) - 1);
-				int maxTx = Mathf.Min(tileCount.x - 1, Mathf.FloorToInt(b.z * screenUVToTileCoordinates.x));
-				int minTy = Mathf.Max(0, Mathf.CeilToInt(b.y * screenUVToTileCoordinates.y) - 1);
-				int maxTy = Mathf.Min(tileCount.y - 1, Mathf.FloorToInt(b.w * screenUVToTileCoordinates.y));
-
-				for (int ty = minTy; ty <= maxTy; ty++)
-				{
-					for (int tx = minTx; tx <= maxTx; tx++)
-					{
-						int tileIdx = ty * tileCount.x + tx;
-						int count = tileLightCounts[tileIdx];
-						int fillPos = tileLightFillPos[tileIdx];
-						int headerIndex = (int)tileDataArray[ty * dataStride + tx].x;
-						if (fillPos - headerIndex < count)
-						{
-							if (fillPos >= tileLightArray.Length)
-							{
-								Debug.LogError("请增加tileSize");
-								break;
-							}
-							tileLightArray[fillPos] = i;
-							tileLightFillPos[tileIdx]++;
-						}
-					}
-				}
-			}
-
-			SaveTileDataState();
-		}
-
 		void Render(RenderGraphContext context)
 		{
 			CommandBuffer buffer = context.cmd;
@@ -379,30 +322,15 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalFloat(otherLightCountId, otherLightCount);
 			if (otherLightCount > 0)
 			{
-				if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
-				{
-					buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
-					buffer.SetGlobalVectorArray(
-						otherLightPositionsId, otherLightPositions);
-					buffer.SetGlobalVectorArray(
-						otherLightDirectionsAndMasksId, otherLightDirectionsAndMasks);
-					buffer.SetGlobalVectorArray(
-						otherLightSpotAnglesId, otherLightSpotAngles);
-					buffer.SetGlobalVectorArray(
-						otherLightShadowDataId, otherLightShadowData);
-				}
-				else
-				{
-					buffer.SetGlobalVectorArray(otherLightColorsId, forwardOtherLightColors);
-					buffer.SetGlobalVectorArray(
-						otherLightPositionsId, forwardOtherLightPositions);
-					buffer.SetGlobalVectorArray(
-						otherLightDirectionsAndMasksId, forwardOtherLightDirectionsAndMasks);
-					buffer.SetGlobalVectorArray(
-						otherLightSpotAnglesId, forwardOtherLightSpotAngles);
-					buffer.SetGlobalVectorArray(
-						otherLightShadowDataId, forwardOtherLightShadowData);
-				}
+				buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
+				buffer.SetGlobalVectorArray(
+					otherLightPositionsId, otherLightPositions);
+				buffer.SetGlobalVectorArray(
+					otherLightDirectionsAndMasksId, otherLightDirectionsAndMasks);
+				buffer.SetGlobalVectorArray(
+					otherLightSpotAnglesId, otherLightSpotAngles);
+				buffer.SetGlobalVectorArray(
+					otherLightShadowDataId, otherLightShadowData);
 			}
 
 			// Upload cookie data
@@ -419,31 +347,39 @@ namespace TaoTie.RenderPipelines
 				buffer.SetGlobalTexture(dirCookieTexIDs[ci],
 					dirCookieTextures[ci] != null ? dirCookieTextures[ci] : whiteCookieTexture);
 
-			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
+			buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
+			buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
+			for (int ci = 0; ci < otherCookieTexIDs.Length; ci++)
 			{
-				buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
-				buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
-			}
-			else
-			{
-				buffer.SetGlobalMatrixArray(otherCookieMatrixId, forwardOtherCookieMatrices);
-				buffer.SetGlobalFloatArray(otherCookieEnabledId, forwardOtherCookieEnabled);
-			}
-			for (int ci = 0; ci < maxOtherLightCountOpenGLES2; ci++)
-			{
-				Texture tex = useForwardPlus ? otherCookieTextures[ci] : forwardOtherCookieTextures[ci];
 				buffer.SetGlobalTexture(otherCookieTexIDs[ci],
-					tex != null ? tex : whiteCookieTexture);
+					otherCookieTextures[ci] != null ? otherCookieTextures[ci] : whiteCookieTexture);
 			}
 
 			shadows.Render(context);
 
 			if (useForwardPlus)
 			{
-				bool canUseBuffer = useComputeBuffer && tileDataBuffer != null && tileLightBuffer != null;
+				bool canUseBuffer = isOpenGLES && tileDataBuffer != null && tileLightBuffer != null;
+				bool useGpuCompute = canUseBuffer && CullComputeShader != null && cullKernel >= 0;
+
 				if (tileDataDirty)
 				{
-					if (canUseBuffer)
+					if (useGpuCompute)
+					{
+						lightBoundsBuffer.SetData(lightBounds, 0, 0, otherLightCount);
+
+						CullComputeShader.SetBuffer(cullKernel, "_LightBounds", lightBoundsBuffer);
+						CullComputeShader.SetBuffer(cullKernel, "_TileData", tileDataBuffer);
+						CullComputeShader.SetBuffer(cullKernel, "_TileLights", tileLightBuffer);
+						CullComputeShader.SetInt("_LightCount", otherLightCount);
+						CullComputeShader.SetVector("_TileCount", new Vector4(tileCount.x, tileCount.y, tileDataTexSize.x, maxLightsPerTile));
+						CullComputeShader.SetVector("_ScreenUVToTileCoords", screenUVToTileCoordinates);
+
+						int groupX = Mathf.CeilToInt(tileCount.x / 8f);
+						int groupY = Mathf.CeilToInt(tileCount.y / 8f);
+						buffer.DispatchCompute(CullComputeShader, cullKernel, groupX, groupY, 1);
+					}
+					else if (canUseBuffer)
 					{
 						tileDataBuffer.SetData(tileDataArray);
 						tileLightBuffer.SetData(tileLightArray);
@@ -540,22 +476,11 @@ namespace TaoTie.RenderPipelines
 			dirAndmask.w = (float)light.renderingLayerMask;
 			Vector4 shadowData = shadows.ReserveOtherShadows(light, visibleIndex);
 
-			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
-			{
-				otherLightColors[index] = color;
-				otherLightPositions[index] = position;
-				otherLightSpotAngles[index] = spotAngles;
-				otherLightDirectionsAndMasks[index] = dirAndmask;
-				otherLightShadowData[index] = shadowData;
-			}
-			else
-			{
-				forwardOtherLightColors[index] = color;
-				forwardOtherLightPositions[index] = position;
-				forwardOtherLightSpotAngles[index] = spotAngles;
-				forwardOtherLightDirectionsAndMasks[index] = dirAndmask;
-				forwardOtherLightShadowData[index] = shadowData;
-			}
+			otherLightColors[index] = color;
+			otherLightPositions[index] = position;
+			otherLightSpotAngles[index] = spotAngles;
+			otherLightDirectionsAndMasks[index] = dirAndmask;
+			otherLightShadowData[index] = shadowData;
 		}
 
 		void SetupSpotLight(
@@ -566,7 +491,7 @@ namespace TaoTie.RenderPipelines
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
-			dirAndMask.w = (float)light.renderingLayerMask;
+			dirAndMask.w = light.renderingLayerMask;
 
 			float innerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * light.innerSpotAngle);
 			float outerCos = Mathf.Cos(
@@ -595,39 +520,27 @@ namespace TaoTie.RenderPipelines
 				cookieTex = light.cookie;
 			}
 
-			if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2)
-			{
-				otherLightColors[index] = color;
-				otherLightPositions[index] = position;
-				otherLightDirectionsAndMasks[index] = dirAndMask;
-				otherLightSpotAngles[index] = spotAngles;
-				otherLightShadowData[index] = shadowData;
-				otherCookieMatrices[index] = cookieMatrix;
-				otherCookieEnabled[index] = cookieEnabled;
-				otherCookieTextures[index] = cookieTex;
-			}
-			else
-			{
-				forwardOtherLightColors[index] = color;
-				forwardOtherLightPositions[index] = position;
-				forwardOtherLightDirectionsAndMasks[index] = dirAndMask;
-				forwardOtherLightSpotAngles[index] = spotAngles;
-				forwardOtherLightShadowData[index] = shadowData;
-				forwardOtherCookieMatrices[index] = cookieMatrix;
-				forwardOtherCookieEnabled[index] = cookieEnabled;
-				forwardOtherCookieTextures[index] = cookieTex;
-			}
+			otherLightColors[index] = color;
+			otherLightPositions[index] = position;
+			otherLightDirectionsAndMasks[index] = dirAndMask;
+			otherLightSpotAngles[index] = spotAngles;
+			otherLightShadowData[index] = shadowData;
+			otherCookieMatrices[index] = cookieMatrix;
+			otherCookieEnabled[index] = cookieEnabled;
+			otherCookieTextures[index] = cookieTex;
 		}
 
 		public static void Dispose()
 		{
 			if (tileDataArray.IsCreated) tileDataArray.Dispose();
 			if (tileLightArray.IsCreated) tileLightArray.Dispose();
+			if (lightBoundsNative.IsCreated) lightBoundsNative.Dispose();
 			if (tileDataTexture != null) Object.DestroyImmediate(tileDataTexture);
 			if (tileLightTexture != null) Object.DestroyImmediate(tileLightTexture);
 			tileDataBuffer?.Release();
 			tileLightBuffer?.Release();
-			tileDataBufferSize = tileLightBufferSize = 0;
+			lightBoundsBuffer?.Release();
+			tileDataBufferSize = tileLightBufferSize = lightBoundsBufferSize = 0;
 		}
 
 		public static ShadowTextures Record(
@@ -679,6 +592,43 @@ namespace TaoTie.RenderPipelines
 			return v + 1;
 		}
 
+		void EnsureComputeKernel()
+		{
+			if (cullKernel < 0 && CullComputeShader != null)
+			{
+				cullKernel = CullComputeShader.FindKernel("CullLights");
+			}
+		}
+
+		void EnsureLightBoundsNative()
+		{
+			if (!lightBoundsNative.IsCreated)
+				lightBoundsNative = new NativeArray<float4>(maxOtherLightCount, Allocator.Persistent);
+		}
+
+		void BuildTileLightListsJob(int tileCountTotal)
+		{
+			for (int i = 0; i < otherLightCount; i++)
+				lightBoundsNative[i] = lightBounds[i];
+
+			var job = new TileCullJob
+			{
+				lightBounds = lightBoundsNative,
+				lightCount = otherLightCount,
+				tileCount = new int2(tileCount.x, tileCount.y),
+				dataStride = tileDataTexSize.x,
+				screenUVToTileCoords = new float2(screenUVToTileCoordinates.x, screenUVToTileCoordinates.y),
+				maxLightsPerTile = maxLightsPerTile,
+				tileData = tileDataArray,
+				tileLights = tileLightArray,
+			};
+
+			JobHandle handle = job.Schedule(tileCountTotal, 64);
+			handle.Complete();
+
+			SaveTileDataState();
+		}
+
 		void EnsureTileTextures(Vector2Int tileSize, int lightCount)
 		{
 			int dataW = Mathf.Min(NextPow2(Mathf.Max(tileSize.x, 1)), maxTexSize);
@@ -717,7 +667,7 @@ namespace TaoTie.RenderPipelines
 			if (!tileDataArray.IsCreated || tileDataArray.Length < actualDataTexSize)
 			{
 				if (tileDataArray.IsCreated) tileDataArray.Dispose();
-				tileDataArray = new NativeArray<Vector2>(actualDataTexSize, Allocator.Persistent);
+				tileDataArray = new NativeArray<float2>(actualDataTexSize, Allocator.Persistent);
 			}
 			if (!tileLightArray.IsCreated || tileLightArray.Length < actualLightTexSize)
 			{
@@ -725,14 +675,7 @@ namespace TaoTie.RenderPipelines
 				tileLightArray = new NativeArray<float>(actualLightTexSize, Allocator.Persistent);
 			}
 
-			int tileCountTotal = TileCount;
-			if (tileLightCounts == null || tileLightCounts.Length < tileCountTotal)
-			{
-				tileLightCounts = new int[tileCountTotal];
-				tileLightFillPos = new int[tileCountTotal];
-			}
-
-			if (useComputeBuffer)
+			if (isOpenGLES)
 			{
 				if (tileDataBufferSize < actualDataTexSize)
 				{
@@ -745,6 +688,12 @@ namespace TaoTie.RenderPipelines
 					tileLightBuffer?.Release();
 					tileLightBuffer = new ComputeBuffer(actualLightTexSize, 4); // float = 4 bytes
 					tileLightBufferSize = actualLightTexSize;
+				}
+				if (lightBoundsBufferSize < maxOtherLightCount)
+				{
+					lightBoundsBuffer?.Release();
+					lightBoundsBuffer = new ComputeBuffer(maxOtherLightCount, 16); // float4 = 16 bytes
+					lightBoundsBufferSize = maxOtherLightCount;
 				}
 			}
 		}

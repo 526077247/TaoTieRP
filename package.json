@@ -5,7 +5,8 @@
     "description": "Custom Unity Scriptable Render Pipeline built on the Render Graph API. Supports Forward and Deferred rendering paths — opaque objects use GBuffer MRT in Deferred or forward per-pixel lighting in Forward; transparent objects always use forward rendering with optional Forward+ tile-based light culling (up to 256 lights on native, 64 on WebGL2) in both paths. Without Forward+, forward lighting supports up to maxOtherLights (default 32, max 64) other lights, capped at 8 on WebGL1/GLES2. Deferred is available on native platforms (D3D11/Vulkan/Metal) and in Editor; on WebGL runtimes it is disabled and falls back to Forward. Features cascaded shadow maps (1-4 cascades, shadowmask, 3 quality levels), Screen Space Ambient Occlusion (SSAO with Alchemy AO, bilateral blur, configurable quality/radius/intensity/falloff/downsample), and a modular post-processing stack with a plugin-style effect system (Bloom, Color Grading, Tone Mapping, Outline, Bicubic Rescaling) where effects are independent serializable classes that can be individually enabled/disabled, reordered, and extended without modifying core code. Anti-aliasing: MSAA, TAA (temporal with Halton jitter, YCoCg variance clipping, and depth-based reprojection), FXAA, and SMAA (full 3-pass with precomputed lookup textures). Includes PBR Lit/Unlit/Particle/UI shaders with GPU instancing, SRP Batcher, LOD cross-fade, per-camera HDR and render scaling, automatic shader variant stripping (including effect-presence-based PostFX shader stripping and SMAA stripping when unused), and WebGL/mobile compatibility (ComputeBuffer to Texture2D fallback for Forward+, no deferred on WebGL, 8 light cap on GLES2).",
     "dependencies": {
         "com.unity.render-pipelines.core": "14.0.10",
-        "com.unity.mathematics": "1.2.6"
+        "com.unity.mathematics": "1.2.6",
+        "com.unity.burst": "1.8.18"
     },
     "samples": [
         {

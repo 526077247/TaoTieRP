@@ -53,5 +53,9 @@ namespace TaoTie.RenderPipelines
         [HideInInspector] public Shader taaShader;
         [HideInInspector] public Shader forwardPlusDebuggerShader;
         [HideInInspector] public Shader depthDebuggerShader;
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+        public ComputeShader forwardPlusCullCompute;
+#endif
     }
 }

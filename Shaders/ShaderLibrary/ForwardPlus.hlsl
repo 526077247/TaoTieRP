@@ -8,7 +8,7 @@ float4 _ForwardPlusTileSettings;
 
 // Use separate property names to avoid property sheet type conflicts
 // between Texture2D and StructuredBuffer shader variants.
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
     StructuredBuffer<float2> _ForwardPlusTilesBuf;
     StructuredBuffer<float> _ForwardPlusTileLightsBuf;
 #else
@@ -33,7 +33,7 @@ struct ForwardPlusTile
 
     int GetForwardPlusTiles(int temp)
     {
-        #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
+        #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
             return (int)_ForwardPlusTileLightsBuf[temp];
         #else
             return (int)_ForwardPlusTileLightsTex.Load(int3(FpLightTexCoord(temp), 0)).r;
@@ -81,7 +81,7 @@ ForwardPlusTile GetForwardPlusTile(float2 screenUV)
 {
     ForwardPlusTile tile;
     tile.coordinates = int2(screenUV * _ForwardPlusTileSettings.xy);
-    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
         // _ForwardPlusLightTexSize.z = tileDataTexSize.x (data stride for linear indexing)
         int dataStride = (int)_ForwardPlusLightTexSize.z;
         int linearIndex = tile.coordinates.y * dataStride + tile.coordinates.x;

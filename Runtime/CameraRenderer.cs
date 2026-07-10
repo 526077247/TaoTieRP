@@ -21,7 +21,7 @@ namespace TaoTie.RenderPipelines
 
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
-            Shader taaShader)
+            Shader taaShader, ComputeShader forwardPlusCullCompute)
         {
             material = CoreUtils.CreateEngineMaterial(shader);
             ForwardPlusDebugger.Initialize(forwardPlusDebuggerShader);
@@ -30,6 +30,7 @@ namespace TaoTie.RenderPipelines
 #endif
             DepthDebugger.Initialize(depthDebuggerShader);
             TAAResolvePass.SetShader(taaShader);
+            LightingPass.CullComputeShader = forwardPlusCullCompute;
         }
 
         void SetupPostFXStack(
@@ -257,8 +258,26 @@ namespace TaoTie.RenderPipelines
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
 
-                bool useForwardPlus = settings.shadows.useForwardPlus &&
-                                      SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+                // Determine Forward+ based on mode and actual visible light count
+                int otherVisibleLightCount = 0;
+                var visibleLights = cullingResults.visibleLights;
+                for (int vi = 0; vi < visibleLights.Length; vi++)
+                {
+                    var lt = visibleLights[vi].lightType;
+                    if (lt == LightType.Point || lt == LightType.Spot)
+                        otherVisibleLightCount++;
+                }
+                bool useForwardPlus = shadowSettings.forwardPlus switch
+                {
+                    ShadowSettings.ForwardPlusMode.Off => false,
+                    ShadowSettings.ForwardPlusMode.Auto => otherVisibleLightCount > shadowSettings.maxOtherLights,
+                    ShadowSettings.ForwardPlusMode.Force => true,
+                    _ => false
+                } && SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+                if (useForwardPlus)
+                    Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
+                else
+                    Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :

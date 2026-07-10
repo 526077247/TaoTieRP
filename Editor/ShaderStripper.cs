@@ -141,7 +141,7 @@ namespace TaoTie.RenderPipelines.Editor
         {
             var s = GetSettings();
             if (s == null) return false;
-            return !s.shadows.useForwardPlus ||
+            return s.shadows.forwardPlus == ShadowSettings.ForwardPlusMode.Off ||
                    SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2;
         }
 

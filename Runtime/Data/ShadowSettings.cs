@@ -79,11 +79,7 @@ namespace TaoTie.RenderPipelines
         [System.Serializable]
         public struct Other
         {
-#if UNITY_WEBGL
             [Range(0, 64)]
-#else
-            [Range(0, 128)]
-#endif
             [Tooltip("Maximum allowed lights per tile")]
             public int maxLightsPerTile;
             
@@ -99,25 +95,32 @@ namespace TaoTie.RenderPipelines
                 Off = 8192
             }
             [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
-            [Tooltip("Tile size in pixels per dimension, default is Normal.")]
+            [Tooltip("Tile size in pixels per dimension, default is 32.")]
             public TileSize tileSize;
             [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [EnumLabel]
             public MapSize atlasSize;
         }
-        [Tooltip("In the Forward rendering path, support is provided for up to 64 other lights. When Forward+ is enabled, the maximum number of supported other lights increases to 256 (64 on WebGL2).")]
-        public bool useForwardPlus = true;
-        [ShowIf(nameof(useForwardPlus))]
+        public enum ForwardPlusMode
+        {
+            Off,
+            Auto,
+            Force
+        }
+
+        [Tooltip("Forward+ tile-based light culling mode. Auto enables it when other lights exceed maxOtherLights.")]
+        public ForwardPlusMode forwardPlus = ForwardPlusMode.Auto;
+        
+        [Range(0, 64)]
+        [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
+        public int maxOtherLights = 32;
+        
+        [ShowIf(nameof(forwardPlus), ShowIfOperator.NotEqual, (int)ForwardPlusMode.Off)]
         public Other other = new()
         {
             maxLightsPerTile = 128,
             atlasSize = MapSize._1024,
         };
-        
-        [ShowIf(nameof(useForwardPlus), ShowIfOperator.Equal, 0)]
-        [Range(0, 64)]
-        [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
-        public int maxOtherLights = 32;
 
         public SSAOSettings ssao = new SSAOSettings();
     }

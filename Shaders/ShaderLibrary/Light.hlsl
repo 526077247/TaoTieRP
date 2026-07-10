@@ -4,8 +4,6 @@
 #define MAX_DIRECTIONAL_LIGHT_COUNT 4
 #if defined(SHADER_API_GLES)
     #define MAX_OTHER_LIGHT_COUNT 8
-#elif defined(SHADER_API_GLES3)
-	#define MAX_OTHER_LIGHT_COUNT 64
 #else
     #define MAX_OTHER_LIGHT_COUNT 256
 #endif

@@ -44,7 +44,7 @@ MonoBehaviour:
         cascadeRatio3: 0.5
         cascadeFade: 0.1
         softCascadeBlend: 0
-      useForwardPlus: 1
+      forwardPlus: 1
       other:
         maxLightsPerTile: 64
         tileSize: 0

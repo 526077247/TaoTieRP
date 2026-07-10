@@ -56,7 +56,7 @@ float3 SampleLightProbe (Surface surfaceWS) {
     #if defined(LIGHTMAP_ON)
     return 0.0;
     #else
-    #if !defined(SHADER_API_GLES) || defined(SHADER_API_GLES3)
+    #if !defined(SHADER_API_GLES)
     if (unity_ProbeVolumeParams.x) {
         return SampleProbeVolumeSH4(
             TEXTURE3D_ARGS(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH),
@@ -88,7 +88,7 @@ float4 SampleBakedShadows (float2 lightMapUV, Surface surfaceWS) {
         unity_ShadowMask, samplerunity_ShadowMask, lightMapUV
     );
     #else
-    #if !defined(SHADER_API_GLES) || defined(SHADER_API_GLES3)
+    #if !defined(SHADER_API_GLES)
     if (unity_ProbeVolumeParams.x) {
         return SampleProbeOcclusion(
             TEXTURE3D_ARGS(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH),

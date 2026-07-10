@@ -32,7 +32,12 @@ namespace TaoTie.RenderPipelines
 #endif
                 settings.forwardPlusDebuggerShader,
                 settings.depthDebuggerShader,
-                settings.taaShader);
+                settings.taaShader,
+#if !UNITY_WEBGL || UNITY_EDITOR
+                settings.forwardPlusCullCompute);
+#else
+                null);
+#endif
 
             // Pre-warm PostFX material to avoid first-frame hitch
             if (settings.postFXSettings != null)
@@ -45,12 +50,9 @@ namespace TaoTie.RenderPipelines
 
         void UpdateForwardPlusKeyword()
         {
-            bool useForwardPlus = settings.shadows.useForwardPlus &&
-                                  SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
-            if (useForwardPlus)
-                Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
-            else
-                Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
+            // Keyword is toggled per-camera in CameraRenderer based on actual light count.
+            // Set initial state to disabled; CameraRenderer will enable as needed.
+            Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
         }
 
         private CameraRenderer renderer;

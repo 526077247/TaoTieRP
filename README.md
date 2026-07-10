@@ -25,7 +25,7 @@ TaoTie RP supports two rendering paths with optional Forward+ tile-based light c
 |---------|-----------|:------:|:------:|:------:|
 | **Forward** | Default; always available | ✅ | ✅ | ✅ |
 | **Deferred** | Requires `supportedRenderTargetCount ≥ 3` (MRT); not a reflection camera; forces MSAA off. The `DeferredLighting` shader uses `#pragma exclude_renderers gles`, so even if the runtime check is bypassed, the shader is stripped from WebGL builds. | ✅ | ❌ (forced Forward) | ❌ (forced Forward) |
-| **Forward+** | Enabled when `useForwardPlus = true` and graphics API is not OpenGLES2. Uses ComputeBuffer on native, Texture2D fallback on WebGL2. | ✅ | ✅ (Texture2D fallback, 64 light cap) | ❌ |
+| **Forward+** | Enabled when `forwardPlus != Off` and graphics API is not OpenGLES2. In `Auto` mode, activates only when visible other lights exceed `maxOtherLights`. Uses ComputeBuffer on native, Texture2D fallback on WebGL2. | ✅ | ✅ (Texture2D fallback, 64 light cap) | ❌ |
 
 > When Deferred is selected but the platform doesn't support it (all WebGL runtimes, or insufficient MRT on native), the pipeline automatically falls back to Forward rendering. In the Editor, Deferred is available on all platforms for testing purposes (`UNITY_EDITOR` bypasses the WebGL exclusion).
 
@@ -49,30 +49,35 @@ TaoTie RP supports two rendering paths with optional Forward+ tile-based light c
 | Deferred | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 32, max 64) | ✅ | ❌ | ❌ |
 | Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 (64 on WebGL2) | ✅ | ❌ | ❌ |
 
-> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `useForwardPlus` is enabled, transparent objects in the deferred path also benefit from Forward+ tile-based light culling. On WebGL2, Forward+ uses a Texture2D fallback for light data with a 64-light cap (vs 256 on native). On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
+> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `forwardPlus` is not `Off`, transparent objects in the deferred path also benefit from Forward+ tile-based light culling. On WebGL2, Forward+ uses a Texture2D fallback for light data with a 64-light cap (vs 256 on native). On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
 
 #### Full Pass Sequences
 
 **Forward path:**
 ```
 LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → SkyboxPass
-→ [ResolvePass(MSAA)] → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
-→ UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → PostFX → Final
+→ [ResolvePass(MSAA)] → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
+→ UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → LensFlarePass
+→ PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
 ```
 
 **Deferred path:**
 ```
 LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
-→ SkyboxPass → CopyAttachmentsPass → GeometryPass(transparent, CustomLit)
-→ UnsupportedShadersPass → [TAAResolvePass] → PostFX → Final
+→ SkyboxPass → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
+→ UnsupportedShadersPass → [TAAResolvePass] → LensFlarePass
+→ PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
 ```
 
-> `[...]` = optional, depends on settings. DepthPrePass runs when MSAA + Copy Depth is enabled. TAAResolvePass runs when TAA is enabled.
+> `[...]` = optional, depends on settings. DepthPrePass runs when MSAA + Copy Depth is enabled (or Depth Priming is Forced). SSAOPass runs when SSAO is enabled and depth texture is available. TAAResolvePass runs when TAA is enabled. LensFlarePass runs when a LensFlareComponent is present. PostFXPass runs when active post-processing effects exist; otherwise FinalPass blits directly. Debug passes (DepthDebugger, ForwardPlusDebugger) render overlays when their debugger is active.
+
+> **Reflection cameras** use a simplified path: `LightingPass → SetupPass → GeometryPass(opaque) → [CopyAttachmentsPass] → FinalPass`. They skip deferred, skybox, SSAO, TAA, and post-processing entirely.
 
 ### Lighting
 
-- **Forward+** — Custom CPU tile-based light culling, supporting up to 4 directional lights and 256 point/spot lights (64 on WebGL2)
+- **Forward+** — GPU ComputeShader tile-based light culling on native platforms (D3D11/Vulkan/Metal), with Burst-compiled CPU Job fallback for WebGL/GLES3. Supports up to 4 directional lights and 256 point/spot lights (64 on WebGL2)
 - ComputeBuffer light data with Texture2D fallback for WebGL
+- Dirty-flag optimization: skips tile data recomputation when light bounds and tile grid are unchanged across frames
 - Light probe interpolation and Light Probe Proxy Volumes (LPPV)
 - Reflection probes
 - **Light Cookies** — Directional and spot light cookie textures with per-light world-to-light projection matrices
@@ -88,8 +93,9 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - Spot light shadows
 - Point light 6-face cube shadows
 - Shadowmask support
-- 3 shadow filter quality levels (Hard / Medium / Soft)
+- 3 shadow filter quality levels (Low / Medium / High)
 - Configurable shadow atlas resolution (256–8192)
+- Configurable shadow max distance and distance fade
 
 ### SSAO (Screen Space Ambient Occlusion)
 
@@ -100,6 +106,7 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - Configurable resolution downsample (0.25×–1×) for performance scaling
 - Applied to ambient/indirect lighting only (multiplies `surface.occlusion`), does not affect direct lighting
 - Works in both Forward and Deferred paths (applied after opaque queue, before transparent queue)
+- `_SSAO_ENABLED` shader keyword is toggled at runtime; corresponding variants are stripped at build time when SSAO is disabled
 - Configured under **Shadows > SSAO** in the pipeline asset
 
 ### Post-Processing
@@ -184,7 +191,7 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 - FXAA and SMAA are mutually exclusive
 - SMAA uses the original precomputed lookup textures (areaTex 160×560, searchTex 64×16) embedded as byte arrays
 - SMAA edge texture uses optimized `R8G8_UNorm` format for reduced memory
-- When SMAA is not selected, SMAA shader passes and lookup data are stripped from builds via `SMAA_DISABLED` define
+- When SMAA is not selected, SMAA shader passes and lookup data are stripped from builds via `SMAA_DISABLED` define (controlled by `stripSMAAWhenUnused` toggle — enables stripping to reduce build size by ~180KB; disable if you plan to switch to SMAA at runtime)
 
 **Per-Camera Control:**
 
@@ -228,14 +235,23 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 - **SRP Batcher** — Enabled by default for reduced draw call overhead
 - **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
 - **HDR** — Per-camera HDR support
+- **Copy Color & Copy Depth** — Per-camera toggles to copy opaque color (`_CameraColorTexture`) and depth (`_CameraDepthTexture`) before the transparent queue, enabling soft particles, depth-based transparency, and other depth-dependent effects
+- **Depth Priming Mode** — Controls when a depth pre-pass (`DepthOnly` shader pass) is used to generate `_CameraDepthTexture`:
+  - **Auto** (default): Only when the pipeline already needs a depth pre-pass (e.g., MSAA + Copy Depth)
+  - **Forced**: Always use a depth pre-pass when a depth texture is needed, regardless of MSAA
+- **Rendering Layer Mask** — Per-camera `maskLights` + `renderingLayerMask` to filter which lights affect a camera based on rendering layers (similar to URP Rendering Layer Mask)
+- **Reflection Camera Support** — Reflection probe cameras use a simplified render path (opaque geometry + FinalPass only), skipping deferred, skybox, SSAO, TAA, and post-processing
+- **Per-Camera Final Blend Mode** — Configurable source/destination blend mode for the final blit to the camera target
 - **Volume-based Post-Processing** — All post-processing parameters controlled by Unity Volume system (`VolumeComponent` overrides), with per-camera `volumeLayerMask` filtering via Unity Layers
 - **Shader Stripping** — Automatic stripping of unused shader variants:
   - Debugger shaders and Meta passes always stripped
-  - SMAA/FXAA passes stripped when not selected as post-process AA
+  - SMAA/FXAA passes stripped when not selected as post-process AA (SMAA stripping controlled by `stripSMAAWhenUnused` toggle)
   - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in **any** `PostFXSettings` effects list in the project — regardless of the effect's `enabled` state
   - Bloom/ColorGrading passes in the shared Post FX Stack shader stripped when those effects are absent from all `PostFXSettings` queues
+  - `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off
+  - `_SSAO_ENABLED` keyword variants stripped when SSAO is disabled
   - WebGL compute buffer variants, TAA/SSAO shaders stripped when feature is disabled
-  - Deferred lighting shader stripped in Forward mode
+  - Deferred lighting shader and `DeferredGBuffer` pass stripped in Forward mode
 - **SSAO** — Screen Space Ambient Occlusion with Alchemy AO algorithm, depth-reconstructed normals, bilateral blur, configurable quality/radius/intensity/falloff/downsample
 - **Lens Flare (SRP)** — Data-driven lens flare system with `LensFlareData` (ScriptableObject) + `LensFlareComponent` (MonoBehaviour), supports Image/Circle/Polygon shapes, additive blend, per-element position/size/rotation/occlusion
 - **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on WebGL1/GLES2 (`supportedRenderTargetCount == 1`), graphics format fallbacks
@@ -248,6 +264,7 @@ When `copyDepth` is enabled, the opaque depth buffer is copied to `_CameraDepthT
 |-----------|--------|-------------|
 | No MSAA | `CopyTexture` / `CopyByDrawing` | Direct copy from depth attachment to non-MSAA depth texture |
 | MSAA + any platform | Depth Pre-Pass | Opaque objects are rendered with a `DepthOnly` shader pass into a non-MSAA depth texture before the main geometry pass |
+| Depth Priming = Forced | Depth Pre-Pass | Always uses a `DepthOnly` shader pass to generate the depth texture, regardless of MSAA state |
 
 **Forward path with MSAA + Copy Depth:**
 ```
@@ -346,19 +363,7 @@ com.taotie.render-pipelines/
 
 ### Render Pass Sequence
 
-**Forward Path:**
-```
-LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque) → SkyboxPass
-→ ResolvePass(MSAA) → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
-→ UnsupportedShaders → ResolvePass → TAAResolvePass → PostFX → Final → Debug → Gizmos
-```
-
-**Deferred Path:**
-```
-LightingPass → SetupPass → GBufferPass → DeferredLightingPass
-→ SkyboxPass → CopyAttachments → [SSAOPass] → GeometryPass(transparent)
-→ PostFX → Final → Debug → Gizmos
-```
+See [Full Pass Sequences](#full-pass-sequences) above for the complete, up-to-date pass order.
 
 ---
 
