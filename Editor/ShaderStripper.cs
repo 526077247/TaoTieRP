@@ -15,6 +15,8 @@ namespace TaoTie.RenderPipelines.Editor
         {
             "Hidden/TaoTie RP/ForwardPlus Debugger",
             "Hidden/TaoTie RP/Depth Debugger",
+            "Hidden/TaoTie RP/Overdraw",
+            "Hidden/TaoTie RP/Overdraw Resolve",
         };
 
         static readonly HashSet<string> smaaPassNames = new HashSet<string>()

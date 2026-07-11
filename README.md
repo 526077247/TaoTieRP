@@ -186,6 +186,10 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
 - **Per-Camera Final Blend Mode** — Configurable source/destination blend mode
 - **Lens Flare (SRP)** — Data-driven lens flare system with Image/Circle/Polygon shapes
 - **WebGL/Mobile Compatibility** — ComputeBuffer → Texture2D fallback, no deferred on WebGL, 8 light cap on GLES2
+- **Debug Tools** — Rendering Debugger panels accessible via **Window → Analysis → Rendering Debugger**:
+  - **Forward+ Debugger** — Visualizes tile light counts as a heat map overlay
+  - **Depth Debugger** — Visualizes depth buffer (Linear Eye / Linear 01 / Raw), split-screen mode, adjustable opacity
+  - **Overdraw Debugger** — Visualizes pixel overdraw with an additive heat map (blue → cyan → green → yellow → red → white), reveals areas of wasted fragment shading
 
 ### Shader Stripping
 
@@ -228,6 +232,8 @@ Automatic stripping of unused shader variants based on build target and Graphics
 | `Hidden/TaoTie RP/Panini Projection` | Panini projection |
 | `Hidden/ForwardPlus Debugger` | Forward+ tile debug overlay |
 | `Hidden/Depth Debugger` | Depth visualization |
+| `Hidden/TaoTie RP/Overdraw` | Overdraw geometry accumulation |
+| `Hidden/TaoTie RP/Overdraw Resolve` | Overdraw heat map resolve |
 
 ---
 
@@ -241,7 +247,7 @@ com.taotie.render-pipelines/
 ├── Runtime/
 │   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, SSAO, etc.)
 │   ├── Passes/                    # Render graph passes (Lighting, Geometry, GBuffer, TAA, PostFX, ForwardPlusCull, etc.)
-│   ├── Debugger/                  # Debug passes (depth, forward+)
+│   ├── Debugger/                  # Debug passes (depth, forward+, overdraw)
 │   ├── Attribute/                 # Custom inspector attributes
 │   ├── PostFX/                    # Modular post-processing effect system
 │   │   ├── PostFXEffect.cs        # Abstract base class

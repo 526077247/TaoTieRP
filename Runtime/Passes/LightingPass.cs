@@ -115,6 +115,7 @@ namespace TaoTie.RenderPipelines
 		static int s_maxLightsPerTile;
 		static float s_cameraNear, s_cameraFar;
 		static bool s_useForwardPlus;
+		static bool s_useDeferred;
 		static bool s_useDepth25D;
 		static Vector2Int s_screenSize;
 		static int TileCount => s_tileCount.x * s_tileCount.y;
@@ -147,12 +148,13 @@ namespace TaoTie.RenderPipelines
 
 		public void Setup(
 			CullingResults cullingResults, Vector2Int attachmentSize,
-			ShadowSettings shadowSettings, int renderingLayerMask, bool useForwardPlus,
+			ShadowSettings shadowSettings, int renderingLayerMask, bool useForwardPlus, bool useDeferred,
 			bool useDepth25D, Camera camera)
 		{
 			this.cullingResults = cullingResults;
 			shadows.Setup(cullingResults, shadowSettings);
 			s_useForwardPlus = useForwardPlus;
+			s_useDeferred = useDeferred;
 			s_useDepth25D = useDepth25D;
 			if (useForwardPlus)
 			{
@@ -203,6 +205,10 @@ namespace TaoTie.RenderPipelines
 				max = s_maxLightsPerTile * TileCount;
 				if (maxOtherLightCount < max)
 					max = maxOtherLightCount;
+			}
+			else if (s_useDeferred)
+			{
+				max = maxOtherLightCount;
 			}
 			else
 			{
@@ -622,14 +628,14 @@ namespace TaoTie.RenderPipelines
 		public static ShadowTextures Record(
 			RenderGraph renderGraph,
 			CullingResults cullingResults, Vector2Int attachmentSize, ShadowSettings shadowSettings,
-			int renderingLayerMask, bool useForwardPlus, bool useDepth25D, Camera camera)
+			int renderingLayerMask, bool useForwardPlus, bool useDeferred, bool useDepth25D, Camera camera)
 		{
 			using RenderGraphBuilder builder = renderGraph.AddRenderPass(
 				sampler.name, out LightingPass pass, sampler);
 			builder.SetRenderFunc<LightingPass>(
 				static (pass, context) => pass.Render(context));
 			pass.Setup(cullingResults, attachmentSize, shadowSettings,
-				renderingLayerMask, useForwardPlus, useDepth25D, camera);
+				renderingLayerMask, useForwardPlus,useDeferred, useDepth25D, camera);
 			builder.AllowPassCulling(false);
 			return pass.shadows.GetRenderTextures(renderGraph, builder);
 		}

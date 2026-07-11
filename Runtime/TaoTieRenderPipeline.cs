@@ -32,6 +32,7 @@ namespace TaoTie.RenderPipelines
 #endif
                 settings.forwardPlusDebuggerShader,
                 settings.depthDebuggerShader,
+                settings.overdrawResolveShader,
                 settings.taaShader,
 #if !UNITY_WEBGL || UNITY_EDITOR
                 settings.forwardPlusCullCompute);

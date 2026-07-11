@@ -16,6 +16,7 @@ namespace TaoTie.RenderPipelines
             EnsureShader(ref settings.taaShader, "Hidden/TaoTie RP/TAA");
             EnsureShader(ref settings.forwardPlusDebuggerShader, "Hidden/TaoTie RP/ForwardPlus Debugger");
             EnsureShader(ref settings.depthDebuggerShader, "Hidden/TaoTie RP/Depth Debugger");
+            EnsureShader(ref settings.overdrawResolveShader, "Hidden/TaoTie RP/Overdraw Resolve");
             return new TaoTieRenderPipeline(settings);
         }
 

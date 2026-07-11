@@ -25,6 +25,7 @@ namespace TaoTie.RenderPipelines
 
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
+            Shader overdrawResolveShader,
             Shader taaShader, ComputeShader forwardPlusCullCompute)
         {
             material = CoreUtils.CreateEngineMaterial(shader);
@@ -33,6 +34,8 @@ namespace TaoTie.RenderPipelines
             this.deferredLightingShader = deferredLightingShader;
 #endif
             DepthDebugger.Initialize(depthDebuggerShader);
+            OverdrawDebugger.Initialize();
+            OverdrawDebuggerPass.Initialize(overdrawResolveShader);
             TAAResolvePass.SetShader(taaShader);
             LightingPass.CullComputeShader = forwardPlusCullCompute;
         }
@@ -82,7 +85,8 @@ namespace TaoTie.RenderPipelines
             in CameraRendererTextures textures, bool useDepthTexture,
             PostFXStack postFXStack, int colorLUTResolution,
             TaoTieRenderPipelineSettings settings, Camera camera, bool hasActivePostFX,
-            Vector2Int bufferSize, bool useHDR)
+            Vector2Int bufferSize, bool useHDR, CullingResults cullingResults,
+            int renderingLayerMask)
         {
             LensFlarePass.Record(renderGraph, camera, textures, useDepthTexture, bufferSize, useHDR);
 
@@ -100,6 +104,8 @@ namespace TaoTie.RenderPipelines
             }
             DepthDebuggerPass.Record(renderGraph, textures, useDepthTexture);
             ForwardPlusDebuggerPass.Record(renderGraph, settings, camera);
+            OverdrawDebuggerPass.Record(renderGraph, camera, cullingResults,
+                renderingLayerMask, textures, bufferSize, useHDR);
             GizmosPass.Record(renderGraph, copier, textures);
         }
 
@@ -314,7 +320,7 @@ namespace TaoTie.RenderPipelines
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
-                        -1, useForwardPlus, useDepth25D, camera);
+                        -1, useForwardPlus, useDeferred, useDepth25D, camera);
 
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
@@ -374,7 +380,8 @@ namespace TaoTie.RenderPipelines
                         shadowTextures);
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
-                        settings, camera, hasActivePostFX, bufferSize, useHDR);
+                        settings, camera, hasActivePostFX, bufferSize, useHDR,
+                        cullingResults, cameraSettings.renderingLayerMask);
 #endif
                 }
                 else
@@ -426,7 +433,8 @@ namespace TaoTie.RenderPipelines
                             shadowTextures);
                         RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                             postFXStack, (int) settings.colorLUTResolution,
-                            settings, camera, hasActivePostFX, bufferSize, useHDR);
+                            settings, camera, hasActivePostFX, bufferSize, useHDR,
+                            cullingResults, cameraSettings.renderingLayerMask);
                     }
                     else
                     {
@@ -459,6 +467,8 @@ namespace TaoTie.RenderPipelines
         {
             CoreUtils.Destroy(material);
             ForwardPlusDebugger.Cleanup();
+            OverdrawDebugger.Cleanup();
+            OverdrawDebuggerPass.Cleanup();
             LightingPass.Dispose();
 #if !UNITY_WEBGL || UNITY_EDITOR
             DeferredLightingPass.Dispose();
