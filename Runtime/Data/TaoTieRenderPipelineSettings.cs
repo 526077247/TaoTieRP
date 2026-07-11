@@ -56,7 +56,7 @@ namespace TaoTie.RenderPipelines
         [HideInInspector] public Shader overdrawResolveShader;
 
 #if !UNITY_WEBGL || UNITY_EDITOR
-        public ComputeShader forwardPlusCullCompute;
+        [HideInInspector] public ComputeShader forwardPlusCullCompute;
 #endif
     }
 }

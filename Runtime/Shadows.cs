@@ -300,8 +300,9 @@ namespace TaoTie.RenderPipelines
 				buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 				ExecuteBuffer();
 				context.DrawShadows(ref shadowSettings);
-				buffer.SetGlobalDepthBias(0f, 0f);
 			}
+			// Reset depth bias once after all cascades (instead of per-cascade)
+			buffer.SetGlobalDepthBias(0f, 0f);
 		}
 
 		void SetCascadeData(int index, Vector4 cullingSphere, float tileSize)
@@ -356,26 +357,26 @@ namespace TaoTie.RenderPipelines
 		}
 
 		void RenderSpotShadows(int index, int split, int tileSize)
-		{
-			ShadowedOtherLight light = shadowedOtherLights[index];
-			var shadowSettings = new ShadowDrawingSettings(
-				cullingResults, light.visibleLightIndex,
-				BatchCullingProjectionType.Perspective)
 			{
-				useRenderingLayerMaskTest = true
-			};
-			cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(
-				light.visibleLightIndex, out Matrix4x4 viewMatrix,
-				out Matrix4x4 projectionMatrix, out ShadowSplitData splitData);
-			shadowSettings.splitData = splitData;
-			float texelSize = 2f / (tileSize * projectionMatrix.m00);
-			float filterSize = texelSize * settings.OtherFilterSize;
-			float bias = light.normalBias * filterSize * 1.4142136f;
-			Vector2 offset = SetTileViewport(index, split, tileSize);
-			float tileScale = 1f / split;
-			SetOtherTileData(index, offset, tileScale, bias);
-			otherShadowMatrices[index] = ConvertToAtlasMatrix(
-				projectionMatrix * viewMatrix, offset, tileScale);
+				ShadowedOtherLight light = shadowedOtherLights[index];
+				var shadowSettings = new ShadowDrawingSettings(
+					cullingResults, light.visibleLightIndex,
+					BatchCullingProjectionType.Perspective)
+				{
+					useRenderingLayerMaskTest = true
+				};
+				cullingResults.ComputeSpotShadowMatricesAndCullingPrimitives(
+					light.visibleLightIndex, out Matrix4x4 viewMatrix,
+					out Matrix4x4 projectionMatrix, out ShadowSplitData splitData);
+				shadowSettings.splitData = splitData;
+				float texelSize = 2f / (tileSize * projectionMatrix.m00);
+				float filterSize = texelSize * settings.OtherFilterSize;
+				float bias = light.normalBias * filterSize * 1.4142136f;
+				Vector2 offset = SetTileViewport(index, split, tileSize);
+				float tileScale = 1f / split;
+				SetOtherTileData(index, offset, tileScale, bias);
+				otherShadowMatrices[index] = ConvertToAtlasMatrix(
+					projectionMatrix * viewMatrix, offset, tileScale);
 
 			buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 			buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
@@ -385,44 +386,45 @@ namespace TaoTie.RenderPipelines
 		}
 
 		void RenderPointShadows(int index, int split, int tileSize)
-		{
-			ShadowedOtherLight light = shadowedOtherLights[index];
-			var shadowSettings = new ShadowDrawingSettings(
-				cullingResults, light.visibleLightIndex,
-				BatchCullingProjectionType.Perspective)
 			{
-				useRenderingLayerMaskTest = true
-			};
-			float texelSize = 2f / tileSize;
-			float filterSize = texelSize * settings.OtherFilterSize;
-			float bias = light.normalBias * filterSize * 1.4142136f;
-			float tileScale = 1f / split;
-			float fovBias =
-				Mathf.Atan(1f + bias + filterSize) * Mathf.Rad2Deg * 2f - 90f;
-			for (int i = 0; i < 6; i++)
-			{
-				cullingResults.ComputePointShadowMatricesAndCullingPrimitives(
-					light.visibleLightIndex, (CubemapFace) i, fovBias,
-					out Matrix4x4 viewMatrix, out Matrix4x4 projectionMatrix,
-					out ShadowSplitData splitData);
-				viewMatrix.m11 = -viewMatrix.m11;
-				viewMatrix.m12 = -viewMatrix.m12;
-				viewMatrix.m13 = -viewMatrix.m13;
+				ShadowedOtherLight light = shadowedOtherLights[index];
+				var shadowSettings = new ShadowDrawingSettings(
+					cullingResults, light.visibleLightIndex,
+					BatchCullingProjectionType.Perspective)
+				{
+					useRenderingLayerMaskTest = true
+				};
+				float texelSize = 2f / tileSize;
+				float filterSize = texelSize * settings.OtherFilterSize;
+				float bias = light.normalBias * filterSize * 1.4142136f;
+				float tileScale = 1f / split;
+				float fovBias =
+					Mathf.Atan(1f + bias + filterSize) * Mathf.Rad2Deg * 2f - 90f;
+				for (int i = 0; i < 6; i++)
+				{
+					cullingResults.ComputePointShadowMatricesAndCullingPrimitives(
+						light.visibleLightIndex, (CubemapFace) i, fovBias,
+						out Matrix4x4 viewMatrix, out Matrix4x4 projectionMatrix,
+						out ShadowSplitData splitData);
+					viewMatrix.m11 = -viewMatrix.m11;
+					viewMatrix.m12 = -viewMatrix.m12;
+					viewMatrix.m13 = -viewMatrix.m13;
 
-				shadowSettings.splitData = splitData;
-				int tileIndex = index + i;
-				Vector2 offset = SetTileViewport(tileIndex, split, tileSize);
-				SetOtherTileData(tileIndex, offset, tileScale, bias);
-				otherShadowMatrices[tileIndex] = ConvertToAtlasMatrix(
-					projectionMatrix * viewMatrix, offset, tileScale);
+					shadowSettings.splitData = splitData;
+					int tileIndex = index + i;
+					Vector2 offset = SetTileViewport(tileIndex, split, tileSize);
+					SetOtherTileData(tileIndex, offset, tileScale, bias);
+					otherShadowMatrices[tileIndex] = ConvertToAtlasMatrix(
+						projectionMatrix * viewMatrix, offset, tileScale);
 
-				buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
-				buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
-				ExecuteBuffer();
-				context.DrawShadows(ref shadowSettings);
-				buffer.SetGlobalDepthBias(0f, 0f);
-			}
-		}
+							buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
+							buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
+							ExecuteBuffer();
+							context.DrawShadows(ref shadowSettings);
+						}
+						// Reset depth bias once after all 6 faces (instead of per-face)
+						buffer.SetGlobalDepthBias(0f, 0f);
+					}
 
 		void SetOtherTileData(int index, Vector2 offset, float scale, float bias)
 		{

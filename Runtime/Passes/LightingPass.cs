@@ -28,7 +28,7 @@ namespace TaoTie.RenderPipelines
 		                                           SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES3 &&
 		                                           SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLCore;
 
-		static readonly int
+		private static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
 			dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors"),
 			dirLightDirectionsAndMasksId = Shader.PropertyToID("_DirectionalLightDirectionsAndMasks"),
@@ -39,7 +39,8 @@ namespace TaoTie.RenderPipelines
 			zBinBufId = Shader.PropertyToID("_ForwardPlusZBinBuf"),
 			tileSettingsId = Shader.PropertyToID("_ForwardPlusTileSettings"),
 			dataSizeId = Shader.PropertyToID("_ForwardPlusDataSize"),
-			zBinParamsId = Shader.PropertyToID("_ZBinParams");
+			zBinParamsId = Shader.PropertyToID("_ZBinParams"),
+			depthTexID = Shader.PropertyToID("_CameraDepthTexture");
 
 		static readonly Vector4[]
 			dirLightColors = new Vector4[maxDirLightCount],
@@ -62,21 +63,21 @@ namespace TaoTie.RenderPipelines
 			otherLightSpotAngles = new Vector4[maxOtherLightCount],
 			otherLightShadowData = new Vector4[maxOtherLightCount];
 
-		static readonly Vector2[] lightZRanges = new Vector2[maxOtherLightCount];
-
 		static readonly int
 			dirCookieMatrixId = Shader.PropertyToID("_DirLightCookieMatrix"),
 			otherCookieMatrixId = Shader.PropertyToID("_OtherLightCookieMatrix"),
 			dirCookieEnabledId = Shader.PropertyToID("_DirLightCookieEnabled"),
 			otherCookieEnabledId = Shader.PropertyToID("_OtherLightCookieEnabled");
 
+		const int maxCookieOtherLightCount = 8;
+
 		static readonly Matrix4x4[]
 			dirCookieMatrices = new Matrix4x4[maxDirLightCount],
-			otherCookieMatrices = new Matrix4x4[maxOtherLightCount];
+			otherCookieMatrices = new Matrix4x4[maxCookieOtherLightCount];
 
 		static readonly float[]
 			dirCookieEnabled = new float[maxDirLightCount],
-			otherCookieEnabled = new float[maxOtherLightCount];
+			otherCookieEnabled = new float[maxCookieOtherLightCount];
 
 		static readonly int[] dirCookieTexIDs =
 		{
@@ -97,10 +98,10 @@ namespace TaoTie.RenderPipelines
 			Shader.PropertyToID("_OtherLightCookie6"),
 			Shader.PropertyToID("_OtherLightCookie7"),
 		};
-
-		static Texture2D whiteCookieTexture;
+		
+		static int activeCookieCount;
 		static readonly Texture[] dirCookieTextures = new Texture[maxDirLightCount];
-		static readonly Texture[] otherCookieTextures = new Texture[maxOtherLightCount];
+		static readonly Texture[] otherCookieTextures = new Texture[maxCookieOtherLightCount];
 		CullingResults cullingResults;
 		readonly Shadows shadows = new();
 
@@ -141,6 +142,20 @@ namespace TaoTie.RenderPipelines
 		static bool cullKernelChecked = false;
 		static ComputeBuffer lightBoundsBuffer;
 		static int lightBoundsBufferSize;
+		static Texture2D dummyTexture;
+
+		static void EnsureDummyTexture()
+		{
+			if (dummyTexture == null)
+			{
+				dummyTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+				dummyTexture.SetPixel(0, 0, Color.white);
+				dummyTexture.Apply(false);
+				dummyTexture.filterMode = FilterMode.Point;
+				dummyTexture.wrapMode = TextureWrapMode.Clamp;
+				dummyTexture.name = "Dummy";
+			}
+		}
 		static NativeArray<float4> lightBoundsNative;
 		static bool tileDataDirty = true;
 		Matrix4x4 viewMatrix;
@@ -198,6 +213,7 @@ namespace TaoTie.RenderPipelines
 			NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
 			int i;
 			dirLightCount = otherLightCount = 0;
+			activeCookieCount = 0;
 			s_otherLightCount = 0;
 			int max;
 			if (s_useForwardPlus)
@@ -327,10 +343,9 @@ namespace TaoTie.RenderPipelines
 				Vector3 camPos = s_viewMatrix.MultiplyPoint(lightWorldPos);
 				float centerZ = -camPos.z;
 				float range = Mathf.Sqrt(1f / Mathf.Max(otherLightPositions[i].w, 0.00001f));
-				lightZRanges[i] = new Vector2(
+				lightZRangesNative[i] = new float2(
 					Mathf.Max(centerZ - range, s_cameraNear),
 					Mathf.Min(centerZ + range, s_cameraFar));
-				lightZRangesNative[i] = lightZRanges[i];
 			}
 		}
 
@@ -344,17 +359,18 @@ namespace TaoTie.RenderPipelines
 				if (zBinData.IsCreated) zBinData.Dispose();
 				zBinData = new NativeArray<uint>(zBinTotal, Allocator.Persistent);
 			}
-
-			for (int i = 0; i < zBinTotal; i++)
-				zBinData[i] = 0;
+			unsafe
+			{
+				UnsafeUtility.MemSet(zBinData.GetUnsafePtr(), 0, zBinTotal * sizeof(uint));
+			}
 			float invDepthRange = 1f / Mathf.Max(s_cameraFar - s_cameraNear, 0.0001f);
 			for (int i = 0; i < s_otherLightCount; i++)
 			{
 				int binMin = Mathf.Clamp(
-					Mathf.FloorToInt((lightZRanges[i].x - s_cameraNear) * invDepthRange * s_zBinCount),
+					Mathf.FloorToInt((lightZRangesNative[i].x - s_cameraNear) * invDepthRange * s_zBinCount),
 					0, s_zBinCount - 1);
 				int binMax = Mathf.Clamp(
-					Mathf.CeilToInt((lightZRanges[i].y - s_cameraNear) * invDepthRange * s_zBinCount),
+					Mathf.CeilToInt((lightZRangesNative[i].y - s_cameraNear) * invDepthRange * s_zBinCount),
 					0, s_zBinCount - 1);
 				int wordIdx = i / 32;
 				uint bitMask = 1u << (i % 32);
@@ -390,25 +406,21 @@ namespace TaoTie.RenderPipelines
 					otherLightShadowDataId, otherLightShadowData);
 			}
 
-			if (whiteCookieTexture == null)
+			if (activeCookieCount > 0)
 			{
-				whiteCookieTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-				whiteCookieTexture.SetPixel(0, 0, Color.white);
-				whiteCookieTexture.Apply();
-				whiteCookieTexture.name = "White Cookie";
-			}
-
-			buffer.SetGlobalMatrixArray(dirCookieMatrixId, dirCookieMatrices);
-			buffer.SetGlobalFloatArray(dirCookieEnabledId, dirCookieEnabled);
-			for (int ci = 0; ci < maxDirLightCount; ci++)
-				buffer.SetGlobalTexture(dirCookieTexIDs[ci],
-					dirCookieTextures[ci] != null ? dirCookieTextures[ci] : whiteCookieTexture);
-			buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
-			buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
-			for (int ci = 0; ci < otherCookieTexIDs.Length; ci++)
-			{
-				buffer.SetGlobalTexture(otherCookieTexIDs[ci],
-					otherCookieTextures[ci] != null ? otherCookieTextures[ci] : whiteCookieTexture);
+				EnsureDummyTexture();
+				buffer.SetGlobalMatrixArray(dirCookieMatrixId, dirCookieMatrices);
+				buffer.SetGlobalFloatArray(dirCookieEnabledId, dirCookieEnabled);
+				for (int ci = 0; ci < maxDirLightCount; ci++)
+					buffer.SetGlobalTexture(dirCookieTexIDs[ci],
+						dirCookieTextures[ci] != null ? dirCookieTextures[ci] : dummyTexture);
+				buffer.SetGlobalMatrixArray(otherCookieMatrixId, otherCookieMatrices);
+				buffer.SetGlobalFloatArray(otherCookieEnabledId, otherCookieEnabled);
+				for (int ci = 0; ci < otherCookieTexIDs.Length; ci++)
+				{
+					buffer.SetGlobalTexture(otherCookieTexIDs[ci],
+						otherCookieTextures[ci] != null ? otherCookieTextures[ci] : dummyTexture);
+				}
 			}
 
 			shadows.Render(context);
@@ -448,24 +460,35 @@ namespace TaoTie.RenderPipelines
 					CullComputeShader.SetVector("_ScreenSize", new Vector2(s_screenSize.x, s_screenSize.y));
 					// Set depth texture for 2.5D culling (only when DepthPrePass is available)
 					CullComputeShader.SetInt("_UseDepth25D", s_useDepth25D ? 1 : 0);
-					if (s_useDepth25D)
+					
+					Texture depthTex = Shader.GetGlobalTexture(depthTexID);
+					if (depthTex == null)
 					{
-						Texture depthTex = Shader.GetGlobalTexture(Shader.PropertyToID("_CameraDepthTexture"));
-						if (depthTex != null)
-							CullComputeShader.SetTexture(cullKernel, "_DepthTexture", depthTex);
-						float n = s_cameraNear;
-						float f = s_cameraFar;
-						float fn = f * n;
-						float range = f - n;
-						Vector4 zBufferParams = SystemInfo.usesReversedZBuffer
-							? new Vector4(-1 + f / n, 1, range / fn, 1 / f)
-							: new Vector4(1 - f / n, f / n, -range / fn, 1 / n);
-						CullComputeShader.SetVector("_DepthZBufferParams", zBufferParams);
+						EnsureDummyTexture();
+						depthTex = dummyTexture;
 					}
+					CullComputeShader.SetTexture(cullKernel, "_DepthTexture", depthTex);
+					float n = s_cameraNear;
+					float f = s_cameraFar;
+					float fn = f * n;
+					float range = f - n;
+					Vector4 zBufferParams = SystemInfo.usesReversedZBuffer
+						? new Vector4(-1 + f / n, 1, range / fn, 1 / f)
+						: new Vector4(1 - f / n, f / n, -range / fn, 1 / n);
+					CullComputeShader.SetVector("_DepthZBufferParams", zBufferParams);
 
-					int groupX = Mathf.CeilToInt(s_tileCount.x / 8f);
-					int groupY = Mathf.CeilToInt(s_tileCount.y / 8f);
-					buffer.DispatchCompute(CullComputeShader, cullKernel, groupX, groupY, 1);
+					// Clear bitmask before per-light dispatch (InterlockedOr needs zeroed buffer)
+					unsafe
+					{
+						UnsafeUtility.MemSet(
+							tileBitmaskArray.GetUnsafePtr(), 0,
+							tileBitmaskArray.Length * sizeof(uint));
+					}
+					tileBitmaskBuffer.SetData(tileBitmaskArray);
+
+					// Per-light dispatch: each thread handles one light
+					int lightGroups = Mathf.Max(1, Mathf.CeilToInt(s_otherLightCount / 64f));
+					buffer.DispatchCompute(CullComputeShader, cullKernel, lightGroups, 1, 1);
 				}
 				else if (canUseBuffer)
 				{
@@ -538,6 +561,7 @@ namespace TaoTie.RenderPipelines
 				Matrix4x4 scaleM = Matrix4x4.Scale(new Vector3(scale, scale, 1));
 				dirCookieMatrices[index] = ortho * scaleM * worldToLight;
 				dirCookieEnabled[index] = 1f;
+				activeCookieCount++;
 				dirCookieTextures[index] = light.cookie;
 			}
 			else
@@ -595,6 +619,7 @@ namespace TaoTie.RenderPipelines
 				persp.m22 = -persp.m22;
 				cookieMatrix = persp * worldToLight;
 				cookieEnabled = 1f;
+				activeCookieCount++;
 				cookieTex = light.cookie;
 			}
 
@@ -603,9 +628,12 @@ namespace TaoTie.RenderPipelines
 			otherLightDirectionsAndMasks[index] = dirAndMask;
 			otherLightSpotAngles[index] = spotAngles;
 			otherLightShadowData[index] = shadowData;
-			otherCookieMatrices[index] = cookieMatrix;
-			otherCookieEnabled[index] = cookieEnabled;
-			otherCookieTextures[index] = cookieTex;
+			if (index < maxCookieOtherLightCount)
+			{
+				otherCookieMatrices[index] = cookieMatrix;
+				otherCookieEnabled[index] = cookieEnabled;
+				otherCookieTextures[index] = cookieTex;
+			}
 		}
 
 		public static void Dispose()
@@ -616,6 +644,7 @@ namespace TaoTie.RenderPipelines
 			if (lightZRangesNative.IsCreated) lightZRangesNative.Dispose();
 			if (tileBitmaskTexture != null) Object.DestroyImmediate(tileBitmaskTexture);
 			if (zBinTexture != null) Object.DestroyImmediate(zBinTexture);
+			if (dummyTexture != null) Object.DestroyImmediate(dummyTexture);
 			tileBitmaskBuffer?.Release();
 			zBinBuffer?.Release();
 			lightBoundsBuffer?.Release();
@@ -713,7 +742,7 @@ namespace TaoTie.RenderPipelines
 				wordsPerTile = wordsPerTile,
 				tileBitmask = tileBitmaskArray,
 			};
-			JobHandle handle = job.Schedule(tileCountTotal, 64);
+			JobHandle handle = job.Schedule(s_otherLightCount, 64);
 			handle.Complete();
 		}
 

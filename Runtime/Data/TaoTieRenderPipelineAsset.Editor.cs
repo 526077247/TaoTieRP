@@ -7,8 +7,14 @@ namespace TaoTie.RenderPipelines
 {
     public partial class TaoTieRenderPipelineAsset
     {
+        partial void CreatePipelineForEditor();
 #if UNITY_EDITOR
 
+        partial void CreatePipelineForEditor()
+        {
+            EnsureComputeShader(ref settings.forwardPlusCullCompute);
+        }
+        
         static string[] renderingLayerNames;
 
         static TaoTieRenderPipelineAsset()
@@ -38,11 +44,25 @@ namespace TaoTie.RenderPipelines
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 var asset = AssetDatabase.LoadAssetAtPath<TaoTieRenderPipelineAsset>(path);
-                if (asset != null && asset.settings.defaultMaterial == null)
+                if (asset != null)
                 {
-                    asset.settings.defaultMaterial = LoadDefaultMaterial();
-                    EditorUtility.SetDirty(asset);
-                    AssetDatabase.SaveAssetIfDirty(asset);
+                    bool dirty = false;
+                    if (asset.settings.defaultMaterial == null)
+                    {
+                        asset.settings.defaultMaterial = LoadDefaultMaterial();
+                        dirty = true;
+                    }
+                    if (asset.settings.forwardPlusCullCompute == null)
+                    {
+                        EnsureComputeShader(ref asset.settings.forwardPlusCullCompute);
+                        if (asset.settings.forwardPlusCullCompute != null)
+                            dirty = true;
+                    }
+                    if (dirty)
+                    {
+                        EditorUtility.SetDirty(asset);
+                        AssetDatabase.SaveAssetIfDirty(asset);
+                    }
                 }
             }
         }
@@ -57,11 +77,25 @@ namespace TaoTie.RenderPipelines
                 {
                     stream.GetCreateAssetObjectEvent(i, out var createEvent);
                     var obj = EditorUtility.InstanceIDToObject(createEvent.instanceId);
-                    if (obj is TaoTieRenderPipelineAsset rpAsset && rpAsset.settings.defaultMaterial == null)
+                    if (obj is TaoTieRenderPipelineAsset rpAsset)
                     {
-                        rpAsset.settings.defaultMaterial = LoadDefaultMaterial();
-                        EditorUtility.SetDirty(rpAsset);
-                        AssetDatabase.SaveAssetIfDirty(rpAsset);
+                        bool dirty = false;
+                        if (rpAsset.settings.defaultMaterial == null)
+                        {
+                            rpAsset.settings.defaultMaterial = LoadDefaultMaterial();
+                            dirty = true;
+                        }
+                        if (rpAsset.settings.forwardPlusCullCompute == null)
+                        {
+                            EnsureComputeShader(ref rpAsset.settings.forwardPlusCullCompute);
+                            if (rpAsset.settings.forwardPlusCullCompute != null)
+                                dirty = true;
+                        }
+                        if (dirty)
+                        {
+                            EditorUtility.SetDirty(rpAsset);
+                            AssetDatabase.SaveAssetIfDirty(rpAsset);
+                        }
                     }
                 }
                 else if (stream.GetEventType(i) == ObjectChangeKind.CreateGameObjectHierarchy)
@@ -140,12 +174,30 @@ namespace TaoTie.RenderPipelines
                 EnsureCamerasInScene(UnityEditor.SceneManagement.EditorSceneManager.GetSceneAt(i));
             }
         }
-
+        
+        static void EnsureComputeShader(ref ComputeShader field)
+        {
+            if (field != null) return;
+            var guids = AssetDatabase.FindAssets("ForwardPlusCulling t:ComputeShader");
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (path.Contains("com.taotie.render-pipelines"))
+                {
+                    field = AssetDatabase.LoadAssetAtPath<ComputeShader>(path);
+                    if (field != null) return;
+                }
+            }
+        }
         void OnValidate()
         {
             if (settings.defaultMaterial == null)
             {
                 settings.defaultMaterial = LoadDefaultMaterial();
+            }
+            if (settings.forwardPlusCullCompute == null)
+            {
+                EnsureComputeShader(ref settings.forwardPlusCullCompute);
             }
             UnityEditor.SceneView.RepaintAll();
             UnityEditor.EditorApplication.QueuePlayerLoopUpdate();

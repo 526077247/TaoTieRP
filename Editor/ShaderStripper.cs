@@ -155,6 +155,20 @@ namespace TaoTie.RenderPipelines.Editor
             return s.postFXSettings == null;
         }
 
+        bool ShouldStripShadows()
+        {
+            var s = GetSettings();
+            if (s == null) return false;
+            return s.shadows.directional.maxLightCount == 0;
+        }
+
+        bool ShouldStripLensFlare()
+        {
+            // Strip if no LensFlareData assets exist in the project
+            var guids = AssetDatabase.FindAssets("t:LensFlareData");
+            return guids.Length == 0;
+        }
+
         bool ShouldStripForwardPlus()
         {
             var s = GetSettings();
@@ -281,6 +295,19 @@ namespace TaoTie.RenderPipelines.Editor
                 return;
             }
 
+            // --- Strip ShadowCaster pass when shadows are disabled ---
+            if (snippet.passType == PassType.ShadowCaster && ShouldStripShadows())
+            {
+                data.Clear();
+                return;
+            }
+
+            // --- Strip ShadowMask keyword when no shadowmask ---
+            if (ShouldStripShadows())
+            {
+                StripKeyword(data, "_SHADOW_MASK");
+            }
+
             // --- Strip dedicated PostFX shaders if their effect is not in any PostFXSettings queue ---
             if (dedicatedPostFXShaders.TryGetValue(shader.name, out var effectType))
             {
@@ -305,6 +332,10 @@ namespace TaoTie.RenderPipelines.Editor
 
                 case "Hidden/TaoTie RP/Deferred Lighting":
                     if (!IsDeferred()) data.Clear();
+                    return;
+
+                case "Hidden/TaoTie RP/Lens Flare":
+                    if (ShouldStripLensFlare()) data.Clear();
                     return;
 
                 case "Hidden/TaoTie RP/Post FX Stack":

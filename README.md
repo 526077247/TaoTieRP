@@ -196,6 +196,8 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
 Automatic stripping of unused shader variants based on build target and GraphicsAPIs:
 
 - Debugger shaders and Meta passes always stripped
+- ShadowCaster pass stripped when `directional.maxLightCount == 0`; `_SHADOW_MASK` keyword stripped when shadows disabled
+- Lens Flare shader stripped when no `LensFlareData` assets exist in the project
 - SMAA passes stripped when not selected; SMAA always stripped on WebGL1 builds (detected via `PlayerSettings.GetGraphicsAPIs` — no OpenGLES3 = WebGL1)
 - `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off or WebGL1 target
 - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in any `PostFXSettings` in the project

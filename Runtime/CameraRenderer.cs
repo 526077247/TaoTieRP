@@ -361,8 +361,8 @@ namespace TaoTie.RenderPipelines
                                    !isReflectionCamera;
                     if (useSSAO)
                         SSAOPass.Record(renderGraph, textures, bufferSize, shadowSettings.ssao, camera);
-                    Shader.EnableKeyword("_SSAO_ENABLED");
-                    if (!useSSAO) Shader.DisableKeyword("_SSAO_ENABLED");
+                    if (useSSAO) Shader.EnableKeyword("_SSAO_ENABLED");
+                    else Shader.DisableKeyword("_SSAO_ENABLED");
 
                     // Transparent objects always use forward path (with Forward+ if available).
                     GeometryPass.Record(
@@ -411,8 +411,8 @@ namespace TaoTie.RenderPipelines
                                        !isReflectionCamera;
                         if (useSSAO)
                             SSAOPass.Record(renderGraph, textures, bufferSize, shadowSettings.ssao, camera);
-                        Shader.EnableKeyword("_SSAO_ENABLED");
-                        if (!useSSAO) Shader.DisableKeyword("_SSAO_ENABLED");
+                        if (useSSAO) Shader.EnableKeyword("_SSAO_ENABLED");
+                        else Shader.DisableKeyword("_SSAO_ENABLED");
 
                         GeometryPass.Record(
                             renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);

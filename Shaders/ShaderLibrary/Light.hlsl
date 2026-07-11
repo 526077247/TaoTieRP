@@ -50,7 +50,11 @@ DirectionalShadowData GetDirectionalShadowData (
 Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	Light light;
 	light.color = _DirectionalLightColors[index].rgb;
-	light.color *= SampleDirectionalCookie(index, surfaceWS.position);
+	#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+		UNITY_BRANCH
+		if (_DirLightCookieEnabled[index] > 0.5)
+			light.color *= SampleDirectionalCookie(index, surfaceWS.position);
+	#endif
 	light.direction = _DirectionalLightDirectionsAndMasks[index].xyz;
 	light.renderingLayerMask = (uint)_DirectionalLightDirectionsAndMasks[index].w;
 	DirectionalShadowData dirShadowData =
@@ -94,8 +98,14 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 		spotAngles.x + spotAngles.y)
 	);
 	// Apply cookie for spot lights (works in all paths including Forward+)
+	#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+		UNITY_BRANCH
+		if (spotAngles.x != 0.0 && index < 8 && _OtherLightCookieEnabled[index] > 0.5)
+			light.color *= SampleSpotCookie(index, surfaceWS.position);
+	#else
 	if (spotAngles.x != 0.0)
 		light.color *= SampleSpotCookie(index, surfaceWS.position);
+	#endif
 	OtherShadowData otherShadowData = GetOtherShadowData(index);
 	otherShadowData.lightPositionWS = position;
 	otherShadowData.lightDirectionWS = light.direction;

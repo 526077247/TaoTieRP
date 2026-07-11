@@ -18,27 +18,26 @@ namespace TaoTie.RenderPipelines
         [NativeDisableParallelForRestriction]
         public NativeArray<uint> tileBitmask;
 
-        public void Execute(int tileIdx)
+        public void Execute(int lightIdx)
         {
-            int tx = tileIdx % tileCount.x;
-            int ty = tileIdx / tileCount.x;
+            float4 b = lightBounds[lightIdx];
 
-            int linearIdx = ty * dataStride + tx;
-            int baseOffset = linearIdx * wordsPerTile;
+            int minTx = math.max(0, (int)math.ceil(b.x * screenUVToTileCoords.x) - 1);
+            int maxTx = math.min(tileCount.x - 1, (int)math.floor(b.z * screenUVToTileCoords.x));
+            int minTy = math.max(0, (int)math.ceil(b.y * screenUVToTileCoords.y) - 1);
+            int maxTy = math.min(tileCount.y - 1, (int)math.floor(b.w * screenUVToTileCoords.y));
 
-            for (int i = 0; i < lightCount; i++)
+            int wordIdx = lightIdx / 32;
+            int bitIdx = lightIdx % 32;
+            uint bitMask = 1u << bitIdx;
+
+            for (int ty = minTy; ty <= maxTy; ty++)
             {
-                float4 b = lightBounds[i];
-                int minTx = math.max(0, (int)math.ceil(b.x * screenUVToTileCoords.x) - 1);
-                int maxTx = math.min(tileCount.x - 1, (int)math.floor(b.z * screenUVToTileCoords.x));
-                int minTy = math.max(0, (int)math.ceil(b.y * screenUVToTileCoords.y) - 1);
-                int maxTy = math.min(tileCount.y - 1, (int)math.floor(b.w * screenUVToTileCoords.y));
-
-                if (tx >= minTx && tx <= maxTx && ty >= minTy && ty <= maxTy)
+                for (int tx = minTx; tx <= maxTx; tx++)
                 {
-                    int wordIdx = i / 32;
-                    int bitIdx = i % 32;
-                    tileBitmask[baseOffset + wordIdx] |= 1u << bitIdx;
+                    int linearIdx = ty * dataStride + tx;
+                    int baseOffset = linearIdx * wordsPerTile;
+                    tileBitmask[baseOffset + wordIdx] |= bitMask;
                 }
             }
         }

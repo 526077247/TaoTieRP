@@ -73,23 +73,20 @@ namespace TaoTie.RenderPipelines
             cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
             cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 0);
 
-            // Pass 1: Horizontal blur
+            // Pass 1: Horizontal blur (temp -> result)
             cmd.SetGlobalTexture(sourceID, ssaoTemp);
             cmd.SetRenderTarget(ssaoResult,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 1);
 
-            // Pass 2: Vertical blur (into ssaoTemp for reuse)
+            // Pass 2: Vertical blur (result -> temp)
             cmd.SetGlobalTexture(sourceID, ssaoResult);
             cmd.SetRenderTarget(ssaoTemp,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmd.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, ssaoMaterial, 0, 2);
 
-            // Copy result to final output
-            cmd.CopyTexture(ssaoTemp, ssaoResult);
-
-            // Set global for lighting shaders
-            cmd.SetGlobalTexture(ssaoTexID, ssaoResult);
+            // Set global for lighting shaders (read from temp, the final blur output)
+            cmd.SetGlobalTexture(ssaoTexID, ssaoTemp);
 
             // Restore render target for subsequent passes (transparent geometry, etc.)
             cmd.SetRenderTarget(
@@ -159,7 +156,7 @@ namespace TaoTie.RenderPipelines
                 name = "SSAO Temp"
             };
             pass.ssaoTemp = builder.WriteTexture(renderGraph.CreateTexture(desc));
-            desc.name = "SSAO Result";
+            desc.name = "SSAO Result (horizontal blur)";
             pass.ssaoResult = builder.WriteTexture(renderGraph.CreateTexture(desc));
 
             pass.bufferSize = bufferSize;
