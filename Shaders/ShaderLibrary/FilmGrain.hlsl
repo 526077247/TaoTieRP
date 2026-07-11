@@ -35,7 +35,7 @@ float Hash(float2 p)
 float4 GrainFragment(GrainVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
-    float4 source = _GrainSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_GrainSource, sampler_linear_clamp, uv);
 
     // Generate grain noise at pixel resolution
     float2 px = uv * _GrainTexelSize.zw;

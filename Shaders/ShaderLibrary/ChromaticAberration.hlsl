@@ -32,10 +32,10 @@ float4 CAFragment(CAVaryings input) : SV_Target
     float dist = length(dir);
     float2 offset = normalize(dir) * dist * _CAIntensity;
 
-    float r = _CASource.Sample(sampler_linear_clamp, uv + offset).r;
-    float g = _CASource.Sample(sampler_linear_clamp, uv).g;
-    float b = _CASource.Sample(sampler_linear_clamp, uv - offset).b;
-    float a = _CASource.Sample(sampler_linear_clamp, uv).a;
+    float r = SAMPLE_TEXTURE2D(_CASource, sampler_linear_clamp, uv + offset).r;
+    float g = SAMPLE_TEXTURE2D(_CASource, sampler_linear_clamp, uv).g;
+    float b = SAMPLE_TEXTURE2D(_CASource, sampler_linear_clamp, uv - offset).b;
+    float a = SAMPLE_TEXTURE2D(_CASource, sampler_linear_clamp, uv).a;
 
     return float4(r, g, b, a);
 }

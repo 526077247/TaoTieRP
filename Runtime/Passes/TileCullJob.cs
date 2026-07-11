@@ -13,21 +13,18 @@ namespace TaoTie.RenderPipelines
         public int2 tileCount;
         public int dataStride;
         public float2 screenUVToTileCoords;
-        public int maxLightsPerTile;
+        public int wordsPerTile;
 
         [NativeDisableParallelForRestriction]
-        public NativeArray<float2> tileData;
-
-        [NativeDisableParallelForRestriction]
-        public NativeArray<float> tileLights;
+        public NativeArray<uint> tileBitmask;
 
         public void Execute(int tileIdx)
         {
             int tx = tileIdx % tileCount.x;
             int ty = tileIdx / tileCount.x;
 
-            int baseOffset = tileIdx * maxLightsPerTile;
-            int count = 0;
+            int linearIdx = ty * dataStride + tx;
+            int baseOffset = linearIdx * wordsPerTile;
 
             for (int i = 0; i < lightCount; i++)
             {
@@ -39,16 +36,11 @@ namespace TaoTie.RenderPipelines
 
                 if (tx >= minTx && tx <= maxTx && ty >= minTy && ty <= maxTy)
                 {
-                    if (count < maxLightsPerTile)
-                    {
-                        tileLights[baseOffset + count] = i;
-                        count++;
-                    }
+                    int wordIdx = i / 32;
+                    int bitIdx = i % 32;
+                    tileBitmask[baseOffset + wordIdx] |= 1u << bitIdx;
                 }
             }
-
-            int texIdx = ty * dataStride + tx;
-            tileData[texIdx] = new float2(baseOffset, count);
         }
     }
 }

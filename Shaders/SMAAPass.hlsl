@@ -1,6 +1,10 @@
 #ifndef TAOTIE_SMAA_PASS_INCLUDED
 #define TAOTIE_SMAA_PASS_INCLUDED
 
+// SMAA requires SM3.0+ features (Texture2D.Sample with offset, derivative instructions).
+// Not supported on GLES2/WebGL1 — stripped at build time, passthrough fallback at runtime.
+#if !defined(SHADER_API_GLES)
+
 // Full SMAA 1x reference implementation (adapted from Jorge Jimenez et al.)
 // Adapted for TaoTie RP PostFXStack infrastructure
 
@@ -273,5 +277,21 @@ float4 SMAANeighborhoodBlendingPassFragment(Varyings input) : SV_TARGET {
         return color;
     }
 }
+
+#else // SHADER_API_GLES: SMAA not supported, passthrough
+
+float4 SMAAEdgeDetectionPassFragment(Varyings input) : SV_TARGET {
+    return float4(0.0, 0.0, 0.0, 1.0);
+}
+
+float4 SMAABlendingWeightCalculationPassFragment(Varyings input) : SV_TARGET {
+    return float4(0.0, 0.0, 0.0, 0.0);
+}
+
+float4 SMAANeighborhoodBlendingPassFragment(Varyings input) : SV_TARGET {
+    return GetSource(input.screenUV);
+}
+
+#endif
 
 #endif

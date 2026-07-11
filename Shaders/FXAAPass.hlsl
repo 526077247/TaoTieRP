@@ -12,13 +12,13 @@
 float3 LoadSource(float2 uv, int2 offset)
 {
     float2 sampleUV = uv + offset * _PostFXSource_TexelSize.xy;
-    return _PostFXSource.SampleLevel(_Sampler_ClampU_ClampV_Point, sampleUV, 0).rgb;
+    return SAMPLE_TEXTURE2D_LOD(_PostFXSource, sampler_PostFXSource, sampleUV, 0).rgb;
 }
 
 // Linear sample at arbitrary UV offset
 float3 FetchSource(float2 uv, float2 offset)
 {
-    return _PostFXSource.SampleLevel(_Sampler_ClampU_ClampV_Linear, uv + offset, 0).rgb;
+    return SAMPLE_TEXTURE2D_LOD(_PostFXSource, sampler_PostFXSource, uv + offset, 0).rgb;
 }
 
 float4 FXAAPassFragment(Varyings input) : SV_TARGET

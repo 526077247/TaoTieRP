@@ -100,6 +100,16 @@ namespace TaoTie.RenderPipelines
             [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [EnumLabel]
             public MapSize atlasSize;
+            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
+            [Range(8, 64)]
+            [Tooltip("Number of depth bins for ZBin depth culling. " +
+                     "ZBin bins lights by camera-space depth to reduce per-pixel light iterations. " +
+                     "Note: 2.5D tile depth culling (compute shader depth sampling) only activates when " +
+                     "DepthPrePass is enabled (e.g. via Forced mode, or in Forward path when " +
+                     "SSAO, TAA, or MSAA depth priming is active). " +
+                     "Without DepthPrePass, Forward+ falls back to pure 2D tile culling — ZBin still applies " +
+                     "in the pixel shader, but the compute shader cannot skip occluded lights per tile.")]
+            public int zBinCount;
         }
         public enum ForwardPlusMode
         {
@@ -107,19 +117,21 @@ namespace TaoTie.RenderPipelines
             Auto,
             Force
         }
-
+        
         [Tooltip("Forward+ tile-based light culling mode. Auto enables it when other lights exceed maxOtherLights.")]
         public ForwardPlusMode forwardPlus = ForwardPlusMode.Auto;
         
+        [ShowIf(nameof(forwardPlus), ShowIfOperator.Equal, (int)ForwardPlusMode.Off)]
         [Range(0, 64)]
         [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
-        public int maxOtherLights = 32;
+        public int maxOtherLights = 16;
         
         [ShowIf(nameof(forwardPlus), ShowIfOperator.NotEqual, (int)ForwardPlusMode.Off)]
         public Other other = new()
         {
             maxLightsPerTile = 128,
             atlasSize = MapSize._1024,
+            zBinCount = 32,
         };
 
         public SSAOSettings ssao = new SSAOSettings();

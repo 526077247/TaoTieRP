@@ -37,27 +37,25 @@ CCVaryings CCPassVertex(float3 positionOS : POSITION, float2 uv : TEXCOORD0)
 // Sample a 1D curve baked into a 1-pixel-tall texture
 float SampleCurve(TEXTURE2D(tex), float x)
 {
-    return tex.Sample(sampler_linear_clamp, float2(saturate(x), 0.0)).r;
+    return SAMPLE_TEXTURE2D(tex, sampler_linear_clamp, float2(saturate(x), 0.0)).r;
 }
 
 float3 SampleCurve3(TEXTURE2D(tex), float3 rgb)
 {
     return float3(
-        tex.Sample(sampler_linear_clamp, float2(saturate(rgb.r), 0.0)).r,
-        tex.Sample(sampler_linear_clamp, float2(saturate(rgb.g), 0.0)).g,
-        tex.Sample(sampler_linear_clamp, float2(saturate(rgb.b), 0.0)).b
+        SAMPLE_TEXTURE2D(tex, sampler_linear_clamp, float2(saturate(rgb.r), 0.0)).r,
+        SAMPLE_TEXTURE2D(tex, sampler_linear_clamp, float2(saturate(rgb.g), 0.0)).g,
+        SAMPLE_TEXTURE2D(tex, sampler_linear_clamp, float2(saturate(rgb.b), 0.0)).b
     );
 }
 
 float4 CCFragment(CCVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
-    float4 source = _CCSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_CCSource, sampler_linear_clamp, uv);
 
     float3 color = source.rgb;
-
-    // Master curve (luminance)
-    float master = SampleCurve(_CCMaster, color.r);
+    
     // Apply to all channels (approximation: use per-channel luminance)
     float3 masterAdjusted;
     masterAdjusted.r = SampleCurve(_CCMaster, color.r);

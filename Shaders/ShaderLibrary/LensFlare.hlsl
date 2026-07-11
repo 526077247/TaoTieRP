@@ -45,15 +45,8 @@ FlareVaryings FlarePassVertex(
 float SdPolygon(float2 p, float n)
 {
     float an = 3.14159265 / n;
-    float bn = 3.14159265 / n;
-    float bn2 = an * 2.0;
     float m = an;
     float2 q = abs(p);
-    float d = length(q - float2(cos(m), sin(m)) * max(0.0, dot(q, float2(cos(m), sin(m)))));
-
-    // Correct polygon distance
-    float he = 2.0 * cos(an);
-    q = abs(p);
     q = float2(cos(m) * q.x + sin(m) * q.y, -sin(m) * q.x + cos(m) * q.y);
     if (q.x > 0.0)
     {
@@ -76,7 +69,7 @@ float4 FlareFragment(FlareVaryings input) : SV_Target
     if (type < 0.5)
     {
         // Image
-        float4 tex = _FlareTexture.Sample(sampler_linear_clamp, input.screenPos);
+        float4 tex = SAMPLE_TEXTURE2D(_FlareTexture, sampler_linear_clamp, input.screenPos);
         alpha = tex.a * intensity;
         color *= tex.rgb;
     }

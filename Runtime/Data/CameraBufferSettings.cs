@@ -78,9 +78,10 @@ namespace TaoTie.RenderPipelines
             FXAA,
             SMAA
         }
+        [Tooltip("Post-process anti-aliasing. SMAA is not supported on WebGL1/GLES2.")]
         public PostProcessAA postProcessAA;
         
-        [ShowIf(nameof(postProcessAA), ShowIfOperator.Equal, (int)PostProcessAA.SMAA)]
+        [ShowIf(nameof(postProcessAA), ShowIfOperator.NotEqual, (int)PostProcessAA.SMAA)]
         [Tooltip("Strip SMAA shader passes and lookup textures from builds when Post-Process AA is not set to SMAA. " +
                  "Reduces build size by ~180KB. Disable if you plan to switch to SMAA at runtime.")]
         public bool stripSMAAWhenUnused;

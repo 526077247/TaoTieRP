@@ -26,7 +26,7 @@ PosterizeVaryings PosterizePassVertex(float3 positionOS : POSITION, float2 uv : 
 float4 PosterizeFragment(PosterizeVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
-    float4 source = _PosterizeSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_PosterizeSource, sampler_linear_clamp, uv);
 
     float levels = max(_PosterizeLevels, 2.0);
     float3 result = floor(source.rgb * levels) / (levels - 1.0);

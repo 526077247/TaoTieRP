@@ -38,9 +38,6 @@ float2 PaniniProject(float2 viewPos, float distance)
     float d = distance + 1.0;
     float r2 = dot(viewPos, viewPos);
 
-    // Avoid singularity at r = 0
-    float f = r2 * 0.5 + 0.5;
-
     // Stereographic projection
     float2 dir = viewPos;
     float denom = d + r2 * distance * 0.5;
@@ -67,7 +64,7 @@ float4 PPFragment(PPVaryings input) : SV_Target
     // Convert back to [0, 1] UV
     float2 distortedUV = projected * 0.5 + 0.5;
 
-    return _PPSource.Sample(sampler_linear_clamp, distortedUV);
+    return SAMPLE_TEXTURE2D(_PPSource, sampler_linear_clamp, distortedUV);
 }
 
 #endif

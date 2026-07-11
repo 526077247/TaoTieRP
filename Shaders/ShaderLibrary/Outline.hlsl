@@ -67,14 +67,14 @@ float4 OutlinePassFragment(OutlineVaryings input) : SV_Target
 
     float edge = max(depthEdge, normalEdge);
 
-    float4 source = _OutlineSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_OutlineSource, sampler_linear_clamp, uv);
     float3 color = lerp(source.rgb, _OutlineColor.rgb, edge * _OutlineColor.a);
     return float4(color, source.a);
 }
 
 float4 OutlineCopyFragment(OutlineVaryings input) : SV_Target
 {
-    return _OutlineSource.Sample(sampler_linear_clamp, input.screenUV);
+    return SAMPLE_TEXTURE2D(_OutlineSource, sampler_linear_clamp, input.screenUV);
 }
 
 #endif // TAOTIE_OUTLINE_INCLUDED

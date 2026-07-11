@@ -24,12 +24,13 @@ namespace TaoTie.RenderPipelines
 			SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Render)
 				? GraphicsFormat.R16G16B16A16_SFloat
 				: GraphicsFormat.R8G8B8A8_UNorm;
-
+#if !SMAA_DISABLED || UNITY_EDITOR
 		static readonly GraphicsFormat smaaEdgeFormat = GraphicsFormat.R8G8_UNorm;
 
 		private static readonly int
 			_SMAAAreaTexId = Shader.PropertyToID("_SMAAAreaTex"),
 			_SMAASearchTexId = Shader.PropertyToID("_SMAASearchTex");
+#endif
 		GraphicsFormat format;
 
 		PostFXStack stack;
@@ -59,8 +60,11 @@ namespace TaoTie.RenderPipelines
 
 			RenderTargetIdentifier finalSource;
 			int finalPass;
-
-			if (postProcessAA == CameraBufferSettings.PostProcessAA.FXAA)
+			if (postProcessAA == CameraBufferSettings.PostProcessAA.FXAA
+#if SMAA_DISABLED && !UNITY_EDITOR
+			    || postProcessAA == CameraBufferSettings.PostProcessAA.SMAA
+#endif
+			   )
 			{
 				finalSource = colorGradingResult;
 				finalPass = stack.GetPassIndex(PostFXPassNames.FXAA);
@@ -69,6 +73,7 @@ namespace TaoTie.RenderPipelines
 				else
 					stack.Draw(buffer, colorSource, finalSource, stack.GetPassIndex(PostFXPassNames.Copy));
 			}
+#if !SMAA_DISABLED || UNITY_EDITOR
 			else if (postProcessAA == CameraBufferSettings.PostProcessAA.SMAA)
 			{
 				// Ensure lookup textures are created
@@ -95,6 +100,7 @@ namespace TaoTie.RenderPipelines
 				finalSource = smaaResult;
 				finalPass = stack.GetPassIndex(PostFXPassNames.Copy);
 			}
+#endif
 			else
 			{
 				finalSource = colorSource;
@@ -187,10 +193,15 @@ namespace TaoTie.RenderPipelines
 						? ScaleMode.Bicubic
 						: ScaleMode.Linear;
 			}
-
+#if !SMAA_DISABLED || UNITY_EDITOR
 			bool applyFXAA = stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.FXAA;
 			bool applySMAA = stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.SMAA;
 			bool needsColorGradingResult = applyFXAA || applySMAA;
+#else
+			bool needsColorGradingResult =
+				stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.FXAA
+				|| stack.BufferSettings.postProcessAA == CameraBufferSettings.PostProcessAA.SMAA;
+#endif
 			if (needsColorGradingResult || pass.scaleMode != ScaleMode.None)
 			{
 				pass.format = colorFormat;
@@ -210,7 +221,7 @@ namespace TaoTie.RenderPipelines
 					pass.scaledResult = builder.CreateTransientTexture(desc);
 				}
 			}
-
+#if !SMAA_DISABLED || UNITY_EDITOR
 			if (applySMAA)
 			{
 				var edgeDesc = new TextureDesc(stack.BufferSize.x, stack.BufferSize.y)
@@ -234,7 +245,7 @@ namespace TaoTie.RenderPipelines
 				};
 				pass.smaaResult = builder.CreateTransientTexture(resultDesc);
 			}
-
+#endif
 			builder.SetRenderFunc<PostFXPass>(
 				static (pass, context) => pass.Render(context));
 

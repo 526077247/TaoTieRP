@@ -2,37 +2,80 @@
 
 // lightBounds[i] = (xMin, yMin, xMax, yMax) in screen UV
 StructuredBuffer<float4> _LightBounds;
+// lightZRanges[i] = (zMin, zMax) in linear eye depth
+StructuredBuffer<float2> _LightZRanges;
 int _LightCount;
 
-// Tile data: (headerIndex, count) per tile, indexed by y * dataStride + x
-RWStructuredBuffer<float2> _TileData;
-// Light indices: fixed layout, tileIdx * maxLightsPerTile + slot
-RWStructuredBuffer<float> _TileLights;
+// Tile bitmask: wordsPerTile uint32 per tile, bit i = light i affects this tile
+RWStructuredBuffer<uint> _TileBitmask;
 
-float4 _TileCount;   // xy = tile count, z = dataStride, w = maxLightsPerTile
+float4 _TileCount;   // xy = tile count, z = dataStride, w = wordsPerTile
 float2 _ScreenUVToTileCoords;
+float2 _ScreenSize;  // screen width, height in pixels
+
+// 2.5D depth culling (optional — requires DepthPrePass)
+int _UseDepth25D;
+Texture2D _DepthTexture;
+float4 _DepthZBufferParams;
+
+#define MAX_LIGHTS 256
+#define THREAD_COUNT 64
+
+groupshared float4 g_LightBounds[MAX_LIGHTS];
+groupshared float2 g_LightZRanges[MAX_LIGHTS];
 
 [numthreads(8, 8, 1)]
-void CullLights(uint3 dispatchId : SV_DispatchThreadID)
+void CullLights(uint3 dispatchId : SV_DispatchThreadID,
+                uint3 groupThreadId : SV_GroupThreadID,
+                uint groupIndex : SV_GroupIndex)
 {
     int tileCountX = (int)_TileCount.x;
     int tileCountY = (int)_TileCount.y;
+
+    // Phase 1: Collaboratively load light bounds + Z ranges into shared memory
+    int lightsPerThread = (_LightCount + THREAD_COUNT - 1) / THREAD_COUNT;
+    [loop]
+    for (int li = 0; li < lightsPerThread; li++)
+    {
+        int idx = groupIndex + li * THREAD_COUNT;
+        if (idx < _LightCount)
+        {
+            g_LightBounds[idx] = _LightBounds[idx];
+            g_LightZRanges[idx] = _LightZRanges[idx];
+        }
+    }
+    GroupMemoryBarrierWithGroupSync();
+
     if (dispatchId.x >= tileCountX || dispatchId.y >= tileCountY)
         return;
 
     int dataStride = (int)_TileCount.z;
-    int maxLightsPerTile = (int)_TileCount.w;
+    int wordsPerTile = (int)_TileCount.w;
 
     int linearIdx = dispatchId.y * dataStride + dispatchId.x;
-    int tileIdx   = dispatchId.y * tileCountX + dispatchId.x;
-    int baseOffset = tileIdx * maxLightsPerTile;
+    int baseOffset = linearIdx * wordsPerTile;
 
-    int count = 0;
+    // Phase 2: Sample depth at tile center for 2.5D culling (optional)
+    float tileEyeDepth = 0.0;
+    if (_UseDepth25D)
+    {
+        float2 tileCenterUV = (dispatchId.xy + 0.5) / float2(tileCountX, tileCountY);
+        int2 depthPixel = int2(tileCenterUV * _ScreenSize);
+        depthPixel = clamp(depthPixel, int2(0, 0), int2((int)_ScreenSize.x - 1, (int)_ScreenSize.y - 1));
+        float rawDepth = _DepthTexture.Load(int3(depthPixel, 0)).r;
+        tileEyeDepth = 1.0 / (_DepthZBufferParams.z * rawDepth + _DepthZBufferParams.w);
+    }
 
+    // Phase 3: Clear this tile's bitmask words
+    [loop]
+    for (int w = 0; w < wordsPerTile; w++)
+        _TileBitmask[baseOffset + w] = 0u;
+
+    // Phase 4: Cull lights using shared memory + optional 2.5D depth test
     [loop]
     for (int i = 0; i < _LightCount; i++)
     {
-        float4 b = _LightBounds[i];
+        float4 b = g_LightBounds[i];
         int minTx = max(0, (int)ceil(b.x * _ScreenUVToTileCoords.x) - 1);
         int maxTx = min(tileCountX - 1, (int)floor(b.z * _ScreenUVToTileCoords.x));
         int minTy = max(0, (int)ceil(b.y * _ScreenUVToTileCoords.y) - 1);
@@ -41,11 +84,17 @@ void CullLights(uint3 dispatchId : SV_DispatchThreadID)
         if (dispatchId.x >= minTx && dispatchId.x <= maxTx &&
             dispatchId.y >= minTy && dispatchId.y <= maxTy)
         {
-            if (count < maxLightsPerTile)
-                _TileLights[baseOffset + count] = (float)i;
-            count++;
+            // 2.5D culling: skip if light Z range doesn't overlap tile depth
+            if (_UseDepth25D)
+            {
+                float2 zRange = g_LightZRanges[i];
+                if (tileEyeDepth < zRange.x || tileEyeDepth > zRange.y)
+                    continue;
+            }
+
+            int wordIdx = i / 32;
+            int bitIdx = i % 32;
+            _TileBitmask[baseOffset + wordIdx] |= (1u << bitIdx);
         }
     }
-
-    _TileData[linearIdx] = float2(baseOffset, min(count, maxLightsPerTile));
 }

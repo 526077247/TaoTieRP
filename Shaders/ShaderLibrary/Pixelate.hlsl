@@ -35,7 +35,7 @@ float4 PixelateFragment(PixelateVaryings input) : SV_Target
     float2 cell = floor(uv * grid) / grid;
     float2 centerUV = (cell + 0.5 / grid);
 
-    float4 source = _PixelateSource.Sample(sampler_point_clamp, centerUV);
+    float4 source = SAMPLE_TEXTURE2D(_PixelateSource, sampler_point_clamp, centerUV);
 
     return source;
 }

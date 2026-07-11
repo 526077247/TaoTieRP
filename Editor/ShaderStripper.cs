@@ -72,6 +72,10 @@ namespace TaoTie.RenderPipelines.Editor
 
         TaoTieRenderPipelineSettings settings;
 
+        // Cached build-time platform info
+        BuildTarget buildTarget;
+        bool isWebGL1;
+
         TaoTieRenderPipelineSettings GetSettings()
         {
             if (settings != null) return settings;
@@ -81,14 +85,24 @@ namespace TaoTie.RenderPipelines.Editor
             return settings;
         }
 
+        bool IsWebGL1()
+        {
+            // WebGL1 = WebGL build target without OpenGLES3 in GraphicsAPIs
+            if (buildTarget != BuildTarget.WebGL) return false;
+            GraphicsDeviceType[] apis = PlayerSettings.GetGraphicsAPIs(buildTarget);
+            for (int i = 0; i < apis.Length; i++)
+            {
+                if (apis[i] == GraphicsDeviceType.OpenGLES3)
+                    return false; // WebGL2
+            }
+            return true; // WebGL1 (GLES2 only)
+        }
+
         bool IsForward()
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
-            return true;
-#else
+            if (buildTarget == BuildTarget.WebGL && isWebGL1) return true;
             var s = GetSettings();
             return s != null && s.renderingMode == TaoTieRenderPipelineSettings.RenderingMode.Forward;
-#endif
         }
 
         bool IsDeferred()
@@ -103,6 +117,8 @@ namespace TaoTie.RenderPipelines.Editor
 
         bool ShouldStripSMAA()
         {
+            // SMAA uses SM3.0+ features not available on GLES2/WebGL1
+            if (isWebGL1) return true;
             var s = GetSettings();
             if (s == null) return false;
             if (!s.cameraBuffer.stripSMAAWhenUnused) return false;
@@ -141,8 +157,11 @@ namespace TaoTie.RenderPipelines.Editor
         {
             var s = GetSettings();
             if (s == null) return false;
-            return s.shadows.forwardPlus == ShadowSettings.ForwardPlusMode.Off ||
-                   SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2;
+            if (s.shadows.forwardPlus == ShadowSettings.ForwardPlusMode.Off) return true;
+            // Forward+ runtime guards against GLES2, but the shader variant
+            // is still needed for GLES3/WebGL2. Strip only on WebGL1.
+            if (isWebGL1) return true;
+            return false;
         }
 
         bool ShouldStripPostFX()
@@ -199,6 +218,10 @@ namespace TaoTie.RenderPipelines.Editor
             // Reset effect type cache for fresh build
             effectTypesCached = false;
             effectTypesInUse = null;
+
+            // Cache build target and detect WebGL1 (GLES2 only, no OpenGLES3)
+            buildTarget = EditorUserBuildSettings.activeBuildTarget;
+            isWebGL1 = IsWebGL1();
 
             bool stripSMAA = ShouldStripSMAA();
             bool stripFXAA = ShouldStripFXAA();
@@ -279,7 +302,7 @@ namespace TaoTie.RenderPipelines.Editor
                     return;
 
                 case "Hidden/TaoTie RP/Deferred Lighting":
-                    if (IsForward()) data.Clear();
+                    if (!IsDeferred()) data.Clear();
                     return;
 
                 case "Hidden/TaoTie RP/Post FX Stack":

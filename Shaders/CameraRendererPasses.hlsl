@@ -1,7 +1,8 @@
 #ifndef TAOTIE_CAMERA_RENDERER_PASSES_INCLUDED
 #define TAOTIE_CAMERA_RENDERER_PASSES_INCLUDED
 
-Texture2D<float4> _SourceTexture;
+TEXTURE2D(_SourceTexture);
+SAMPLER(sampler_SourceTexture);
 
 struct Varyings {
     float4 positionCS : SV_POSITION;
@@ -31,10 +32,10 @@ Varyings DepthCopyPassVertex (VSInput i)
 }
 
 float4 CopyPassFragment (Varyings input) : SV_TARGET {
-    return _SourceTexture.SampleLevel(_Sampler_ClampU_ClampV_Linear, input.screenUV, 0);
+    return SAMPLE_TEXTURE2D_LOD(_SourceTexture, sampler_SourceTexture, input.screenUV, 0);
 }
 
 float CopyDepthPassFragment (Varyings input) : SV_DEPTH {
-    return _SourceTexture.SampleLevel(_Sampler_ClampU_ClampV_Linear, input.screenUV, 0).r;
+    return SAMPLE_TEXTURE2D_LOD(_SourceTexture, sampler_SourceTexture, input.screenUV, 0).r;
 }
 #endif

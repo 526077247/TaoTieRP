@@ -1,11 +1,13 @@
 # TaoTie RP
 
-A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling, cascaded shadow maps, light cookies, and a full post-processing stack.
+A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling with bitmask + ZBin depth culling, cascaded shadow maps, light cookies, and a modular post-processing stack.
 
 ## Requirements
 
+- Unity 2022.3.x or later
 - Render Pipelines Core 14.0.10+
 - Unity Mathematics 1.2.6+
+- Burst 1.8.18+
 
 ## License
 
@@ -17,45 +19,41 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 ### Rendering Paths
 
-TaoTie RP supports two rendering paths with optional Forward+ tile-based light culling. The combination of rendering path, Forward+ toggle, and target platform determines how opaque and transparent queues are rendered.
-
-#### Path Selection
-
 | Setting | Condition | Native | WebGL2 | WebGL1 |
 |---------|-----------|:------:|:------:|:------:|
 | **Forward** | Default; always available | ✅ | ✅ | ✅ |
-| **Deferred** | Requires `supportedRenderTargetCount ≥ 3` (MRT); not a reflection camera; forces MSAA off. The `DeferredLighting` shader uses `#pragma exclude_renderers gles`, so even if the runtime check is bypassed, the shader is stripped from WebGL builds. | ✅ | ❌ (forced Forward) | ❌ (forced Forward) |
-| **Forward+** | Enabled when `forwardPlus != Off` and graphics API is not OpenGLES2. In `Auto` mode, activates only when visible other lights exceed `maxOtherLights`. Uses ComputeBuffer on native, Texture2D fallback on WebGL2. | ✅ | ✅ (Texture2D fallback, 64 light cap) | ❌ |
+| **Deferred** | Requires MRT (supportedRenderTargetCount ≥ 3); not a reflection camera; forces MSAA off. Shader uses `#pragma exclude_renderers gles`. | ✅ | ❌ (forced Forward) | ❌ (forced Forward) |
+| **Forward+** | Enabled when `forwardPlus != Off` and graphics API is not OpenGLES2. Auto mode activates when visible other lights exceed 16 (hysteresis: disables below 8). Uses ComputeBuffer on native, Texture2D fallback on WebGL2. Stripped on WebGL1 builds. | ✅ | ✅ (Texture2D fallback) | ❌ |
 
-> When Deferred is selected but the platform doesn't support it (all WebGL runtimes, or insufficient MRT on native), the pipeline automatically falls back to Forward rendering. In the Editor, Deferred is available on all platforms for testing purposes (`UNITY_EDITOR` bypasses the WebGL exclusion).
+> When Deferred is selected but the platform doesn't support it (all WebGL runtimes, or insufficient MRT on native), the pipeline automatically falls back to Forward rendering. In the Editor, Deferred is available on all platforms for testing purposes.
 
 #### Opaque Queue
 
 | Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
 |------|----------|-----------------|-----------------|:------:|:------:|:------:|
-| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 32, max 64) other lights | ✅ | ✅ | ✅ (capped at 8) |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 other lights (64 on WebGL2) | ✅ (ComputeBuffer) | ✅ (Texture2D fallback) | ❌ (FP disabled → Off) |
-| Deferred | Off | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights, 64 on WebGL2) | ✅ | ❌ (no deferred) | ❌ |
-| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights, 64 on WebGL2) | ✅ | ❌ | ❌ |
+| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) other lights | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, bitmask + ZBin tile-culled, up to 256 other lights | ✅ (ComputeBuffer) | ✅ (Texture2D fallback) | ❌ (FP disabled → Off) |
+| Deferred | Off | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights) | ✅ | ❌ (no deferred) | ❌ |
+| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` with bitmask + ZBin tile culling (up to 256 lights) | ✅ | ❌ | ❌ |
 
-> In Deferred path, opaque geometry writes to GBuffer textures via `DeferredGBuffer` shader pass. Lighting is computed in a separate fullscreen `DeferredLightingPass` using the GBuffer data and depth. Forward+ does not apply to the deferred opaque pass — the `DeferredGBuffer` shader pass does not include the `_TAOTIE_FORWARD_PLUS` keyword, and lighting is resolved entirely in the fullscreen lighting pass rather than per-pixel during geometry rendering.
+> In Deferred path, opaque geometry writes to GBuffer textures via `DeferredGBuffer` shader pass. Lighting is computed in a separate fullscreen `DeferredLightingPass`. When Forward+ is enabled, the `DeferredLightingPass` also uses bitmask + ZBin tile-culled light iteration via `LIGHT_LOOP_BEGIN`/`LIGHT_LOOP_END` macros — the same tile data computed by `ForwardPlusCullPass` is reused.
 
 #### Transparent Queue
 
 | Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
 |------|----------|-----------------|-----------------|:------:|:------:|:------:|
-| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 32, max 64) | ✅ | ✅ | ✅ (capped at 8) |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 (64 on WebGL2) | ✅ | ✅ | ❌ (falls back to Off) |
-| Deferred | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 32, max 64) | ✅ | ❌ | ❌ |
-| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 (64 on WebGL2) | ✅ | ❌ | ❌ |
+| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, bitmask + ZBin tile-culled, up to 256 | ✅ | ✅ | ❌ (falls back to Off) |
+| Deferred | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) | ✅ | ❌ | ❌ |
+| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 | ✅ | ❌ | ❌ |
 
-> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `forwardPlus` is not `Off`, transparent objects in the deferred path also benefit from Forward+ tile-based light culling. On WebGL2, Forward+ uses a Texture2D fallback for light data with a 64-light cap (vs 256 on native). On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
+> Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `forwardPlus` is not `Off`, transparent objects also benefit from Forward+ bitmask + ZBin tile-based light culling. On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
 
 #### Full Pass Sequences
 
 **Forward path:**
 ```
-LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit) → SkyboxPass
+LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GeometryPass(opaque, CustomLit) → SkyboxPass
 → [ResolvePass(MSAA)] → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → LensFlarePass
 → PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
@@ -63,29 +61,28 @@ LightingPass → SetupPass → [DepthPrePass] → GeometryPass(opaque, CustomLit
 
 **Deferred path:**
 ```
-LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
+LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
 → SkyboxPass → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [TAAResolvePass] → LensFlarePass
 → PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
 ```
 
-> `[...]` = optional, depends on settings. DepthPrePass runs when MSAA + Copy Depth is enabled (or Depth Priming is Forced). SSAOPass runs when SSAO is enabled and depth texture is available. TAAResolvePass runs when TAA is enabled. LensFlarePass runs when a LensFlareComponent is present. PostFXPass runs when active post-processing effects exist; otherwise FinalPass blits directly. Debug passes (DepthDebugger, ForwardPlusDebugger) render overlays when their debugger is active.
+> `[...]` = optional, depends on settings. DepthPrePass runs before both Forward and Deferred paths when `depthPrimingMode` is Forced, or in Forward when MSAA + Copy Depth is enabled (Auto mode). In Deferred, `depthPrimingMode = Auto` never triggers DepthPrePass (MSAA is always off). ForwardPlusCullPass runs when Forward+ is active, after DepthPrePass (if any) and before geometry/GBuffer rendering. 2.5D depth culling only activates when DepthPrePass is running. SSAOPass runs when SSAO is enabled and depth texture is available. TAAResolvePass runs when TAA is enabled. PostFXPass runs when active post-processing effects exist; otherwise FinalPass blits directly.
 
-> **Reflection cameras** use a simplified path: `LightingPass → SetupPass → GeometryPass(opaque) → [CopyAttachmentsPass] → FinalPass`. They skip deferred, skybox, SSAO, TAA, and post-processing entirely.
+> **Reflection cameras** use a simplified path: `LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GeometryPass(opaque) → [CopyAttachmentsPass] → FinalPass`. They skip deferred, skybox, SSAO, TAA, and post-processing entirely.
 
-### Lighting
+### Forward+ Tile-Based Light Culling
 
-- **Forward+** — GPU ComputeShader tile-based light culling on native platforms (D3D11/Vulkan/Metal), with Burst-compiled CPU Job fallback for WebGL/GLES3. Supports up to 4 directional lights and 256 point/spot lights (64 on WebGL2)
+- **Bitmask tile data** — Each tile stores a fixed-size uint32 bitmask (8 words for 256 lights). On SM5.0+ platforms, `firstbitlow` iterates only set bits; GLES3/WebGL2 uses 32-bit for-loop fallback
+- **ZBin depth culling** — Lights are binned by camera-space depth into `zBinCount` (default 32, configurable 8–64) depth slices. In the pixel shader, the tile bitmask is ANDed with the ZBin bitmask for the current pixel's depth, reducing per-pixel light iterations
+- **2.5D tile depth culling** — When DepthPrePass is active (Forced mode, or in Forward path when SSAO/TAA/MSAA depth priming is active), the compute shader samples the depth texture at each tile's center and skips lights whose Z range doesn't overlap the tile's depth. When DepthPrePass is not running, Forward+ falls back to pure 2D tile culling (ZBin still applies in pixel shader)
+- **Light priority selection** — When visible lights exceed the platform limit (8 on GLES2, 256 on other platforms), lights are scored by `brightness × screenArea / distSqr` and the top `max` are selected via partial selection sort. Static arrays avoid per-frame allocation
+- **Hysteresis threshold** — Auto mode enables Forward+ when lights > 16, disables when lights < 8, preventing variant thrashing near the threshold
+- **GPU compute culling** — ComputeShader (`ForwardPlusCulling.compute`) with `groupshared` memory for collaborative light bounds loading, `[numthreads(8,8,1)]` dispatch. Burst-compiled CPU Job (`TileCullJob.cs`) fallback for WebGL/GLES3
+- **Deferred integration** — When Forward+ is enabled, the Deferred lighting pass also uses bitmask + ZBin tile-culled light iteration via `LIGHT_LOOP_BEGIN`/`LIGHT_LOOP_END` macros
+- `LIGHT_LOOP_BEGIN` / `LIGHT_LOOP_END` macros abstract the Other Light iteration so `GetLighting()` stays clean across Forward+, GLES2, and plain Forward paths
+- Supports up to 4 directional lights and 256 point/spot lights (8 on GLES2)
 - ComputeBuffer light data with Texture2D fallback for WebGL
-- Dirty-flag optimization: skips tile data recomputation when light bounds and tile grid are unchanged across frames
-- Light probe interpolation and Light Probe Proxy Volumes (LPPV)
-- Reflection probes
-- **Light Cookies** — Directional and spot light cookie textures with per-light world-to-light projection matrices
-  - **Directional lights**: Supported in both Forward and Deferred paths. Cookie size controls tiling repeat.
-  - **Spot lights**: Supported in Forward path only (non-Forward+). Cookie is perspective-projected through the cone using the spot angle and range.
-  - **Point lights**: Not supported (cubemap cookies not implemented).
-  - **Forward+ path**: Spot light cookies are not available due to CBUFFER size and shader loop unroll constraints.
-  - When no cookie is assigned, a 1×1 white texture is bound (no performance overhead — shader early-outs via enable flag).
 
 ### Shadows
 
@@ -96,107 +93,111 @@ LightingPass → SetupPass → GBufferPass(opaque, DeferredGBuffer) → Deferred
 - 3 shadow filter quality levels (Low / Medium / High)
 - Configurable shadow atlas resolution (256–8192)
 - Configurable shadow max distance and distance fade
+- **Forward+ settings**: `maxLightsPerTile`, `tileSize` (8–256px, adaptive), `zBinCount` (8–64 depth bins)
 
 ### SSAO (Screen Space Ambient Occlusion)
 
 - Alchemy/Horizon-based AO algorithm with depth-reconstructed normals
 - 3 quality presets: Low (4 samples), Medium (8 samples), High (12 samples)
-- Bilateral blur (horizontal + vertical, 5-tap each) to reduce noise while preserving edges
-- Configurable radius, intensity, and distance falloff
-- Configurable resolution downsample (0.25×–1×) for performance scaling
-- Applied to ambient/indirect lighting only (multiplies `surface.occlusion`), does not affect direct lighting
-- Works in both Forward and Deferred paths (applied after opaque queue, before transparent queue)
-- `_SSAO_ENABLED` shader keyword is toggled at runtime; corresponding variants are stripped at build time when SSAO is disabled
-- Configured under **Shadows > SSAO** in the pipeline asset
+- Bilateral blur (horizontal + vertical, 5-tap each)
+- Configurable radius, intensity, distance falloff, and resolution downsample (0.25×–1×)
+- Applied to ambient/indirect lighting only
+- Works in both Forward and Deferred paths
+- `_SSAO_ENABLED` shader keyword toggled at runtime; variants stripped at build time when SSAO is disabled
 
 ### Post-Processing
 
-The post-processing stack uses a modular effect architecture with **Unity Volume system integration**. All post-processing parameters are controlled by `VolumeComponent` overrides in the scene — no parameters are serialized on the effects themselves.
+The post-processing stack uses a modular effect architecture with **Unity Volume system integration**. All post-processing parameters are controlled by `VolumeComponent` overrides in the scene.
 
 #### Volume System
 
-Each post-processing effect has a corresponding `VolumeComponent` subclass (e.g. `BloomVolume`, `ColorGradingVolume`) in `Runtime/PostFX/Volume/`. These appear in the Volume Profile Inspector under **Add Override > TaoTie RP**. At runtime, effects read their parameters from the active `VolumeStack` via `PostFXStack.GetActiveVolume<T>()`, which checks `VolumeManager.instance.IsComponentActiveInMask<T>(layerMask)` — only components activated by a Volume on a matching layer are applied.
+Each post-processing effect has a corresponding `VolumeComponent` subclass in `Runtime/PostFX/Volume/`. These appear in the Volume Profile Inspector under **Add Override → TaoTie RP**. At runtime, effects read their parameters from the active `VolumeStack` via `PostFXStack.GetActiveVolume<T>()`.
 
-**Per-camera Volume filtering** is supported via the `volumeLayerMask` field on `CameraSettings` (on the `TaoTieRenderPipelineCamera` component). Set different Volume GameObjects to different Unity Layers, then assign each camera's `Volume Layer Mask` to control which Volumes affect it.
+**Per-camera Volume filtering** is supported via the `volumeLayerMask` field on `CameraSettings` (on the `TaoTieRenderPipelineCamera` component).
 
-**`PostFXSettings`** (ScriptableObject) now only manages:
+**`PostFXSettings`** (ScriptableObject) manages:
 - The effects list (which effects are enabled/disabled, execution order)
 - Shader references (shared PostFXStack shader + per-effect dedicated shaders)
 - Shader stripping information
 
-All runtime parameter values come from the Volume system. The only exception is **Color Curves**, which retains serialized `AnimationCurve` fields (Volume system cannot interpolate curves).
+#### Built-in Effects
 
-#### Effect Architecture
+| Effect | Description | Shader |
+|--------|-------------|--------|
+| **Bloom** | Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling | PostFXStack.shader |
+| **Color Grading** | Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, SMH, tone mapping (ACES, Neutral, Reinhard) | PostFXStack.shader |
+| **Depth Of Field** | CoC-based depth blur, 13-tap Poisson disc, foreground/background blur | DepthOfField.shader |
+| **Outline** | Roberts Cross depth + optional G-Buffer normal edge detection | Outline.shader |
+| **Volumetric Fog** | Raymarched volumetric fog with exponential extinction, Mie scattering | VolumetricFog.shader |
+| **Motion Blur** | Camera-motion-based blur via depth reconstruction + previous VP matrix | MotionBlur.shader |
+| **Vignette** | Radial darkening toward screen edges | Vignette.shader |
+| **Chromatic Aberration** | Radial RGB channel offset | ChromaticAberration.shader |
+| **Film Grain** | Animated procedural noise, luma-weighted response | FilmGrain.shader |
+| **Lens Distortion** | Barrel/pincushion distortion with scale compensation | LensDistortion.shader |
+| **Sharpen** | Unsharp Mask edge enhancement | Sharpen.shader |
+| **Posterize** | Color quantization for stylized look | Posterize.shader |
+| **Pixelate** | Grid-snap UV sampling for pixel art / retro effect | Pixelate.shader |
+| **Color Curves** | 8-channel AnimationCurve-based grading, baked to 1D LUT textures | ColorCurves.shader |
+| **Panini Projection** | Cylindrical stereographic projection for wide-FOV scenes | PaniniProjection.shader |
 
-Each effect is an independent `[Serializable]` class inheriting from `PostFXEffect`. Effects can be individually enabled/disabled, reordered, and added via the Inspector's `+` dropdown (auto-discovers all `PostFXEffect` subclasses via reflection). In the Inspector, effects with serialized parameters (Color Curves) show a foldout; effects with Volume-only parameters show just a header + enable toggle.
-
-Shader pass indices are resolved dynamically at runtime by name and cached per-Material in a static dictionary (`passMaps`), eliminating per-frame `Material.GetPassName` GC allocations even when multiple cameras use different `PostFXSettings` instances.
-
-When no Volume activates a given effect's `VolumeComponent`, `PostFXPass.Record` returns `false` and the pipeline falls back to `FinalPass` (simple blit to camera target), avoiding unnecessary render graph passes.
-
-Built-in effects and their Volume components:
-
-| Effect | VolumeComponent | Description | Shader | Passes |
-|--------|----------------|-------------|--------|:------:|
-| **Bloom** | `BloomVolume` | Pyramid down/up-sampling, scatter/additive mode, firefly filtering, bicubic upsampling | PostFXStack.shader | 7 |
-| **Color Grading** | `ColorGradingVolume` | Color LUT (16/32/64), color adjustments, white balance, split toning, channel mixer, shadows/midtones/highlights, tone mapping (ACES, Neutral, Reinhard) | PostFXStack.shader | 5 |
-| **Depth Of Field** | `DepthOfFieldVolume` | Circle of Confusion based depth blur, 13-tap Poisson disc, foreground/background blur, configurable focus distance/range | DepthOfField.shader | 3 |
-| **Outline** | `OutlineVolume` | Roberts Cross depth + optional G-Buffer normal edge detection (Deferred), configurable color/depth sensitivity/normal sensitivity/width | Outline.shader | 2 |
-| **Volumetric Fog** | `VolumetricFogVolume` | Raymarched volumetric fog with exponential extinction, Mie scattering phase function, jitter-based anti-banding, adaptive step size | VolumetricFog.shader | 1 |
-| **Motion Blur** | `MotionBlurVolume` | Camera-motion-based blur via depth reconstruction + previous frame VP matrix, multi-sample velocity gather | MotionBlur.shader | 1 |
-| **Vignette** | `VignetteVolume` | Radial darkening toward screen edges, configurable center/roundness/smoothness/color | Vignette.shader | 1 |
-| **Chromatic Aberration** | `ChromaticAberrationVolume` | Radial RGB channel offset simulating lens chromatic dispersion | ChromaticAberration.shader | 1 |
-| **Film Grain** | `FilmGrainVolume` | Animated procedural noise (hash-based), luma-weighted response for perceptual accuracy | FilmGrain.shader | 1 |
-| **Lens Distortion** | `LensDistortionVolume` | Barrel/pincushion distortion with scale compensation, configurable center | LensDistortion.shader | 1 |
-| **Sharpen** | `SharpenVolume` | Unsharp Mask edge enhancement, configurable radius and intensity | Sharpen.shader | 1 |
-| **Posterize** | `PosterizeVolume` | Color quantization, reduces color levels for stylized look | Posterize.shader | 1 |
-| **Pixelate** | `PixelateVolume` | Grid-snap UV sampling for pixel art / retro mosaic effect | Pixelate.shader | 1 |
-| **Color Curves** | *(serialized)* | 8-channel AnimationCurve-based grading (Master, RGB, HueVsHue, HueVsSat, SatVsSat, LumVsSat), baked to 1D LUT textures | ColorCurves.shader | 1 |
-| **Panini Projection** | `PaniniProjectionVolume` | Cylindrical stereographic projection for wide-FOV scenes, keeps vertical/radial lines straight | PaniniProjection.shader | 1 |
-
-> **Extensibility**: to add a new post-processing effect:
-> 1. Create a `VolumeComponent` subclass in `Runtime/PostFX/Volume/` with `[VolumeComponentMenu("TaoTie RP/Your Effect")]` and `VolumeParameter<T>` fields
-> 2. Create a `PostFXEffect` subclass — set `settings` as `[NonSerialized]`, read from `stack.GetActiveVolume<YourVolume>()` in `Execute()`
-> 3. Override `DisplayName`, `ShaderName`, `EnsureShaderReference()` if using a dedicated shader
-> 4. The effect automatically appears in PostFXSettings's `+` dropdown and in Volume Profile's Add Override menu
-
-**Additional post-processing features:**
-- **Bicubic Rescaling** — Off / Up-only / Up-and-down
-- Post-processing overrides per camera
+> **Extensibility**: to add a new post-processing effect, create a `VolumeComponent` subclass and a `PostFXEffect` subclass. The effect automatically appears in PostFXSettings's `+` dropdown and in Volume Profile's Add Override menu via reflection-based discovery.
 
 ### Anti-Aliasing
-
-TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 
 **High-Quality AA** (pipeline-level, mutually exclusive):
 
 | Mode | Description | Forward | Deferred | WebGL1 |
 |------|-------------|:-------:|:-------:|:------:|
 | **MSAA** | Hardware multi-sample anti-aliasing (2x/4x/8x) | ✅ | ❌ | ❌ |
-| **TAA** | Temporal anti-aliasing with Halton jitter, depth-based reprojection, YCoCg variance clamping, AABB clip-to-center | ✅ | ✅ | ❌ |
-
-- MSAA and TAA are mutually exclusive — enabling one disables the other
-- MSAA is disabled in Deferred mode (MRT + MSAA not reliably supported)
-- TAA is disabled on WebGL1/GLES2 (requires depth texture sampling)
-- When MSAA + Copy Depth is enabled, a Depth Pre-Pass renders opaque depth to a non-MSAA texture
-- TAA parameters: Jitter Scale, Base Blend Factor, Variance Clamp Scale
+| **TAA** | Temporal anti-aliasing with Halton jitter, depth-based reprojection, YCoCg variance clamping | ✅ | ✅ | ❌ |
 
 **Post-Process AA** (pipeline-level, mutually exclusive):
 
 | Mode | Description |
 |------|-------------|
 | **FXAA** | Fast approximate anti-aliasing (NVIDIA FXAA 3.11 console variant) |
-| **SMAA** | Subpixel Morphological Anti-Aliasing (full 3-pass: edge detection → blend weight calculation → neighborhood blending, with precomputed area/search lookup textures) |
+| **SMAA** | Subpixel Morphological Anti-Aliasing (full 3-pass with precomputed lookup textures). Stripped on WebGL1 builds (`SMAA_DISABLED`); when SMAA is selected but stripped, automatically falls back to FXAA |
 
-- FXAA and SMAA are mutually exclusive
-- SMAA uses the original precomputed lookup textures (areaTex 160×560, searchTex 64×16) embedded as byte arrays
-- SMAA edge texture uses optimized `R8G8_UNorm` format for reduced memory
-- When SMAA is not selected, SMAA shader passes and lookup data are stripped from builds via `SMAA_DISABLED` define (controlled by `stripSMAAWhenUnused` toggle — enables stripping to reduce build size by ~180KB; disable if you plan to switch to SMAA at runtime)
+- SMAA stripping controlled by `stripSMAAWhenUnused` toggle (reduces build size by ~180KB); when SMAA is stripped but selected, falls back to FXAA automatically
+- Per-camera control: `allowHighQualityAA` and `allowPostProcessAA`
 
-**Per-Camera Control:**
+### Lighting
 
-- `allowHighQualityAA` — enables/disables MSAA or TAA for this camera
-- `allowPostProcessAA` — enables/disables FXAA or SMAA for this camera
+- **Light Cookies** — Directional and spot light cookie textures with per-light world-to-light projection matrices
+  - Directional lights: Supported in all paths. Cookie size controls tiling repeat.
+  - Spot lights: Supported in all paths including Forward+ (with index-bounds checking).
+  - Point lights: Not supported (cubemap cookies not implemented).
+  - On GLES2/GLES3/WebGL2, cookie textures are disabled to stay within the 16-sampler limit.
+  - When no cookie is assigned, a 1×1 white texture is bound.
+- Light probe interpolation and Light Probe Proxy Volumes (LPPV)
+- Reflection probes
+- **Rendering Layer Mask** — Per-camera `maskLights` + `renderingLayerMask` to filter which lights affect a camera
+
+### Other Features
+
+- **GPU Instancing** — `MeshBall` example demonstrates 1023-instance GPU instancing
+- **LOD Cross-Fade** — `LOD_FADE_CROSSFADE` support
+- **SRP Batcher** — Enabled by default for reduced draw call overhead
+- **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
+- **HDR** — Per-camera HDR support
+- **Copy Color & Copy Depth** — Per-camera toggles to copy opaque color and depth before transparent queue
+- **Depth Priming Mode** — Auto (depth pre-pass only when needed) or Forced (always)
+- **Bicubic Rescaling** — Off / Up-only / Up-and-down
+- **Per-Camera Final Blend Mode** — Configurable source/destination blend mode
+- **Lens Flare (SRP)** — Data-driven lens flare system with Image/Circle/Polygon shapes
+- **WebGL/Mobile Compatibility** — ComputeBuffer → Texture2D fallback, no deferred on WebGL, 8 light cap on GLES2
+
+### Shader Stripping
+
+Automatic stripping of unused shader variants based on build target and GraphicsAPIs:
+
+- Debugger shaders and Meta passes always stripped
+- SMAA passes stripped when not selected; SMAA always stripped on WebGL1 builds (detected via `PlayerSettings.GetGraphicsAPIs` — no OpenGLES3 = WebGL1)
+- `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off or WebGL1 target
+- Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in any `PostFXSettings` in the project
+- Bloom/ColorGrading passes stripped when those effects are absent from all `PostFXSettings` queues
+- `_SSAO_ENABLED` keyword variants stripped when SSAO is disabled
+- Deferred lighting shader and `DeferredGBuffer` pass stripped in Forward mode
 
 ### Shaders
 
@@ -210,70 +211,23 @@ TaoTie RP provides multiple anti-aliasing strategies, organized into two layers:
 | `Hidden/TaoTie RP/Post FX Stack` | Post-processing (bloom, color grading, FXAA, SMAA, rescale) |
 | `Hidden/TaoTie RP/Camera Renderer` | Internal blit/copy operations |
 | `Hidden/TaoTie RP/TAA` | Temporal anti-aliasing resolve |
-| `Hidden/TaoTie RP/Outline` | Post-process outline (depth + normal edge detection) |
-| `Hidden/TaoTie RP/Depth Of Field` | Depth of field (CoC, blur, composite) |
-| `Hidden/TaoTie RP/Volumetric Fog` | Raymarched volumetric fog (Mie scattering) |
-| `Hidden/TaoTie RP/Motion Blur` | Camera motion blur (depth reprojection) |
-| `Hidden/TaoTie RP/Vignette` | Vignette (radial edge darkening) |
-| `Hidden/TaoTie RP/Chromatic Aberration` | Chromatic aberration (RGB channel offset) |
-| `Hidden/TaoTie RP/Film Grain` | Film grain (procedural noise) |
-| `Hidden/TaoTie RP/Lens Distortion` | Lens distortion (barrel/pincushion) |
-| `Hidden/TaoTie RP/Sharpen` | Sharpen (unsharp mask) |
-| `Hidden/TaoTie RP/Posterize` | Posterize (color quantization) |
-| `Hidden/TaoTie RP/Pixelate` | Pixelate (grid-snap UV) |
-| `Hidden/TaoTie RP/Color Curves` | Color curves (8-channel LUT-based grading) |
-| `Hidden/TaoTie RP/Panini Projection` | Panini projection (cylindrical stereographic) |
-| `Hidden/TaoTie RP/Lens Flare` | Lens flare (Image/Circle/Polygon, additive blend) |
-| `Hidden/TaoTie RP/SSAO` | Screen Space Ambient Occlusion (generate + horizontal/vertical bilateral blur) |
-| `Hidden/ForwardPlus Debugger` | Debug overlay |
-| `Hidden/Depth Debugger` | Depth visualization (Linear Eye / 01 / Raw, split-screen, opacity) |
-
-### Other Features
-
-- **GPU Instancing** — `MeshBall` example demonstrates 1023-instance GPU instancing with `MaterialPropertyBlock`
-- **LOD Cross-Fade** — `LOD_FADE_CROSSFADE` support
-- **SRP Batcher** — Enabled by default for reduced draw call overhead
-- **Render Scaling** — Per-camera render scale (Inherit / Multiply / Override)
-- **HDR** — Per-camera HDR support
-- **Copy Color & Copy Depth** — Per-camera toggles to copy opaque color (`_CameraColorTexture`) and depth (`_CameraDepthTexture`) before the transparent queue, enabling soft particles, depth-based transparency, and other depth-dependent effects
-- **Depth Priming Mode** — Controls when a depth pre-pass (`DepthOnly` shader pass) is used to generate `_CameraDepthTexture`:
-  - **Auto** (default): Only when the pipeline already needs a depth pre-pass (e.g., MSAA + Copy Depth)
-  - **Forced**: Always use a depth pre-pass when a depth texture is needed, regardless of MSAA
-- **Rendering Layer Mask** — Per-camera `maskLights` + `renderingLayerMask` to filter which lights affect a camera based on rendering layers (similar to URP Rendering Layer Mask)
-- **Reflection Camera Support** — Reflection probe cameras use a simplified render path (opaque geometry + FinalPass only), skipping deferred, skybox, SSAO, TAA, and post-processing
-- **Per-Camera Final Blend Mode** — Configurable source/destination blend mode for the final blit to the camera target
-- **Volume-based Post-Processing** — All post-processing parameters controlled by Unity Volume system (`VolumeComponent` overrides), with per-camera `volumeLayerMask` filtering via Unity Layers
-- **Shader Stripping** — Automatic stripping of unused shader variants:
-  - Debugger shaders and Meta passes always stripped
-  - SMAA/FXAA passes stripped when not selected as post-process AA (SMAA stripping controlled by `stripSMAAWhenUnused` toggle)
-  - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in **any** `PostFXSettings` effects list in the project — regardless of the effect's `enabled` state
-  - Bloom/ColorGrading passes in the shared Post FX Stack shader stripped when those effects are absent from all `PostFXSettings` queues
-  - `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off
-  - `_SSAO_ENABLED` keyword variants stripped when SSAO is disabled
-  - WebGL compute buffer variants, TAA/SSAO shaders stripped when feature is disabled
-  - Deferred lighting shader and `DeferredGBuffer` pass stripped in Forward mode
-- **SSAO** — Screen Space Ambient Occlusion with Alchemy AO algorithm, depth-reconstructed normals, bilateral blur, configurable quality/radius/intensity/falloff/downsample
-- **Lens Flare (SRP)** — Data-driven lens flare system with `LensFlareData` (ScriptableObject) + `LensFlareComponent` (MonoBehaviour), supports Image/Circle/Polygon shapes, additive blend, per-element position/size/rotation/occlusion
-- **WebGL/Mobile Compatibility** — ComputeBuffer→Texture2D fallback, no deferred on WebGL1/GLES2 (`supportedRenderTargetCount == 1`), graphics format fallbacks
-
-### Depth Texture (Copy Depth)
-
-When `copyDepth` is enabled, the opaque depth buffer is copied to `_CameraDepthTexture` before the transparent render queue, enabling soft particles, depth-based transparency, and other depth-dependent effects.
-
-| Condition | Method | Description |
-|-----------|--------|-------------|
-| No MSAA | `CopyTexture` / `CopyByDrawing` | Direct copy from depth attachment to non-MSAA depth texture |
-| MSAA + any platform | Depth Pre-Pass | Opaque objects are rendered with a `DepthOnly` shader pass into a non-MSAA depth texture before the main geometry pass |
-| Depth Priming = Forced | Depth Pre-Pass | Always uses a `DepthOnly` shader pass to generate the depth texture, regardless of MSAA state |
-
-**Forward path with MSAA + Copy Depth:**
-```
-SetupPass → DepthPrePass → GeometryPass(opaque) → Skybox → ResolvePass
-→ CopyAttachmentsPass (color copy only)
-→ GeometryPass(transparent) → ...
-```
-
-> **Note:** Deferred path always forces MSAA off, so depth copy always uses the direct `CopyTexture` method regardless of platform.
+| `Hidden/TaoTie RP/SSAO` | Screen Space Ambient Occlusion |
+| `Hidden/TaoTie RP/Lens Flare` | Lens flare |
+| `Hidden/TaoTie RP/Outline` | Post-process outline |
+| `Hidden/TaoTie RP/Depth Of Field` | Depth of field |
+| `Hidden/TaoTie RP/Volumetric Fog` | Raymarched volumetric fog |
+| `Hidden/TaoTie RP/Motion Blur` | Camera motion blur |
+| `Hidden/TaoTie RP/Vignette` | Vignette |
+| `Hidden/TaoTie RP/Chromatic Aberration` | Chromatic aberration |
+| `Hidden/TaoTie RP/Film Grain` | Film grain |
+| `Hidden/TaoTie RP/Lens Distortion` | Lens distortion |
+| `Hidden/TaoTie RP/Sharpen` | Sharpen |
+| `Hidden/TaoTie RP/Posterize` | Posterize |
+| `Hidden/TaoTie RP/Pixelate` | Pixelate |
+| `Hidden/TaoTie RP/Color Curves` | Color curves |
+| `Hidden/TaoTie RP/Panini Projection` | Panini projection |
+| `Hidden/ForwardPlus Debugger` | Forward+ tile debug overlay |
+| `Hidden/Depth Debugger` | Depth visualization |
 
 ---
 
@@ -281,95 +235,42 @@ SetupPass → DepthPrePass → GeometryPass(opaque) → Skybox → ResolvePass
 
 ```
 com.taotie.render-pipelines/
-├── package.json                   # Package manifest (samples, description, dependencies)
+├── package.json
 ├── README.md
 ├── LICENSE
 ├── Runtime/
-│   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, AA, SSAO, lens flare, etc.)
-│   ├── Passes/                    # Render graph passes (Lighting, Geometry, GBuffer, TAA, SMAA, PostFX, LensFlare, etc.)
-│   ├── Debugger/                 # Debug passes (depth, forward+)
-│   ├── Attribute/                 # Custom inspector attributes (ShowIf, MSAAField, EnumLabel, etc.)
-│   ├── Materials/                 # Internal materials
-│   ├── CameraRenderer.cs          # Main camera renderer (pass orchestration, AA/depth/TAA integration)
-│   ├── PostFXStack.cs             # Post-processing stack (dynamic pass lookup, draw helpers)
+│   ├── Data/                      # Pipeline settings (camera, shadow, post-FX, SSAO, etc.)
+│   ├── Passes/                    # Render graph passes (Lighting, Geometry, GBuffer, TAA, PostFX, ForwardPlusCull, etc.)
+│   ├── Debugger/                  # Debug passes (depth, forward+)
+│   ├── Attribute/                 # Custom inspector attributes
 │   ├── PostFX/                    # Modular post-processing effect system
-│   │   ├── PostFXEffect.cs        # Abstract base class (ShaderName, EnsureShaderReference, dispose lifecycle)
-│   │   ├── PostFXPassNames.cs     # Shader pass name constants (replaces hardcoded enum)
-│   │   ├── PostFXEffectRegistry.cs # Reflection-based discovery of all PostFXEffect subclasses
-│   │   ├── Volume/                # VolumeComponent subclasses for Unity Volume system
-│   │   │   ├── BloomVolume.cs     # Bloom parameters (intensity, threshold, scatter, etc.)
-│   │   │   ├── ColorGradingVolume.cs # Color grading + tone mapping parameters
-│   │   │   ├── DepthOfFieldVolume.cs # Depth of field parameters
-│   │   │   └── ...                # Vignette, ChromaticAberration, FilmGrain, etc. (14 total)
-│   │   ├── BloomEffect.cs         # Bloom effect (reads from BloomVolume at runtime)
-│   │   ├── ColorGradingEffect.cs  # Color grading + tone mapping (reads from ColorGradingVolume)
-│   │   ├── ColorCurvesEffect.cs   # Color curves (serialized AnimationCurve, not Volume-driven)
-│   │   ├── DepthOfFieldEffect.cs  # Depth of field (CoC + Gaussian blur + composite)
-│   │   ├── OutlineEffect.cs       # Outline effect (depth + normal edge detection)
-│   │   ├── VolumetricFogEffect.cs # Raymarched volumetric fog (Mie scattering)
-│   │   ├── MotionBlurEffect.cs    # Camera motion blur (depth + VP matrix reprojection)
-│   │   ├── VignetteEffect.cs      # Vignette (radial edge darkening)
-│   │   ├── ChromaticAberrationEffect.cs # Chromatic aberration (RGB channel offset)
-│   │   ├── FilmGrainEffect.cs     # Film grain (procedural noise, luma-weighted)
-│   │   ├── LensDistortionEffect.cs # Lens distortion (barrel/pincushion)
-│   │   ├── SharpenEffect.cs       # Sharpen (unsharp mask)
-│   │   ├── PosterizeEffect.cs     # Posterize (color quantization)
-│   │   └── PixelateEffect.cs      # Pixelate (grid-snap UV sampling)
+│   │   ├── PostFXEffect.cs        # Abstract base class
+│   │   ├── PostFXEffectRegistry.cs # Reflection-based discovery
+│   │   ├── Volume/                # VolumeComponent subclasses
+│   │   └── *Effect.cs             # 15 effect implementations
+│   ├── CameraRenderer.cs          # Main camera renderer
 │   ├── Shadows.cs                 # Shadow rendering
-│   ├── TAAData.cs                 # TAA per-camera history & jitter management
-│   ├── SMAATextures.cs            # SMAA precomputed lookup textures (embedded byte arrays)
-│   ├── SSAOPass.cs               # SSAO render graph pass (generate + bilateral blur)
-│   ├── LensFlareComponent.cs    # Lens flare MonoBehaviour (source position, color modulation)
-│   ├── MotionCameraData.cs       # Per-camera motion data for Motion Blur (prev VP matrix)
-│   └── TaoTieRenderPipeline.cs    # Pipeline asset & render entry point
+│   └── TaoTieRenderPipeline.cs    # Pipeline asset & entry point
 ├── Editor/
-│   ├── ShaderStripper.cs          # Build-time shader stripping (effect-presence-based, debug, SMAA/FXAA, deferred, TAA, SSAO)
-│   ├── HighQualityAAModeDrawer.cs # AA mode dropdown (MSAA disabled in Deferred)
-│   ├── TaoTieAssetCreator.cs      # One-click pipeline + Post FX asset creation
-│   └── ...                        # Property drawers (ShowIf, EnumLabel, RenderingMode, etc.)
+│   ├── ShaderStripper.cs          # Build-time shader stripping
+│   └── ...                        # Property drawers, asset creators
 ├── Shaders/
 │   ├── ShaderLibrary/             # HLSL includes (Common, Lighting, BRDF, GI, ForwardPlus, etc.)
-│   ├── Lit.shader                 # PBR lit shader (CustomLit, DeferredGBuffer, ShadowCaster, DepthOnly, Outline, Meta)
-│   ├── Unlit.shader               # Unlit shader
-│   ├── UnlitParticles.shader      # Particle shader (flipbook, soft particles, distortion)
-│   ├── UIBlending.shader          # UI shader with custom blending
-│   ├── DeferredLighting.shader   # Fullscreen deferred lighting pass
-│   ├── PostFXStack.shader         # Post-processing (bloom, color grading, FXAA, SMAA)
-│   ├── CameraRenderer.shader      # Internal blit/copy/depth operations
-│   ├── TAA.shader                 # Temporal AA resolve
-│   ├── Outline.shader             # Outline effect (depth + normal edge detection)
-│   ├── DepthOfField.shader        # Depth of field (CoC, blur, composite)
-│   ├── VolumetricFog.shader       # Volumetric fog (raymarched, Mie scattering)
-│   ├── MotionBlur.shader          # Camera motion blur (depth reprojection)
-│   ├── Vignette.shader            # Vignette (radial edge darkening)
-│   ├── ChromaticAberration.shader # Chromatic aberration (RGB channel offset)
-│   ├── FilmGrain.shader           # Film grain (procedural noise)
-│   ├── LensDistortion.shader      # Lens distortion (barrel/pincushion)
-│   ├── Sharpen.shader             # Sharpen (unsharp mask)
-│   ├── Posterize.shader           # Posterize (color quantization)
-│   ├── Pixelate.shader            # Pixelate (grid-snap UV)
-│   ├── ColorCurves.shader        # Color curves (8-channel LUT-based grading)
-│   ├── PaniniProjection.shader   # Panini projection (cylindrical stereographic)
-│   ├── LensFlare.shader          # Lens flare (Image/Circle/Polygon, additive blend)
-│   ├── SSAO.shader               # SSAO (generate + horizontal/vertical bilateral blur)
-│   ├── FXAAPass.hlsl              # FXAA fragment
-│   ├── SMAAPass.hlsl              # SMAA 3-pass fragments
-│   └── DepthOnlyPass.hlsl         # Depth-only pass for pre-pass
-├── LWGUI/                         # Light Weight Shader GUI (material inspector)
-└── Samples~/                      # Sample content (hidden from AssetDatabase, imported via Package Manager)
-    ├── Examples/                  # Example scripts, pipeline asset, post-FX presets
-    └── Scenes/                    # Example scenes (8 scenes)
+│   ├── ForwardPlusCulling.compute # GPU tile light culling
+│   ├── Lit.shader                 # PBR lit shader
+│   ├── PostFXStack.shader         # Post-processing stack
+│   └── ...                        # 25 shader files total
+├── LWGUI/                         # Light Weight Shader GUI
+└── Samples~/                      # Sample content
+    ├── Examples/                  # Scripts, pipeline asset, post-FX presets
+    └── Scenes/                    # 8 example scenes
 ```
-
-### Render Pass Sequence
-
-See [Full Pass Sequences](#full-pass-sequences) above for the complete, up-to-date pass order.
 
 ---
 
 ## Getting Started
 
-1. Clone this repository (or add as a submodule) into your Unity project's `Packages/` directory:
+1. Clone this repository into your Unity project's `Packages/` directory:
    ```bash
    cd YourUnityProject/Packages
    git clone https://github.com/526077247/TaoTieRP.git
@@ -379,10 +280,11 @@ See [Full Pass Sequences](#full-pass-sequences) above for the complete, up-to-da
    "com.taotie.render-pipelines": "https://github.com/526077247/TaoTieRP.git"
    ```
 2. Open the project in Unity 2022.3.x or later
-3. Import samples via **Window > Package Manager > TaoTie RP > Samples > Import** (or menu **TaoTie RP > Samples Importer...**)
-4. Assign the pipeline asset (`Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Examples/Tao Tie RP.asset`) in **Project Settings > Graphics > Scriptable Render Pipeline Asset**
-   - Alternatively, use **Assets > Create > Rendering/TaoTie Pipeline** to create a new pipeline asset with default Post FX Settings in one click
-5. Open any scene under `Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Scenes/` to explore features
+3. Import samples via **Window → Package Manager → TaoTie RP → Samples → Import**
+4. Assign the pipeline asset in **Project Settings → Graphics → Scriptable Render Pipeline Asset**
+   - Use `Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Examples/Tao Tie RP.asset`
+   - Or create a new one via **Assets → Create → Rendering/TaoTie Pipeline**
+5. Open any scene under `Assets/Samples/TaoTie RP/1.0.0/TaoTie RP Samples/Scenes/`
 
 ### Example Scenes
 
@@ -393,6 +295,6 @@ See [Full Pass Sequences](#full-pass-sequences) above for the complete, up-to-da
 | Common Materials | Lit/Unlit material presets |
 | LOD | LOD group and cross-fade |
 | Many Lights | Forward+ tile-based light culling |
-| Multiple Cameras | Per-camera Volume filtering via Layer Mask (Standard / Cold / Warm / Bloom profiles on different Layers) |
-| Particles | Particle system with custom shader, Global Volume with Bloom + Color Grading |
+| Multiple Cameras | Per-camera Volume filtering via Layer Mask |
+| Particles | Particle system with custom shader, Bloom + Color Grading |
 | Tone Mapping | ACES / Neutral / Reinhard tone mapping via Volume overrides |

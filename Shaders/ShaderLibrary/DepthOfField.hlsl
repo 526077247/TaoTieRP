@@ -53,7 +53,7 @@ float GetCircleOfConfusion(float2 uv)
 // Pass 0: Calculate CoC into alpha channel
 float4 CoCPassFragment(DOFVaryings input) : SV_Target
 {
-    float3 color = _DOFSource.Sample(sampler_linear_clamp, input.screenUV).rgb;
+    float3 color = SAMPLE_TEXTURE2D(_DOFSource, sampler_linear_clamp, input.screenUV).rgb;
     float coc = GetCircleOfConfusion(input.screenUV);
     return float4(color, coc);
 }
@@ -64,7 +64,7 @@ float4 DOFBlurPassFragment(DOFVaryings input) : SV_Target
     float2 uv = input.screenUV;
     float2 texel = _DOFTexelSize.xy;
 
-    float4 center = _DOFSource.Sample(sampler_linear_clamp, uv);
+    float4 center = SAMPLE_TEXTURE2D(_DOFSource, sampler_linear_clamp, uv);
     float coc = center.a;
 
     // Skip in-focus pixels
@@ -95,7 +95,7 @@ float4 DOFBlurPassFragment(DOFVaryings input) : SV_Target
     for (int i = 0; i < 13; i++)
     {
         float2 sampleUV = uv + offsets[i] * texel * abs(coc) * 2.0;
-        float4 s = _DOFSource.Sample(sampler_linear_clamp, sampleUV);
+        float4 s = SAMPLE_TEXTURE2D(_DOFSource, sampler_linear_clamp, sampleUV);
         // Only accept samples whose CoC indicates background blur
         float sampleWeight = saturate(s.a) * weights[i];
         color += s.rgb * sampleWeight;
@@ -111,8 +111,8 @@ float4 DOFCompositePassFragment(DOFVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
 
-    float4 source = _DOFSource.Sample(sampler_linear_clamp, uv);
-    float4 blurred = _DOFCoCTexture.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_DOFSource, sampler_linear_clamp, uv);
+    float4 blurred = SAMPLE_TEXTURE2D(_DOFCoCTexture, sampler_linear_clamp, uv);
 
     float coc = source.a;
     float blurStrength = saturate(abs(coc));

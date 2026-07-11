@@ -3,72 +3,109 @@
 
 // xy: Screen UV to tile coordinates.
 // z: Tiles per row, as integer.
-// w: Tile data size (maxLightsPerTile), as integer.
+// w: wordsPerTile (number of uint32 words per tile bitmask)
 float4 _ForwardPlusTileSettings;
 
-// Use separate property names to avoid property sheet type conflicts
-// between Texture2D and StructuredBuffer shader variants.
+// x: dataStride (texture width / wordsPerTile, power-of-2)
+// y: zBinCount
+// z: wordsPerTile
+// w: unused
+float4 _ForwardPlusDataSize;
+
+// x: zBinCount
+// y: camera near
+// z: 1 / (far - near)
+// w: camera far
+float4 _ZBinParams;
+
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
-    StructuredBuffer<float2> _ForwardPlusTilesBuf;
-    StructuredBuffer<float> _ForwardPlusTileLightsBuf;
+    StructuredBuffer<uint> _ForwardPlusTileBitmaskBuf;
+    StructuredBuffer<uint> _ForwardPlusZBinBuf;
 #else
-    TEXTURE2D(_ForwardPlusTilesTex);
-    TEXTURE2D(_ForwardPlusTileLightsTex);
+    TEXTURE2D(_ForwardPlusTileBitmaskTex);
+    TEXTURE2D(_ForwardPlusZBinTex);
 #endif
 
-float4 _ForwardPlusLightTexSize;
-
-int2 FpLightTexCoord(int index)
+int GetWordsPerTile()
 {
-    return int2(index % (int)_ForwardPlusLightTexSize.x, index / (int)_ForwardPlusLightTexSize.x);
+    return (int)_ForwardPlusTileSettings.w;
+}
+
+int GetZBinCount()
+{
+    return (int)_ZBinParams.x;
+}
+
+// Compute ZBin index from linear eye depth (positive, distance from camera)
+int GetZBinIndex(float eyeDepth)
+{
+    float normalizedDepth = saturate((eyeDepth - _ZBinParams.y) * _ZBinParams.z);
+    return clamp((int)(normalizedDepth * _ZBinParams.x), 0, (int)_ZBinParams.x - 1);
+}
+
+// Read a single uint32 word from the tile bitmask
+uint LoadTileBitmaskWord(int2 tileCoord, int wordIdx)
+{
+    int dataStride = (int)_ForwardPlusDataSize.x;
+    int linearIdx = tileCoord.y * dataStride + tileCoord.x;
+    int bufferIdx = linearIdx * GetWordsPerTile() + wordIdx;
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+        return _ForwardPlusTileBitmaskBuf[bufferIdx];
+    #else
+        int texW = (int)_ForwardPlusDataSize.x * GetWordsPerTile();
+        int x = bufferIdx % texW;
+        int y = bufferIdx / texW;
+        return asuint(_ForwardPlusTileBitmaskTex.Load(int3(x, y, 0)).r);
+    #endif
+}
+
+// Read a single uint32 word from the ZBin bitmask
+uint LoadZBinBitmaskWord(int zBinIdx, int wordIdx)
+{
+    int bufferIdx = zBinIdx * GetWordsPerTile() + wordIdx;
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+        return _ForwardPlusZBinBuf[bufferIdx];
+    #else
+        int texW = GetWordsPerTile();
+        int x = bufferIdx % texW;
+        int y = bufferIdx / texW;
+        return asuint(_ForwardPlusZBinTex.Load(int3(x, y, 0)).r);
+    #endif
 }
 
 struct ForwardPlusTile
 {
     int2 coordinates;
-
     int index;
-    int headerIndex;
-    int lightCount;
+    int wordsPerTile;
 
-    int GetForwardPlusTiles(int temp)
+    int GetWordsPerTile()
     {
-        #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
-            return (int)_ForwardPlusTileLightsBuf[temp];
-        #else
-            return (int)_ForwardPlusTileLightsTex.Load(int3(FpLightTexCoord(temp), 0)).r;
-        #endif
+        return wordsPerTile;
     }
 
-    int GetTileDataSize()
+    uint GetBitmaskWord(int wordIdx)
     {
-        return (int)_ForwardPlusTileSettings.w;
+        return LoadTileBitmaskWord(coordinates, wordIdx);
     }
 
-    int GetFirstLightIndexInTile()
+    int GetLightCount()
     {
-        return headerIndex;
+        int count = 0;
+        for (int w = 0; w < wordsPerTile; w++)
+            count += countbits(GetBitmaskWord(w));
+        return count;
     }
 
-    int GetLastLightIndexInTile()
+    int GetMaxLights()
     {
-        return headerIndex + lightCount - 1;
-    }
-
-    int GetLightIndex(int lightIndexInTile)
-    {
-        return GetForwardPlusTiles(lightIndexInTile);
+        return wordsPerTile * 32;
     }
 
     bool IsMinimumEdgePixel(float2 screenUV)
     {
         float2 startUV = coordinates / _ForwardPlusTileSettings.xy;
         return any(screenUV - startUV < _CameraBufferSize.xy);
-    }
-
-    int GetMaxLightsPerTile()
-    {
-        return GetTileDataSize();
     }
 
     int2 GetScreenSize()
@@ -81,18 +118,7 @@ ForwardPlusTile GetForwardPlusTile(float2 screenUV)
 {
     ForwardPlusTile tile;
     tile.coordinates = int2(screenUV * _ForwardPlusTileSettings.xy);
-    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
-        // _ForwardPlusLightTexSize.z = tileDataTexSize.x (data stride for linear indexing)
-        int dataStride = (int)_ForwardPlusLightTexSize.z;
-        int linearIndex = tile.coordinates.y * dataStride + tile.coordinates.x;
-        float2 data = _ForwardPlusTilesBuf[linearIndex];
-        tile.headerIndex = (int)data.x;
-        tile.lightCount = (int)data.y;
-    #else
-        float4 data = _ForwardPlusTilesTex.Load(int3(tile.coordinates, 0));
-        tile.headerIndex = (int)data.r;
-        tile.lightCount = (int)data.g;
-    #endif
+    tile.wordsPerTile = GetWordsPerTile();
     tile.index = tile.coordinates.y * (int)_ForwardPlusTileSettings.z +
         tile.coordinates.x;
     return tile;

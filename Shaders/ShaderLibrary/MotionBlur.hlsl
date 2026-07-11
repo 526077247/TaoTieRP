@@ -59,9 +59,9 @@ float4 MBFragment(MBVaryings input) : SV_Target
 
     float rawDepth = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_point_clamp, uv, 0);
     #if UNITY_REVERSED_Z
-        if (rawDepth >= 1.0) return _MBSource.Sample(sampler_linear_clamp, uv);
+        if (rawDepth >= 1.0) return SAMPLE_TEXTURE2D(_MBSource, sampler_linear_clamp, uv);
     #else
-        if (rawDepth <= 0.0) return _MBSource.Sample(sampler_linear_clamp, uv);
+        if (rawDepth <= 0.0) return SAMPLE_TEXTURE2D(_MBSource, sampler_linear_clamp, uv);
     #endif
 
     // Compute per-pixel velocity
@@ -83,7 +83,7 @@ float4 MBFragment(MBVaryings input) : SV_Target
         // Jitter sampling position between 0 and 1
         float2 sampleUV = uv - dir * (t - 0.5);
         float w = 1.0;
-        color += _MBSource.Sample(sampler_linear_clamp, sampleUV).rgb * w;
+        color += SAMPLE_TEXTURE2D(_MBSource, sampler_linear_clamp, sampleUV).rgb * w;
         totalWeight += w;
     }
 

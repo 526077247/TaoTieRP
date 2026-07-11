@@ -10,6 +10,10 @@ namespace TaoTie.RenderPipelines
     {
         public const float renderScaleMin = 0.1f, renderScaleMax = 2f;
 
+        const int ForwardPlusEnableThreshold = 16;
+        const int ForwardPlusDisableThreshold = 8;
+        static bool forwardPlusActive;
+
         static CameraSettings defaultCameraSettings = new CameraSettings();
 
         PostFXStack postFXStack = new PostFXStack();
@@ -101,12 +105,14 @@ namespace TaoTie.RenderPipelines
 
         /// <summary>
         /// Main render entry point. Render pipeline order:
-        /// Forward: Lighting → Setup → [DepthPrePass] → Geometry(opaque) → Skybox
+        /// Forward: Lighting → Setup → [DepthPrePass] → [ForwardPlusCull] → Geometry(opaque) → Skybox
         ///          → [Resolve(MSAA)] → CopyAttachments → [SSAO] → Geometry(transparent)
         ///          → [Resolve] → [TAA] → LensFlare → PostFX → Final → Debug → Gizmos
-        /// Deferred: Lighting → Setup → GBuffer → DeferredLighting → Skybox
+        /// Deferred: Lighting → Setup → [DepthPrePass] → [ForwardPlusCull] → GBuffer → DeferredLighting → Skybox
         ///          → CopyAttachments → [SSAO] → Geometry(transparent)
         ///          → [TAA] → LensFlare → PostFX → Final → Debug → Gizmos
+        /// DepthPrePass runs before both paths when depthPrimingMode=Forced, or in Forward when MSAA+CopyDepth (Auto).
+        /// In Deferred, Auto never triggers DepthPrePass (MSAA always off).
         /// </summary>
         public void Render(RenderGraph renderGraph, ScriptableRenderContext context, Camera camera,
             TaoTieRenderPipelineSettings settings)
@@ -218,19 +224,62 @@ namespace TaoTie.RenderPipelines
                         break;
                 }
             }
+            
+            // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.
+            // WebGL does not support deferred (shader excludes GLES renderers, including GLES3/WebGL2).
+#if !UNITY_WEBGL || UNITY_EDITOR
+            bool useDeferred = !isReflectionCamera && settings.renderingMode switch
+            {
+                TaoTieRenderPipelineSettings.RenderingMode.Deferred =>
+                    SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2 &&
+                    SystemInfo.supportedRenderTargetCount >= 3,
+                TaoTieRenderPipelineSettings.RenderingMode.Forward => false,
+                _ => false
+            };
+#else
+            bool useDeferred = false;
+#endif
 
             if (useTAA)
             {
                 useDepthTexture = true;
             }
 
+            // Determine Forward+ early — needed for depth prepass decision
+            int otherVisibleLightCount = 0;
+            var visibleLights = cullingResults.visibleLights;
+            for (int vi = 0; vi < visibleLights.Length; vi++)
+            {
+                var lt = visibleLights[vi].lightType;
+                if (lt == LightType.Point || lt == LightType.Spot)
+                    otherVisibleLightCount++;
+            }
+            bool useForwardPlus = shadowSettings.forwardPlus switch
+            {
+                ShadowSettings.ForwardPlusMode.Off => false,
+                ShadowSettings.ForwardPlusMode.Auto => forwardPlusActive
+                    ? otherVisibleLightCount >= ForwardPlusDisableThreshold
+                    : otherVisibleLightCount > ForwardPlusEnableThreshold,
+                ShadowSettings.ForwardPlusMode.Force => true,
+                _ => false
+            } && SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+            forwardPlusActive = useForwardPlus;
+
             bool useDepthPrePass = bufferSettings.depthPrimingMode switch
             {
-                CameraBufferSettings.DepthPrimingMode.Auto => useMSAA && useDepthTexture,
-                CameraBufferSettings.DepthPrimingMode.Forced => useDepthTexture,
+                CameraBufferSettings.DepthPrimingMode.Auto => !useDeferred && useMSAA && useDepthTexture,
+                CameraBufferSettings.DepthPrimingMode.Forced => true,
                 _ => false
             };
-
+            // Forward+ 2.5D depth culling only when DepthPrePass is actually available
+            bool useDepth25D = useForwardPlus && useDepthPrePass;
+            // MRT + MSAA is not reliably supported; disable MSAA for deferred.
+            if (useDeferred)
+            {
+                msaaSamples = MSAASamples.None;
+                useMSAA = false;
+            }
+            
             TAACameraData taaData = null;
             Matrix4x4 nonJitteredProj = camera.projectionMatrix;
             Vector2 taaJitter = Vector2.zero;
@@ -258,22 +307,6 @@ namespace TaoTie.RenderPipelines
             {
                 using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
 
-                // Determine Forward+ based on mode and actual visible light count
-                int otherVisibleLightCount = 0;
-                var visibleLights = cullingResults.visibleLights;
-                for (int vi = 0; vi < visibleLights.Length; vi++)
-                {
-                    var lt = visibleLights[vi].lightType;
-                    if (lt == LightType.Point || lt == LightType.Spot)
-                        otherVisibleLightCount++;
-                }
-                bool useForwardPlus = shadowSettings.forwardPlus switch
-                {
-                    ShadowSettings.ForwardPlusMode.Off => false,
-                    ShadowSettings.ForwardPlusMode.Auto => otherVisibleLightCount > shadowSettings.maxOtherLights,
-                    ShadowSettings.ForwardPlusMode.Force => true,
-                    _ => false
-                } && SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
                 if (useForwardPlus)
                     Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
                 else
@@ -281,40 +314,26 @@ namespace TaoTie.RenderPipelines
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
-                        -1, useForwardPlus);
-
-                // Decide deferred vs forward: needs MRT (>=3 RT) and not a reflection camera.
-                // WebGL does not support deferred (shader excludes GLES renderers, including GLES3/WebGL2).
-#if !UNITY_WEBGL || UNITY_EDITOR
-                bool useDeferred = !isReflectionCamera && settings.renderingMode switch
-                {
-                    TaoTieRenderPipelineSettings.RenderingMode.Deferred =>
-                        SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2 &&
-                        SystemInfo.supportedRenderTargetCount >= 3,
-                    TaoTieRenderPipelineSettings.RenderingMode.Forward => false,
-                    _ => false
-                };
-#else
-                bool useDeferred = false;
-#endif
-
-                // MRT + MSAA is not reliably supported; disable MSAA for deferred.
-                if (useDeferred)
-                {
-                    msaaSamples = MSAASamples.None;
-                    useMSAA = false;
-                }
+                        -1, useForwardPlus, useDepth25D, camera);
 
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
                     useHDR, bufferSize, camera, msaaSamples,
                     taaJitter, useTAA);
                 var copier = new CameraRendererCopier(material, camera, cameraSettings.finalBlendMode);
-
+                if (useDepthPrePass)
+                {
+                    DepthPrePass.Record(renderGraph, camera, cullingResults,
+                        cameraSettings.renderingLayerMask, textures);
+                }
                 if (useDeferred)
                 {
 #if !UNITY_WEBGL || UNITY_EDITOR
                     // --- Deferred path ---
+                    // Forward+ tile culling before GBuffer (depth from prepass)
+                    if (useForwardPlus)
+                        ForwardPlusCullPass.Record(renderGraph, textures, useDepth25D);
+
                     GBufferTextures gBuffer = GBufferPass.Record(
                         renderGraph, camera, cullingResults,
                         cameraSettings.renderingLayerMask, useHDR, bufferSize,
@@ -360,12 +379,9 @@ namespace TaoTie.RenderPipelines
                 }
                 else
                 {
-                    // --- Forward path ---
-                    if (useDepthPrePass)
-                    {
-                        DepthPrePass.Record(renderGraph, camera, cullingResults,
-                            cameraSettings.renderingLayerMask, textures);
-                    }
+                    // Forward+ tile culling (after depth prepass, before geometry)
+                    if (useForwardPlus)
+                        ForwardPlusCullPass.Record(renderGraph, textures, useDepth25D);
 
                     GeometryPass.Record(
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, true, textures, shadowTextures);

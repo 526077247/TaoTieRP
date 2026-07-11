@@ -1,10 +1,12 @@
-﻿#ifndef TAOTIE_POST_FX_PASSES_INCLUDED
+#ifndef TAOTIE_POST_FX_PASSES_INCLUDED
 #define TAOTIE_POST_FX_PASSES_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
-Texture2D<float4> _PostFXSource;
-Texture2D<float4> _PostFXSource2;
+TEXTURE2D(_PostFXSource);
+TEXTURE2D(_PostFXSource2);
+SAMPLER(sampler_PostFXSource);
+SAMPLER(sampler_PostFXSource2);
 
 struct VSInput
 {
@@ -25,12 +27,12 @@ struct Varyings
 
 float4 GetSource(float2 screenUV)
 {
-    return _PostFXSource.SampleLevel(_Sampler_ClampU_ClampV_Point, screenUV, 0);
+    return SAMPLE_TEXTURE2D_LOD(_PostFXSource, sampler_PostFXSource, screenUV, 0);
 }
 
 float4 GetSource2(float2 screenUV)
 {
-    return _PostFXSource2.SampleLevel(_Sampler_ClampU_ClampV_Point, screenUV, 0);
+    return SAMPLE_TEXTURE2D_LOD(_PostFXSource2, sampler_PostFXSource2, screenUV, 0);
 }
 
 void CopyPassFragment (Varyings input, out PSOutput o)
@@ -115,7 +117,7 @@ void BicubicFilter(float2 fracCoord, out float2 weights[2], out float2 offsets[2
     offsets[1] =  1.0 + l * rcp(weights[1]);
 }
 
-float4 SampleTexture2DBicubic(Texture2D<float4> tex, float2 coord, float4 texSize, float2 maxCoord, uint unused /* needed to match signature of texarray version below */)
+float4 SampleTexture2DBicubic(TEXTURE2D_PARAM(tex, samplr), float2 coord, float4 texSize, float2 maxCoord)
 {
     float2 xy = coord * texSize.xy + 0.5;
     float2 ic = floor(xy);
@@ -124,15 +126,15 @@ float4 SampleTexture2DBicubic(Texture2D<float4> tex, float2 coord, float4 texSiz
     float2 weights[2], offsets[2];
     BicubicFilter(fc, weights, offsets);
 
-    return weights[0].y * (weights[0].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
-                           weights[1].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)) +
-           weights[1].y * (weights[0].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
-                           weights[1].x * tex.SampleLevel(_Sampler_ClampU_ClampV_Linear, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0));
+    return weights[0].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(tex, samplr, min((ic + float2(offsets[0].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(tex, samplr, min((ic + float2(offsets[1].x, offsets[0].y) - 0.5) * texSize.zw, maxCoord), 0.0)) +
+           weights[1].y * (weights[0].x * SAMPLE_TEXTURE2D_LOD(tex, samplr, min((ic + float2(offsets[0].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0)  +
+                           weights[1].x * SAMPLE_TEXTURE2D_LOD(tex, samplr, min((ic + float2(offsets[1].x, offsets[1].y) - 0.5) * texSize.zw, maxCoord), 0.0));
 }
 
 float4 GetSourceBicubic (float2 screenUV) {
-    return SampleTexture2DBicubic(_PostFXSource, screenUV,
-        _PostFXSource_TexelSize.zwxy, 1.0, 0.0
+    return SampleTexture2DBicubic(TEXTURE2D_ARGS(_PostFXSource, sampler_PostFXSource), screenUV,
+        _PostFXSource_TexelSize.zwxy, 1.0
     );
 }
 

@@ -158,7 +158,7 @@ half4 VolumetricFogFragment(VFogVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
 
-    float4 source = _VFogSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_VFogSource, sampler_linear_clamp, uv);
 
     float rawDepth = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_point_clamp, uv, 0);
     #if UNITY_REVERSED_Z

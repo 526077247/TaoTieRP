@@ -31,11 +31,11 @@ float4 SharpenFragment(SharpenVaryings input) : SV_Target
 
     float2 texel = _SharpenTexelSize.xy * _SharpenRadius;
 
-    float4 center = _SharpenSource.Sample(sampler_linear_clamp, uv);
-    float4 up = _SharpenSource.Sample(sampler_linear_clamp, uv + float2(0.0, texel.y));
-    float4 down = _SharpenSource.Sample(sampler_linear_clamp, uv - float2(0.0, texel.y));
-    float4 left = _SharpenSource.Sample(sampler_linear_clamp, uv - float2(texel.x, 0.0));
-    float4 right = _SharpenSource.Sample(sampler_linear_clamp, uv + float2(texel.x, 0.0));
+    float4 center = SAMPLE_TEXTURE2D(_SharpenSource, sampler_linear_clamp, uv);
+    float4 up = SAMPLE_TEXTURE2D(_SharpenSource, sampler_linear_clamp, uv + float2(0.0, texel.y));
+    float4 down = SAMPLE_TEXTURE2D(_SharpenSource, sampler_linear_clamp, uv - float2(0.0, texel.y));
+    float4 left = SAMPLE_TEXTURE2D(_SharpenSource, sampler_linear_clamp, uv - float2(texel.x, 0.0));
+    float4 right = SAMPLE_TEXTURE2D(_SharpenSource, sampler_linear_clamp, uv + float2(texel.x, 0.0));
 
     float3 neighborAvg = (up.rgb + down.rgb + left.rgb + right.rgb) * 0.25;
     float3 edge = center.rgb - neighborAvg;

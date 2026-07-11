@@ -93,11 +93,9 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 		saturate(dot(spotDirection, light.direction) *
 		spotAngles.x + spotAngles.y)
 	);
-	// Apply cookie for spot lights (non-Forward+ path only to avoid loop unroll issues)
-	#if !defined(TAOTIE_FORWARD_PLUS)
+	// Apply cookie for spot lights (works in all paths including Forward+)
 	if (spotAngles.x != 0.0)
 		light.color *= SampleSpotCookie(index, surfaceWS.position);
-	#endif
 	OtherShadowData otherShadowData = GetOtherShadowData(index);
 	otherShadowData.lightPositionWS = position;
 	otherShadowData.lightDirectionWS = light.direction;

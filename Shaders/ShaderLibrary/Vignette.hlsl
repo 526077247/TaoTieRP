@@ -30,7 +30,7 @@ VignetteVaryings VignettePassVertex(float3 positionOS : POSITION, float2 uv : TE
 float4 VignetteFragment(VignetteVaryings input) : SV_Target
 {
     float2 uv = input.screenUV;
-    float4 source = _VignetteSource.Sample(sampler_linear_clamp, uv);
+    float4 source = SAMPLE_TEXTURE2D(_VignetteSource, sampler_linear_clamp, uv);
 
     float2 dist = uv - _VignetteCenter;
     dist.x *= _VignetteRoundness;

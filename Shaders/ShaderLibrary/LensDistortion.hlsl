@@ -47,7 +47,7 @@ float4 LDFragment(LDVaryings input) : SV_Target
     float2 distortedUV = centered * 0.5 + _LDCenter;
 
     // Sample with clamped UV to avoid wrapping
-    return _LDSource.Sample(sampler_linear_clamp, distortedUV);
+    return SAMPLE_TEXTURE2D(_LDSource, sampler_linear_clamp, distortedUV);
 }
 
 #endif

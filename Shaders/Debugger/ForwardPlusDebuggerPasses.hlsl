@@ -1,4 +1,4 @@
-﻿#ifndef FORWARDPLUS_DEBUGGER_PASSES_INCLUDED
+#ifndef FORWARDPLUS_DEBUGGER_PASSES_INCLUDED
 #define FORWARDPLUS_DEBUGGER_PASSES_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Debug.hlsl"
@@ -43,7 +43,7 @@ float4 ForwardPlusTilesPassFragment(Varyings input) : SV_TARGET
     {
         color = OverlayHeatMap(
             input.screenUV * _CameraBufferSize.zw, tile.GetScreenSize(),
-            tile.lightCount, tile.GetMaxLightsPerTile(), 1.0).rgb;
+            tile.GetLightCount(), tile.GetMaxLights(), 1.0).rgb;
     }
     return float4(color, _DebugOpacity);
     #else
