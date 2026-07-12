@@ -92,7 +92,7 @@ namespace TaoTie.RenderPipelines
             desc.name = "G-Buffer Normal Metallic";
             pass.normalMS = builder.WriteTexture(renderGraph.CreateTexture(desc));
 
-            desc.colorFormat = albedoFormat;
+            desc.colorFormat = GraphicsFormat.R32G32B32A32_SFloat;
             desc.name = "G-Buffer Emission";
             pass.emission = builder.WriteTexture(renderGraph.CreateTexture(desc));
 

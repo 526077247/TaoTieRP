@@ -68,11 +68,10 @@ half4 RayMarch(float3 rayStart, float3 rayDir, float rayLength, float2 uv)
     float stepSize = _VFogStepParams.x;
     float transmittance = 1.0;          // Beer-Lambert accumulated transmittance
     half3 inScatteredLight = 0.0;      // Accumulated in-scattered radiance
-    float distance = 0.0;
 
     // Jitter the start position to reduce banding
     float jitter = MathRand(uv) * _VFogJitter;
-    distance = jitter;
+    float distance = jitter;
 
     half3 fogAlbedo = _VFogColor.rgb;
     float baseDensity = _VFogDensity * _VFogColor.a;
@@ -104,7 +103,11 @@ half4 RayMarch(float3 rayStart, float3 rayDir, float rayLength, float2 uv)
         surface.interpolatedNormal = float3(0.0, 1.0, 0.0);
         surface.depth = -TransformWorldToView(worldPos).z;
         surface.dither = InterleavedGradientNoise(uv * 64.0 + distance, 0);
+        #if defined(SHADER_API_GLES)
+        surface.renderingLayerMask = 0x00FFFFFF;
+        #else
         surface.renderingLayerMask = ~0u;
+        #endif
         surface.receiveShadows = true;
 
         ShadowData shadowData = GetShadowData(surface);

@@ -11,7 +11,11 @@ namespace TaoTie.RenderPipelines.Editor
     public class TaoTieLightEditor : LightEditor
     {
         static readonly GUIContent renderingLayerMaskLabel =
-            new GUIContent("Rendering Layer Mask", "This parameter has no effect in WebGL1");
+            new GUIContent("Rendering Layer Mask",
+                "Controls which rendering layers this light affects. " +
+                "Surface rendering layers are filtered via bitwise AND.\n\n" +
+                "Limitation: Due to float32 precision, single-layer selection works for all 31 layers. " +
+                "Multi-layer masks are reliable for Layers 1–24; combinations mixing Layers 1–24 with 25–31 may lose precision.");
 
         // Unity's built-in DrawRenderingLayerMask reads the MaskField selection
         // but never writes it back for uint properties. Null the backing field

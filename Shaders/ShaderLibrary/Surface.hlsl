@@ -14,7 +14,11 @@ struct Surface {
     float smoothness;
     float fresnelStrength;
     float dither;
+    #if defined(SHADER_API_GLES)
+    float renderingLayerMask;
+    #else
     uint renderingLayerMask;
+    #endif
     bool receiveShadows;
 };
 

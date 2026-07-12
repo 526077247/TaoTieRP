@@ -102,6 +102,19 @@ namespace TaoTie.RenderPipelines
 		static int activeCookieCount;
 		static readonly Texture[] dirCookieTextures = new Texture[maxDirLightCount];
 		static readonly Texture[] otherCookieTextures = new Texture[maxCookieOtherLightCount];
+
+		static float RenderLayerMaskToFloat(int mask)
+		{
+			// 0x7FFFFFFF (Everything) = NaN as asfloat → GPU undefined.
+			// Use 0x00FFFFFF sentinel; HLSL treats it as all-layers-match.
+			// All other values use (float) value cast — produces normal (non-denorm)
+			// floats that survive CBUFFER without flushing. Powers of 2 (single layers)
+			// are always exact in float32.
+			if (mask == 0x7FFFFFFF)
+				return (float)0x00FFFFFF;
+			return (float)mask;
+		}
+
 		CullingResults cullingResults;
 		readonly Shadows shadows = new();
 
@@ -547,7 +560,7 @@ namespace TaoTie.RenderPipelines
 		{
 			dirLightColors[index] = GetFinalColor(ref visibleLight);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
-			dirAndMask.w = (float) light.renderingLayerMask;
+			dirAndMask.w = RenderLayerMaskToFloat(light.renderingLayerMask);
 			dirLightDirectionsAndMasks[index] = dirAndMask;
 			dirLightShadowData[index] =
 				shadows.ReserveDirectionalShadows(light, visibleIndex);
@@ -580,7 +593,7 @@ namespace TaoTie.RenderPipelines
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
 			Vector4 spotAngles = new Vector4(0f, 1f);
 			Vector4 dirAndmask = Vector4.zero;
-			dirAndmask.w = (float) light.renderingLayerMask;
+			dirAndmask.w = RenderLayerMaskToFloat(light.renderingLayerMask);
 			Vector4 shadowData = shadows.ReserveOtherShadows(light, visibleIndex);
 			otherLightColors[index] = color;
 			otherLightPositions[index] = position;
@@ -597,7 +610,7 @@ namespace TaoTie.RenderPipelines
 			position.w =
 				1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
 			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
-			dirAndMask.w = light.renderingLayerMask;
+			dirAndMask.w = RenderLayerMaskToFloat(light.renderingLayerMask);
 			float innerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * light.innerSpotAngle);
 			float outerCos = Mathf.Cos(
 				Mathf.Deg2Rad * 0.5f * visibleLight.spotAngle);

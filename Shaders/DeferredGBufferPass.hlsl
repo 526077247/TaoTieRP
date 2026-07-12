@@ -103,7 +103,11 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     surface.smoothness = smoothness;
     surface.fresnelStrength = GetFresnel(config);
     surface.dither = InterleavedGradientNoise(input.positionCS_SS, 0);
+    #if defined(SHADER_API_GLES)
+    surface.renderingLayerMask = unity_RenderingLayer.x;
+    #else
     surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
+    #endif
     surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
 
     BRDF brdf = GetBRDF(surface);
@@ -122,9 +126,9 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     output.albedoAO = float4(base.rgb, occlusion);
     output.normalMS = float4(EncodeNormal(normalWS), metallic, smoothness);
     #if UNITY_COLORSPACE_GAMMA
-        output.emission = float4(GetEmission(config) + LinearToSRGB(bakedGI), 1.0);
+        output.emission = PackGBufferEmission(GetEmission(config) + LinearToSRGB(bakedGI), surface.renderingLayerMask);
     #else
-        output.emission = float4(GetEmission(config) + bakedGI, 1.0);
+        output.emission = PackGBufferEmission(GetEmission(config) + bakedGI, surface.renderingLayerMask);
     #endif
     return output;
 }

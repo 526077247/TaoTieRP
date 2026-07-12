@@ -78,7 +78,11 @@ float4 DeferredLightingFragment (DeferredVaryings input) : SV_TARGET {
     #endif
     surface.fresnelStrength = 1.0;
     surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);
-    surface.renderingLayerMask = ~0u;
+    #if defined(SHADER_API_GLES)
+    surface.renderingLayerMask = emission.a;
+    #else
+    surface.renderingLayerMask = asuint(emission.a);
+    #endif
     surface.receiveShadows = true;
 
     BRDF brdf = GetBRDF(surface);

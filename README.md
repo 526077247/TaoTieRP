@@ -171,7 +171,11 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
   - When no cookie is assigned, a 1×1 white texture is bound.
 - Light probe interpolation and Light Probe Proxy Volumes (LPPV)
 - Reflection probes
-- **Rendering Layer Mask** — Per-camera `maskLights` + `renderingLayerMask` to filter which lights affect a camera
+- **Rendering Layer Mask** — Per-light `renderingLayerMask` (set in the Light Inspector) controls which rendering layers each light affects. Per-camera `maskLights` + `renderingLayerMask` filters which lights are visible to a camera. The shader `RenderingLayersOverlap()` function performs a bitwise AND between the surface's `renderingLayerMask` (from `unity_RenderingLayer`) and the light's `renderingLayerMask` to determine overlap.
+  - **Forward path**: Surface reads `renderingLayerMask` from `unity_RenderingLayer` per-pixel; light mask is packed in `_DirectionalLightDirectionsAndMasks[index].w` / `_OtherLightDirectionsAndMasks[index].w` via `(float)` value cast.
+  - **Deferred path**: `DeferredGBufferPass` packs `renderingLayerMask` into the emission GBuffer's alpha channel (RT2.a, format `R32G32B32A32_SFloat` for full float32 precision). `DeferredLightingPass` reads it back from the GBuffer texture.
+  - **"Everything" (0x7FFFFFFF)**: C# sends `0x00FFFFFF` as a sentinel value; the shader treats it as all-layers-match to avoid float overflow.
+  - **24-Layer limitation**: Due to float32's 24-bit mantissa precision, the `(float)` value cast used for CBUFFER and GBuffer transmission preserves single-layer masks (powers of 2) exactly for all 31 layers, but **multi-layer combinations that mix bits 0–23 with bits 24–30 may lose precision** (e.g., Layer 1 + Layer 25 = `0x1000001` rounds to `0x1000000`). In practice, single-layer selection and "Everything" work correctly for all 31 layers; multi-layer masks are reliable for layers 1–24.
 
 ### Other Features
 
