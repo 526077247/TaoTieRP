@@ -28,9 +28,7 @@ struct Light {
 	float3 color;
 	float3 direction;
 	float attenuation;
-	#if defined(SHADER_API_GLES)
-	float renderingLayerMask;
-	#else
+	#if !defined(SHADER_API_GLES)
 	uint renderingLayerMask;
 	#endif
 };
@@ -60,10 +58,8 @@ Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) 
 			light.color *= SampleDirectionalCookie(index, surfaceWS.position);
 	#endif
 	light.direction = _DirectionalLightDirectionsAndMasks[index].xyz;
-	#if defined(SHADER_API_GLES)
-	light.renderingLayerMask = _DirectionalLightDirectionsAndMasks[index].w;
-	#else
-	light.renderingLayerMask = asuint(_DirectionalLightDirectionsAndMasks[index].w);
+	#if !defined(SHADER_API_GLES)
+	light.renderingLayerMask = (uint)_DirectionalLightDirectionsAndMasks[index].w;
 	#endif
 	DirectionalShadowData dirShadowData =
 		GetDirectionalShadowData(index, shadowData);
@@ -100,10 +96,8 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	);
 	float4 spotAngles = _OtherLightSpotAngles[index];
 	float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
-	#if defined(SHADER_API_GLES)
-	light.renderingLayerMask = _OtherLightDirectionsAndMasks[index].w;
-	#else
-	light.renderingLayerMask = asuint(_OtherLightDirectionsAndMasks[index].w);
+	#if !defined(SHADER_API_GLES)
+	light.renderingLayerMask = (uint)_OtherLightDirectionsAndMasks[index].w;
 	#endif
 	float spotAttenuation = Square(
 		saturate(dot(spotDirection, light.direction) *

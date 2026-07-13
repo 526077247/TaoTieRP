@@ -13,19 +13,12 @@ struct GBufferOutput {
     float4 emission : SV_Target2;
 };
 
-#if defined(SHADER_API_GLES)
-float4 PackGBufferEmission(float3 emissionColor, float renderingLayerMask)
-{
-    return float4(emissionColor, renderingLayerMask);
-}
-#else
 // Pack renderingLayerMask into emission.a (otherwise unused, was hardcoded 1.0).
 // Uses (float) value cast — matches C# side, normal floats survive CBUFFER.
 float4 PackGBufferEmission(float3 emissionColor, uint renderingLayerMask)
 {
     return float4(emissionColor, (float)renderingLayerMask);
 }
-#endif
 // --- Octahedral normal encoding (handles all directions) ---
 
 float2 OctWrap(float2 v) {

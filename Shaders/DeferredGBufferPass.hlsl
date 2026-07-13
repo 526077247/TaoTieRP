@@ -103,9 +103,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     surface.smoothness = smoothness;
     surface.fresnelStrength = GetFresnel(config);
     surface.dither = InterleavedGradientNoise(input.positionCS_SS, 0);
-    #if defined(SHADER_API_GLES)
-    surface.renderingLayerMask = unity_RenderingLayer.x;
-    #else
+    #if !defined(SHADER_API_GLES)
     surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
     #endif
     surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;

@@ -176,6 +176,7 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
   - **Deferred path**: `DeferredGBufferPass` packs `renderingLayerMask` into the emission GBuffer's alpha channel (RT2.a, format `R32G32B32A32_SFloat` for full float32 precision). `DeferredLightingPass` reads it back from the GBuffer texture.
   - **"Everything" (0x7FFFFFFF)**: C# sends `0x00FFFFFF` as a sentinel value; the shader treats it as all-layers-match to avoid float overflow.
   - **24-Layer limitation**: Due to float32's 24-bit mantissa precision, the `(float)` value cast used for CBUFFER and GBuffer transmission preserves single-layer masks (powers of 2) exactly for all 31 layers, but **multi-layer combinations that mix bits 0–23 with bits 24–30 may lose precision** (e.g., Layer 1 + Layer 25 = `0x1000001` rounds to `0x1000000`). In practice, single-layer selection and "Everything" work correctly for all 31 layers; multi-layer masks are reliable for layers 1–24.
+  - This parameter has no effect in WebGL1❌
 
 ### Other Features
 

@@ -103,9 +103,7 @@ half4 RayMarch(float3 rayStart, float3 rayDir, float rayLength, float2 uv)
         surface.interpolatedNormal = float3(0.0, 1.0, 0.0);
         surface.depth = -TransformWorldToView(worldPos).z;
         surface.dither = InterleavedGradientNoise(uv * 64.0 + distance, 0);
-        #if defined(SHADER_API_GLES)
-        surface.renderingLayerMask = 0x00FFFFFF;
-        #else
+        #if !defined(SHADER_API_GLES)
         surface.renderingLayerMask = ~0u;
         #endif
         surface.receiveShadows = true;

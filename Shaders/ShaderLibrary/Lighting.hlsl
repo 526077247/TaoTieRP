@@ -11,14 +11,13 @@ float3 GetLighting (Surface surface,BRDF brdf, Light light) {
 
 bool RenderingLayersOverlap (Surface surface, Light light)
 {
+    #if defined(SHADER_API_GLES)
+    return true;
+    #else
     // 0x00FFFFFF sentinel: C# sends this when renderingLayerMask == 0x7FFFFFFF (Everything)
     // to avoid float overflow. Treat as all-layers-match.
     if (light.renderingLayerMask == 0x00FFFFFF)
         return true;
-    
-    #if defined(SHADER_API_GLES)
-    return surface.renderingLayerMask == light.renderingLayerMask;
-    #else
     return (surface.renderingLayerMask & light.renderingLayerMask) != 0;
     #endif
 }
