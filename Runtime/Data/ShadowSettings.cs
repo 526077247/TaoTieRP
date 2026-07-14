@@ -42,34 +42,34 @@ namespace TaoTie.RenderPipelines
             [Range(0f, 4f)]
             public int maxLightCount;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
 #endif
             [EnumLabel]
             public MapSize atlasSize;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
 #endif
             [Range(1, 4)] public int cascadeCount;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">1")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">1")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
 #endif
             [Range(0f, 1f)] public float cascadeRatio1;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">2")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">2")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 2)]
 #endif
             [Range(0f, 1f)] public float cascadeRatio2;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">3")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">3")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 3)]
@@ -79,14 +79,14 @@ namespace TaoTie.RenderPipelines
             public readonly Vector3 CascadeRatios =>
                 new(cascadeRatio1, cascadeRatio2, cascadeRatio3);
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">1")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0&&"+nameof(cascadeCount)+">1")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
 #endif
             [Range(0.001f, 1f)] public float cascadeFade;
 #if ODIN_INSPECTOR
-            [ShowIf("@"+nameof(maxLightCount)+"!=0")]
+            [Sirenix.OdinInspector.ShowIf("@"+nameof(maxLightCount)+"!=0")]
 #else
             [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
 #endif

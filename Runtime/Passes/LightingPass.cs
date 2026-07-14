@@ -264,7 +264,8 @@ namespace TaoTie.RenderPipelines
 					switch (visibleLight.lightType)
 					{
 						case LightType.Directional:
-							if (dirLightCount < maxDirLightCount)
+							if (dirLightCount < maxDirLightCount &&
+							    dirLightCount < shadowSettings.directional.maxLightCount)
 							{
 								SetupDirectionalLight(
 									dirLightCount++, i, ref visibleLight, light);
