@@ -13,8 +13,8 @@ namespace TaoTie.RenderPipelines
         static readonly int
             texelSizeID = Shader.PropertyToID("_SSAOTexelSize"),
             paramsID = Shader.PropertyToID("_SSAOParams"),
-            inverseViewProjID = Shader.PropertyToID("_SSAOInverseViewProj"),
-            viewProjID = Shader.PropertyToID("_SSAOViewProj"),
+            inverseProjID = Shader.PropertyToID("_SSAOInverseProj"),
+            projID = Shader.PropertyToID("_SSAOProj"),
             sourceID = Shader.PropertyToID("_SSAOSource"),
             ssaoTexID = Shader.PropertyToID("_ScreenSpaceOcclusionTexture");
 
@@ -24,8 +24,8 @@ namespace TaoTie.RenderPipelines
         Vector2Int bufferSize;
         Vector2Int ssaoSize;
         SSAOSettings settings;
-        Matrix4x4 inverseViewProj;
-        Matrix4x4 viewProj;
+        Matrix4x4 inverseProj;
+        Matrix4x4 proj;
         Matrix4x4 cameraView;
         Matrix4x4 cameraProj;
         TextureHandle rtColor;
@@ -62,8 +62,8 @@ namespace TaoTie.RenderPipelines
                 1f / ssaoSize.x, 1f / ssaoSize.y, ssaoSize.x, ssaoSize.y));
             cmd.SetGlobalVector(paramsID, new Vector4(
                 settings.intensity, settings.radius, settings.falloff, settings.downsample));
-            cmd.SetGlobalMatrix(inverseViewProjID, inverseViewProj);
-            cmd.SetGlobalMatrix(viewProjID, viewProj);
+            cmd.SetGlobalMatrix(inverseProjID, inverseProj);
+            cmd.SetGlobalMatrix(projID, proj);
 
             // Pass 0: Generate SSAO
             cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
@@ -129,12 +129,10 @@ namespace TaoTie.RenderPipelines
             ssaoMaterial.DisableKeyword("SSAO_LOW");
             ssaoMaterial.EnableKeyword(kw);
 
-            // Compute view matrices (non-jittered)
-            Matrix4x4 view = camera.worldToCameraMatrix;
+            // Compute projection matrices (non-jittered, view-space SSAO)
             Matrix4x4 proj = camera.projectionMatrix;
             Matrix4x4 gpuProj = GL.GetGPUProjectionMatrix(proj, true);
-            Matrix4x4 vp = gpuProj * view;
-            Matrix4x4 invVP = Matrix4x4.Inverse(vp);
+            Matrix4x4 invProj = Matrix4x4.Inverse(gpuProj);
 
             using RenderGraphBuilder builder = renderGraph.AddRenderPass(
                 sampler.name, out SSAOPass pass, sampler);
@@ -162,8 +160,8 @@ namespace TaoTie.RenderPipelines
             pass.bufferSize = bufferSize;
             pass.ssaoSize = ssaoSize;
             pass.settings = settings;
-            pass.inverseViewProj = invVP;
-            pass.viewProj = vp;
+            pass.inverseProj = invProj;
+            pass.proj = gpuProj;
             pass.cameraView = camera.worldToCameraMatrix;
             pass.cameraProj = camera.projectionMatrix;
             pass.rtColor = textures.colorAttachment;

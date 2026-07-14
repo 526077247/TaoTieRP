@@ -22,8 +22,8 @@ Shader "Hidden/TaoTie RP/SSAO" {
 
             float4 _SSAOTexelSize;    // (1/w, 1/h, w, h)
             float4 _SSAOParams;      // x=intensity, y=radius, z=falloff, w=downsample
-            float4x4 _SSAOInverseViewProj;
-            float4x4 _SSAOViewProj;
+            float4x4 _SSAOInverseProj;
+            float4x4 _SSAOProj;
 
             #if defined(SSAO_HIGH)
                 #define SAMPLE_COUNT 12
@@ -63,7 +63,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
                     clipPos.z = depth * 2.0 - 1.0;
                 #endif
                 clipPos.w = 1.0;
-                float4 viewPos = mul(_SSAOInverseViewProj, clipPos);
+                float4 viewPos = mul(_SSAOInverseProj, clipPos);
                 return viewPos.xyz / viewPos.w;
             }
 
@@ -139,7 +139,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
                     float3 samplePos = vpos + sampleDir;
 
                     // Project sample position to screen
-                    float4 clipPos = mul(_SSAOViewProj, float4(samplePos, 1.0));
+                    float4 clipPos = mul(_SSAOProj, float4(samplePos, 1.0));
                     float2 sampleUV = clipPos.xy / clipPos.w;
                     sampleUV = sampleUV * 0.5 + 0.5;
                     if (_ProjectionParams.x < 0.0)
@@ -228,11 +228,11 @@ Shader "Hidden/TaoTie RP/SSAO" {
 
                 float result = 0;
                 // Center + 4 neighbors
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv, 0).r * 0.227027;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (-1.384615), 0).r * 0.316216;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (1.384615), 0).r * 0.316216;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (-3.230769), 0).r * 0.070270;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (3.230769), 0).r * 0.070270;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv, 0).r * 0.227027;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (-1.384615), 0).r * 0.316216;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (1.384615), 0).r * 0.316216;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (-3.230769), 0).r * 0.070270;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (3.230769), 0).r * 0.070270;
                 result /= (0.227027 + 0.316216 + 0.316216 + 0.070270 + 0.070270);
 
                 return float4(result, result, result, 1.0);
@@ -279,11 +279,11 @@ Shader "Hidden/TaoTie RP/SSAO" {
                 float2 delta = float2(0.0, _SSAOTexelSize.y);
 
                 float result = 0;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv, 0).r * 0.227027;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (-1.384615), 0).r * 0.316216;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (1.384615), 0).r * 0.316216;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (-3.230769), 0).r * 0.070270;
-                result += _SSAOSource.SampleLevel(sampler_point_clamp, uv + delta * (3.230769), 0).r * 0.070270;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv, 0).r * 0.227027;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (-1.384615), 0).r * 0.316216;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (1.384615), 0).r * 0.316216;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (-3.230769), 0).r * 0.070270;
+                result += _SSAOSource.SampleLevel(sampler_linear_clamp, uv + delta * (3.230769), 0).r * 0.070270;
                 result /= (0.227027 + 0.316216 + 0.316216 + 0.070270 + 0.070270);
 
                 return float4(result, result, result, 1.0);
