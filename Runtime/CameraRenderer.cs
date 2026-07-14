@@ -251,6 +251,11 @@ namespace TaoTie.RenderPipelines
                 useDepthTexture = true;
             }
 
+            if (shadowSettings.ssao.enabled && !isReflectionCamera)
+            {
+                useDepthTexture = true;
+            }
+
             // Determine Forward+ early — needed for depth prepass decision
             int otherVisibleLightCount = 0;
             var visibleLights = cullingResults.visibleLights;
@@ -274,7 +279,7 @@ namespace TaoTie.RenderPipelines
             bool useDepthPrePass = bufferSettings.depthPrimingMode switch
             {
                 CameraBufferSettings.DepthPrimingMode.Auto => !useDeferred && useMSAA && useDepthTexture,
-                CameraBufferSettings.DepthPrimingMode.Forced => true,
+                CameraBufferSettings.DepthPrimingMode.Forced => useDepthTexture = true,
                 _ => false
             };
             // Forward+ 2.5D depth culling only when DepthPrePass is actually available
