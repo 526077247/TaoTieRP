@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace TaoTie.RenderPipelines.Editor
 {
-    [CustomPropertyDrawer(typeof(ShowIfAttribute), true)]
+    [CustomPropertyDrawer(typeof(VisibleIfAttribute), true)]
     public class ShowIfDrawer : PropertyDrawer
     {
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -25,7 +25,7 @@ namespace TaoTie.RenderPipelines.Editor
 
         bool ShouldShow(SerializedProperty property)
         {
-            var attrs = fieldInfo?.GetCustomAttributes<ShowIfAttribute>();
+            var attrs = fieldInfo?.GetCustomAttributes<VisibleIfAttribute>();
             if (attrs == null)
                 return true;
 
@@ -38,7 +38,7 @@ namespace TaoTie.RenderPipelines.Editor
             return true;
         }
 
-        static bool EvaluateCondition(SerializedProperty property, ShowIfAttribute attr)
+        static bool EvaluateCondition(SerializedProperty property, VisibleIfAttribute attr)
         {
             SerializedProperty sibling = FindSiblingProperty(property, attr.FieldName);
             if (sibling == null)

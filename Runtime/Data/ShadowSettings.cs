@@ -41,27 +41,27 @@ namespace TaoTie.RenderPipelines
         {
             [Range(0f, 4f)]
             public int maxLightCount;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [EnumLabel]
             public MapSize atlasSize;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             [Range(1, 4)] public int cascadeCount;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
-            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
             [Range(0f, 1f)] public float cascadeRatio1;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
-            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 2)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 2)]
             [Range(0f, 1f)] public float cascadeRatio2;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
-            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 3)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 3)]
             [Range(0f, 1f)] public float cascadeRatio3;
 
             public readonly Vector3 CascadeRatios =>
                 new(cascadeRatio1, cascadeRatio2, cascadeRatio3);
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
-            [ShowIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(cascadeCount), ShowIfOperator.GreaterThan, 1)]
             [Range(0.001f, 1f)] public float cascadeFade;
-            [ShowIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightCount), ShowIfOperator.NotEqual, 0)]
             public bool softCascadeBlend;
         }
 
@@ -94,13 +94,13 @@ namespace TaoTie.RenderPipelines
                 [LabelText("256")] _256 = 256, 
                 Off = 8192
             }
-            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [Tooltip("Tile size in pixels per dimension, default is 32.")]
             public TileSize tileSize;
-            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [EnumLabel]
             public MapSize atlasSize;
-            [ShowIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
+            [VisibleIf(nameof(maxLightsPerTile), ShowIfOperator.NotEqual, 0)]
             [Range(8, 64)]
             [Tooltip("Number of depth bins for ZBin depth culling. " +
                      "ZBin bins lights by camera-space depth to reduce per-pixel light iterations. " +
@@ -121,12 +121,12 @@ namespace TaoTie.RenderPipelines
         [Tooltip("Forward+ tile-based light culling mode. Auto enables it when other lights exceed maxOtherLights.")]
         public ForwardPlusMode forwardPlus = ForwardPlusMode.Auto;
         
-        [ShowIf(nameof(forwardPlus), ShowIfOperator.Equal, (int)ForwardPlusMode.Off)]
+        [VisibleIf(nameof(forwardPlus), ShowIfOperator.Equal, (int)ForwardPlusMode.Off)]
         [Range(0, 64)]
         [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
         public int maxOtherLights = 16;
         
-        [ShowIf(nameof(forwardPlus), ShowIfOperator.NotEqual, (int)ForwardPlusMode.Off)]
+        [VisibleIf(nameof(forwardPlus), ShowIfOperator.NotEqual, (int)ForwardPlusMode.Off)]
         public Other other = new()
         {
             maxLightsPerTile = 128,

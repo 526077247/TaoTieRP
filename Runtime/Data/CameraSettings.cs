@@ -22,7 +22,7 @@ namespace TaoTie.RenderPipelines
         }
 
         public RenderScaleMode renderScaleMode = RenderScaleMode.Inherit;
-        [ShowIf(nameof(renderScaleMode), ShowIfOperator.NotEqual, (int)RenderScaleMode.Inherit)]
+        [VisibleIf(nameof(renderScaleMode), ShowIfOperator.NotEqual, (int)RenderScaleMode.Inherit)]
         [Range(0.1f, 2f)] public float renderScale = 1f;
 
         [Tooltip("Which Volume layers affect this camera. Everything = all layers.")]
@@ -30,7 +30,7 @@ namespace TaoTie.RenderPipelines
 
         public bool overridePostFX = false;
 
-        [ShowIf(nameof(overridePostFX))]
+        [VisibleIf(nameof(overridePostFX))]
         public PostFXSettings postFXSettings = default;
         
         [MSAAField]
