@@ -93,6 +93,7 @@ namespace TaoTie.RenderPipelines
 		{
 			if (
 				shadowedDirLightCount < maxShadowedDirLightCount &&
+				shadowedDirLightCount < settings.directional.maxLightCount &&
 				light.shadows != LightShadows.None && light.shadowStrength > 0f)
 			{
 				float maskChannel = -1;

@@ -69,7 +69,7 @@ namespace TaoTie.RenderPipelines
             [Range(0.001f, 10f)] public float varianceClampScale = 0.9f;
         }
 
-        [VisibleIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.TAA)]
+        [ShowIf(nameof(highQualityAA), ShowIfOperator.Equal, (int)HighQualityAAMode.TAA)]
         public TAASettings taaSettings;
 
         public enum PostProcessAA
@@ -81,7 +81,7 @@ namespace TaoTie.RenderPipelines
         [Tooltip("Post-process anti-aliasing. SMAA is not supported on WebGL1/GLES2.")]
         public PostProcessAA postProcessAA;
         
-        [VisibleIf(nameof(postProcessAA), ShowIfOperator.NotEqual, (int)PostProcessAA.SMAA)]
+        [ShowIf(nameof(postProcessAA), ShowIfOperator.NotEqual, (int)PostProcessAA.SMAA)]
         [Tooltip("Strip SMAA shader passes and lookup textures from builds when Post-Process AA is not set to SMAA. " +
                  "Reduces build size by ~180KB. Disable if you plan to switch to SMAA at runtime.")]
         public bool stripSMAAWhenUnused;

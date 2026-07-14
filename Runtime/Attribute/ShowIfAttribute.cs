@@ -15,16 +15,16 @@ namespace TaoTie.RenderPipelines
     }
 
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = true, Inherited = true)]
-    public class VisibleIfAttribute : PropertyAttribute
+    public class ShowIfAttribute : PropertyAttribute
     {
         public string FieldName { get; }
         public ShowIfOperator Operator { get; }
         public double Value { get; }
 
-        public VisibleIfAttribute(string fieldName)
+        public ShowIfAttribute(string fieldName)
             : this(fieldName, ShowIfOperator.IsTrue, 0d) { }
 
-        public VisibleIfAttribute(string fieldName, ShowIfOperator op, double value)
+        public ShowIfAttribute(string fieldName, ShowIfOperator op, double value)
         {
             FieldName = fieldName;
             Operator = op;
