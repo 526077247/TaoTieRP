@@ -78,7 +78,7 @@ float4 DeferredLightingFragment (DeferredVaryings input) : SV_TARGET {
     #endif
     surface.fresnelStrength = 1.0;
     surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);
-    #if !defined(SHADER_API_GLES)
+    #ifndef SHADER_API_GLES
     surface.renderingLayerMask = (uint)emission.a;
     #endif
     surface.receiveShadows = true;

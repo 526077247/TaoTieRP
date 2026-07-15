@@ -28,7 +28,10 @@ TEXTURE2D_SHADOW(_OtherShadowAtlas);
 #define SHADOW_SAMPLER sampler_linear_clamp_compare
 SAMPLER_CMP(SHADOW_SAMPLER);
 
+// GLES3 causes a performance regression in some devices when using CBUFFER.
+#ifndef SHADER_API_GLES3
 CBUFFER_START(_CustomShadows)
+#endif
 	float _CascadeCount;
 	float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
 	float4 _CascadeData[MAX_CASCADE_COUNT];
@@ -40,7 +43,10 @@ CBUFFER_START(_CustomShadows)
 	float4 _ShadowDistanceFade;
 	float _SoftCascadeBlend;
 	float _ShadowMaskMode;
+
+#ifndef SHADER_API_GLES3
 CBUFFER_END
+#endif
 
 struct ShadowMask {
 	bool always;

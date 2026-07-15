@@ -97,7 +97,7 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	surface.smoothness = GetSmoothness(config);
 	surface.fresnelStrength = GetFresnel(config);
 	surface.dither = InterleavedGradientNoise(config.fragment.positionSS, 0);
-	#if !defined(SHADER_API_GLES)
+	#ifndef SHADER_API_GLES
 	surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
 	#endif
 	surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
@@ -108,7 +108,7 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	#endif
 	GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
 	#if UNITY_COLORSPACE_GAMMA
-		#if !defined(LIGHTMAP_ON)
+		#ifndef LIGHTMAP_ON
 			gi.diffuse = SRGBToLinear(gi.diffuse);
 		#endif
 	#endif

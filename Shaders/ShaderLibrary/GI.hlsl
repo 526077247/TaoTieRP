@@ -56,7 +56,7 @@ float3 SampleLightProbe (Surface surfaceWS) {
     #if defined(LIGHTMAP_ON)
     return 0.0;
     #else
-    #if !defined(SHADER_API_GLES)
+    #ifndef SHADER_API_GLES
     if (unity_ProbeVolumeParams.x) {
         return SampleProbeVolumeSH4(
             TEXTURE3D_ARGS(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH),
@@ -88,7 +88,7 @@ float4 SampleBakedShadows (float2 lightMapUV, Surface surfaceWS) {
         unity_ShadowMask, samplerunity_ShadowMask, lightMapUV
     );
     #else
-    #if !defined(SHADER_API_GLES)
+    #ifndef SHADER_API_GLES
     if (unity_ProbeVolumeParams.x) {
         return SampleProbeOcclusion(
             TEXTURE3D_ARGS(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH),
@@ -180,7 +180,7 @@ GI GetGI (float2 lightMapUV, Surface surfaceWS, BRDF brdf) {
 
     // _ShadowMaskMode: 0 = off, 1 = Shadowmask (always), 2 = Distance Shadowmask
     // Deferred fullscreen pass has no lightmap UVs — skip baked shadow sampling.
-    #if !defined(TAOTIE_DEFERRED_LIGHTING)
+    #ifndef TAOTIE_DEFERRED_LIGHTING
     if (_ShadowMaskMode > 0.5) {
         gi.shadowMask.shadows = SampleBakedShadows(lightMapUV, surfaceWS);
         if (_ShadowMaskMode > 1.5) {

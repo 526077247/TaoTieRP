@@ -1,7 +1,9 @@
 ﻿#ifndef TAOTIE_UNITY_INPUT_INCLUDED
 #define TAOTIE_UNITY_INPUT_INCLUDED
-
+// GLES3 causes a performance regression in some devices when using CBUFFER.
+#ifndef SHADER_API_GLES3
 CBUFFER_START(UnityPerDraw)
+#endif
 float4x4 unity_ObjectToWorld;
 float4x4 unity_WorldToObject;
 float4 unity_LODFade;
@@ -43,7 +45,10 @@ float4 unity_ProbeVolumeParams;
 float4x4 unity_ProbeVolumeWorldToObject;
 float4 unity_ProbeVolumeSizeInv;
 float4 unity_ProbeVolumeMin;
+
+#ifndef SHADER_API_GLES3
 CBUFFER_END
+#endif
 
 float4x4 unity_MatrixVP;
 float4x4 unity_MatrixV;

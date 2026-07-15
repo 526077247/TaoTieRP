@@ -103,7 +103,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     surface.smoothness = smoothness;
     surface.fresnelStrength = GetFresnel(config);
     surface.dither = InterleavedGradientNoise(input.positionCS_SS, 0);
-    #if !defined(SHADER_API_GLES)
+    #ifndef SHADER_API_GLES
     surface.renderingLayerMask = asuint(unity_RenderingLayer.x);
     #endif
     surface.receiveShadows = INPUT_PROP(_ReceiveShadows) > 0.5;
@@ -111,7 +111,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     BRDF brdf = GetBRDF(surface);
     GI gi = GetGI(GI_FRAGMENT_DATA(input), surface, brdf);
     #if UNITY_COLORSPACE_GAMMA
-        #if !defined(LIGHTMAP_ON)
+        #ifndef LIGHTMAP_ON
             gi.diffuse = SRGBToLinear(gi.diffuse);
         #endif
     #endif

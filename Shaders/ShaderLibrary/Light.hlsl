@@ -10,7 +10,10 @@
 
 #include "ShaderLibrary/Cookies.hlsl"
 
+// GLES3 causes a performance regression in some devices when using CBUFFER.
+#ifndef SHADER_API_GLES3
 CBUFFER_START(_CustomLight)
+#endif
 	float _DirectionalLightCount;
 	float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
 	float4 _DirectionalLightDirectionsAndMasks[MAX_DIRECTIONAL_LIGHT_COUNT];
@@ -22,13 +25,15 @@ CBUFFER_START(_CustomLight)
 	float4 _OtherLightDirectionsAndMasks[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightSpotAngles[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightShadowData[MAX_OTHER_LIGHT_COUNT];
+#ifndef SHADER_API_GLES3
 CBUFFER_END
+#endif
 
 struct Light {
 	float3 color;
 	float3 direction;
 	float attenuation;
-	#if !defined(SHADER_API_GLES)
+	#ifndef SHADER_API_GLES
 	uint renderingLayerMask;
 	#endif
 };
@@ -58,7 +63,7 @@ Light GetDirectionalLight (int index, Surface surfaceWS, ShadowData shadowData) 
 			light.color *= SampleDirectionalCookie(index, surfaceWS.position);
 	#endif
 	light.direction = _DirectionalLightDirectionsAndMasks[index].xyz;
-	#if !defined(SHADER_API_GLES)
+	#ifndef SHADER_API_GLES
 	light.renderingLayerMask = (uint)_DirectionalLightDirectionsAndMasks[index].w;
 	#endif
 	DirectionalShadowData dirShadowData =
@@ -96,7 +101,7 @@ Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	);
 	float4 spotAngles = _OtherLightSpotAngles[index];
 	float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
-	#if !defined(SHADER_API_GLES)
+	#ifndef SHADER_API_GLES
 	light.renderingLayerMask = (uint)_OtherLightDirectionsAndMasks[index].w;
 	#endif
 	float spotAttenuation = Square(
