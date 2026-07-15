@@ -1,6 +1,6 @@
 # TaoTie RP
 
-A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling with bitmask + ZBin depth culling, cascaded shadow maps, light cookies, and a modular post-processing stack.
+A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, featuring Forward and Deferred rendering paths, Forward+ tile-based light culling with bitmask + ZBin depth culling, per-vertex lighting via Light.renderMode (ForcePixel/Auto/ForceVertex), cascaded shadow maps, light cookies, and a modular post-processing stack.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 |---------|-----------|:------:|:------:|:------:|
 | **Forward** | Default; always available | ✅ | ✅ | ✅ |
 | **Deferred** | Requires MRT (supportedRenderTargetCount ≥ 3); not a reflection camera; forces MSAA off. Shader uses `#pragma exclude_renderers gles`. | ✅ | ❌ (forced Forward) | ❌ (forced Forward) |
-| **Forward+** | Enabled when `forwardPlus != Off` and graphics API is not OpenGLES2. Auto mode activates when visible other lights exceed 16 (hysteresis: disables below 8). Uses ComputeBuffer on native, Texture2D fallback on WebGL2. Stripped on WebGL1 builds. | ✅ | ✅ (Texture2D fallback) | ❌ |
+| **Forward+** | Enabled when `forwardPlus != Off` and graphics API is not OpenGLES2. Auto mode activates when visible other lights exceed 16 (hysteresis: disables below 8). Uses StructuredBuffer on native (SM 4.5+), Texture2D fallback on WebGL2. Stripped on WebGL1 builds. | ✅ | ✅ (Texture2D fallback) | ❌ |
 
 > When Deferred is selected but the platform doesn't support it (all WebGL runtimes, or insufficient MRT on native), the pipeline automatically falls back to Forward rendering. In the Editor, Deferred is available on all platforms for testing purposes.
 
@@ -31,10 +31,10 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 | Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
 |------|----------|-----------------|-----------------|:------:|:------:|:------:|
-| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) other lights | ✅ | ✅ | ✅ (capped at 8) |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, bitmask + ZBin tile-culled, up to 256 other lights | ✅ (ComputeBuffer) | ✅ (Texture2D fallback) | ❌ (FP disabled → Off) |
-| Deferred | Off | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` (up to 256 lights) | ✅ | ❌ (no deferred) | ❌ |
-| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen `DeferredLightingPass` with bitmask + ZBin tile culling (up to 256 lights) | ✅ | ❌ | ❌ |
+| Forward | Off | `CustomLit` | Per-pixel up to `maxOtherLights`; excess Auto lights demoted to per-vertex | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, bitmask + ZBin tile-culled; excess Auto lights demoted to per-vertex | ✅ (ComputeBuffer) | ✅ (Texture2D fallback) | ❌ (FP disabled → Off) |
+| Deferred | Off | `DeferredGBuffer` | GBuffer MRT → fullscreen lighting (all lights per-pixel, no limit, no vertex lights) | ✅ | ❌ (no deferred) | ❌ |
+| Deferred | On | `DeferredGBuffer` | GBuffer MRT → fullscreen lighting with bitmask + ZBin tile culling (all lights per-pixel) | ✅ | ❌ | ❌ |
 
 > In Deferred path, opaque geometry writes to GBuffer textures via `DeferredGBuffer` shader pass. Lighting is computed in a separate fullscreen `DeferredLightingPass`. When Forward+ is enabled, the `DeferredLightingPass` also uses bitmask + ZBin tile-culled light iteration via `LIGHT_LOOP_BEGIN`/`LIGHT_LOOP_END` macros — the same tile data computed by `ForwardPlusCullPass` is reused.
 
@@ -42,10 +42,10 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 | Path | Forward+ | Shader LightMode | Lighting Method | Native | WebGL2 | WebGL1 |
 |------|----------|-----------------|-----------------|:------:|:------:|:------:|
-| Forward | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) | ✅ | ✅ | ✅ (capped at 8) |
-| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, bitmask + ZBin tile-culled, up to 256 | ✅ | ✅ | ❌ (falls back to Off) |
-| Deferred | Off | `CustomLit` | Per-pixel, up to `maxOtherLights` (default 16, max 64) | ✅ | ❌ | ❌ |
-| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled, up to 256 | ✅ | ❌ | ❌ |
+| Forward | Off | `CustomLit` | Per-pixel up to `maxOtherLights`; excess demoted to per-vertex | ✅ | ✅ | ✅ (capped at 8) |
+| Forward | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled; excess demoted to per-vertex | ✅ | ✅ | ❌ (falls back to Off) |
+| Deferred | Off | `CustomLit` | Per-pixel up to `maxOtherLights`; excess demoted to per-vertex | ✅ | ❌ | ❌ |
+| Deferred | On | `CustomLit` + `_TAOTIE_FORWARD_PLUS` | Per-pixel, tile-culled; excess demoted to per-vertex | ✅ | ❌ | ❌ |
 
 > Transparent objects are always rendered with the forward path (`CustomLit` shader tag), regardless of whether the pipeline is set to Forward or Deferred. When `forwardPlus` is not `Off`, transparent objects also benefit from Forward+ bitmask + ZBin tile-based light culling. On WebGL1 (GLES2), Forward+ is disabled and the maximum other light count is capped at 8 due to CBUFFER/array size limitations.
 
@@ -77,12 +77,14 @@ LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GBuf
 - **ZBin depth culling** — Lights are binned by camera-space depth into `zBinCount` (default 32, configurable 8–64) depth slices. In the pixel shader, the tile bitmask is ANDed with the ZBin bitmask for the current pixel's depth, reducing per-pixel light iterations
 - **2.5D tile depth culling** — When DepthPrePass is active (Forced mode, or in Forward path when SSAO/TAA/MSAA depth priming is active), the compute shader samples the depth texture at each tile's center and skips lights whose Z range doesn't overlap the tile's depth. When DepthPrePass is not running, Forward+ falls back to pure 2D tile culling (ZBin still applies in pixel shader)
 - **Light priority selection** — When visible lights exceed the platform limit (8 on GLES2, 256 on other platforms), lights are scored by `brightness × screenArea / distSqr` and the top `max` are selected via partial selection sort. Static arrays avoid per-frame allocation
+- **StructuredBuffer hysteresis** — On platforms supporting Shader Model 4.5+ (non-GLES), `_OTHER_LIGHT_BUFFER` is enabled when total other lights > 256, disabled when < 128. When active, light data is uploaded as `StructuredBuffer<OtherLightData>` (up to 1024 lights); otherwise CBUFFER arrays are used. On SM < 4.5 / GLES platforms, StructuredBuffer is never used.
+- **`_SUPPORTS_STRUCTURED_BUFFER` keyword** — Static platform capability keyword set at runtime based on `supportsStructuredBuffer` (SM 4.5+ non-GLES). Controls Tile/ZBin data storage: StructuredBuffer when enabled, Texture2D fallback when disabled. Stripped on WebGL builds. Independent from `_OTHER_LIGHT_BUFFER` (which controls light data storage via hysteresis).
 - **Hysteresis threshold** — Auto mode enables Forward+ when lights > 16, disables when lights < 8, preventing variant thrashing near the threshold
 - **GPU compute culling** — ComputeShader (`ForwardPlusCulling.compute`) with `groupshared` memory for collaborative light bounds loading, `[numthreads(8,8,1)]` dispatch. Burst-compiled CPU Job (`TileCullJob.cs`) fallback for WebGL/GLES3
 - **Deferred integration** — When Forward+ is enabled, the Deferred lighting pass also uses bitmask + ZBin tile-culled light iteration via `LIGHT_LOOP_BEGIN`/`LIGHT_LOOP_END` macros
 - `LIGHT_LOOP_BEGIN` / `LIGHT_LOOP_END` macros abstract the Other Light iteration so `GetLighting()` stays clean across Forward+, GLES2, and plain Forward paths
 - Supports up to 4 directional lights and 256 point/spot lights (8 on GLES2)
-- ComputeBuffer light data with Texture2D fallback for WebGL
+- StructuredBuffer light data (SM 4.5+) with Texture2D fallback for GLES/WebGL; `_SUPPORTS_STRUCTURED_BUFFER` keyword controls tile/ZBin data path, `_OTHER_LIGHT_BUFFER` controls light data path
 
 ### Shadows
 
@@ -163,6 +165,16 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
 
 ### Lighting
 
+- **Per-Vertex Lighting** — Lights with `Light.renderMode` set to **Not Important (ForceVertex)** are computed per-vertex (simplified: no shadows, no cookies, Lambert diffuse only). Lights set to **Important (ForcePixel)** are always per-pixel. **Auto** lights are per-pixel up to the pixel light limit, then demoted to per-vertex. `maxOtherLights` controls the per-pixel light limit in Forward (non-Forward+) path. Deferred ignores render mode — all lights are per-pixel with no limit. The shader reads vertex lights from the same `_OtherLight*` arrays: indices `[0.._OtherLightCount-1]` are per-pixel, `[_OtherLightCount.._VertexLightCount-1]` are per-vertex.
+
+  | Render Mode | Behavior |
+  |-------------|----------|
+  | **ForcePixel** | Always per-pixel (sorted highest, never demoted) |
+  | **Auto** | Per-pixel if within limit; otherwise demoted to per-vertex |
+  | **ForceVertex** | Always per-vertex |
+
+  Light sorting priority (within each category, by descending score `brightness × screenArea / distSqr`): ForcePixel > Auto > ForceVertex. Demoted Auto lights are boosted above ForceVertex in the vertex light list.
+
 - **Light Cookies** — Directional and spot light cookie textures with per-light world-to-light projection matrices
   - Directional lights: Supported in all paths. Cookie size controls tiling repeat.
   - Spot lights: Supported in all paths including Forward+ (with index-bounds checking).
@@ -190,7 +202,7 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
 - **Bicubic Rescaling** — Off / Up-only / Up-and-down
 - **Per-Camera Final Blend Mode** — Configurable source/destination blend mode
 - **Lens Flare (SRP)** — Data-driven lens flare system powered by LensFlareCommonSRP (Image/Circle/Polygon shapes, occlusion, light attenuation)
-- **WebGL/Mobile Compatibility** — ComputeBuffer → Texture2D fallback, no deferred on WebGL, 8 light cap on GLES2
+- **WebGL/Mobile Compatibility** — `_SUPPORTS_STRUCTURED_BUFFER` keyword (static, SM 4.5+ non-GLES) controls Tile/ZBin StructuredBuffer vs Texture2D; `_OTHER_LIGHT_BUFFER` (hysteresis, >256 enable/<128 disable) controls light data StructuredBuffer vs CBUFFER; GLES2/GLES3 use bare globals (no CBUFFER); no deferred on WebGL; 8 light cap on GLES2; per-vertex lighting not supported in Deferred path
 - **Debug Tools** — Rendering Debugger panels accessible via **Window → Analysis → Rendering Debugger**:
   - **Forward+ Debugger** — Visualizes tile light counts as a heat map overlay
   - **Depth Debugger** — Visualizes depth buffer (Linear Eye / Linear 01 / Raw), split-screen mode, adjustable opacity
@@ -205,6 +217,8 @@ Automatic stripping of unused shader variants based on build target and Graphics
 - Lens Flare shader stripped when no `LensFlareDataSRP` assets exist in the project
 - SMAA passes stripped when not selected; SMAA always stripped on WebGL1 builds (detected via `PlayerSettings.GetGraphicsAPIs` — no OpenGLES3 = WebGL1)
 - `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off or WebGL1 target
+- `_SUPPORTS_STRUCTURED_BUFFER` keyword variants stripped on WebGL builds (no StructuredBuffer support)
+- `_OTHER_LIGHT_BUFFER` keyword variants stripped on WebGL builds
 - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in any `PostFXSettings` in the project
 - Bloom/ColorGrading passes stripped when those effects are absent from all `PostFXSettings` queues
 - `_SSAO_ENABLED` keyword variants stripped when SSAO is disabled

@@ -56,6 +56,7 @@ namespace TaoTie.RenderPipelines
             // Keyword is toggled per-camera in CameraRenderer based on actual light count.
             // Set initial state to disabled; CameraRenderer will enable as needed.
             Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
+            Shader.DisableKeyword("_OTHER_LIGHT_BUFFER");
         }
 
         private CameraRenderer renderer;

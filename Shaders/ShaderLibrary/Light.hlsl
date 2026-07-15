@@ -10,8 +10,13 @@
 
 #include "ShaderLibrary/Cookies.hlsl"
 
-// GLES3 causes a performance regression in some devices when using CBUFFER.
-#ifndef SHADER_API_GLES3
+// StructuredBuffer path is only active on non-GLES platforms with SM 4.5+ and the keyword on.
+#if defined(_OTHER_LIGHT_BUFFER) && !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+	#define USE_OTHER_LIGHT_BUFFER 1
+#endif
+
+// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_START(_CustomLight)
 #endif
 	float _DirectionalLightCount;
@@ -20,14 +25,68 @@ CBUFFER_START(_CustomLight)
 	float4 _DirectionalLightShadowData[MAX_DIRECTIONAL_LIGHT_COUNT];
 
 	float _OtherLightCount;
+	float _VertexLightCount;
+#if !defined(USE_OTHER_LIGHT_BUFFER)
 	float4 _OtherLightColors[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightPositions[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightDirectionsAndMasks[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightSpotAngles[MAX_OTHER_LIGHT_COUNT];
 	float4 _OtherLightShadowData[MAX_OTHER_LIGHT_COUNT];
-#ifndef SHADER_API_GLES3
+#endif
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_END
 #endif
+
+#if defined(USE_OTHER_LIGHT_BUFFER)
+struct OtherLightData {
+	float4 color;
+	float4 position;
+	float4 directionAndMask;
+	float4 spotAngle;
+	float4 shadowData;
+};
+StructuredBuffer<OtherLightData> _OtherLightBuffer;
+#endif
+
+struct VertexLight {
+	float3 color;
+	float3 direction;
+	float attenuation;
+};
+
+// Reads from the shared _OtherLight arrays (indices _OtherLightCount.._VertexLightCount-1)
+VertexLight GetVertexOtherLight (int index, float3 positionWS) {
+	VertexLight light;
+	#if defined(USE_OTHER_LIGHT_BUFFER)
+		OtherLightData ld = _OtherLightBuffer[index];
+		light.color = ld.color.rgb;
+		float3 lightPos = ld.position.xyz;
+		float3 ray = lightPos - positionWS;
+		light.direction = normalize(ray);
+		float distanceSqr = max(dot(ray, ray), 0.00001);
+		float rangeAttenuation = Square(
+			saturate(1.0 - Square(distanceSqr * ld.position.w))
+		);
+		float4 spotAngles = ld.spotAngle;
+		float3 spotDirection = ld.directionAndMask.xyz;
+	#else
+		light.color = _OtherLightColors[index].rgb;
+		float3 lightPos = _OtherLightPositions[index].xyz;
+		float3 ray = lightPos - positionWS;
+		light.direction = normalize(ray);
+		float distanceSqr = max(dot(ray, ray), 0.00001);
+		float rangeAttenuation = Square(
+			saturate(1.0 - Square(distanceSqr * _OtherLightPositions[index].w))
+		);
+		float4 spotAngles = _OtherLightSpotAngles[index];
+		float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
+	#endif
+	float spotAttenuation = Square(
+		saturate(dot(spotDirection, light.direction) * spotAngles.x + spotAngles.y)
+	);
+	light.attenuation = spotAttenuation * rangeAttenuation / distanceSqr;
+	return light;
+}
 
 struct Light {
 	float3 color;
@@ -79,10 +138,15 @@ int GetOtherLightCount () {
 
 OtherShadowData GetOtherShadowData (int lightIndex) {
 	OtherShadowData data;
-	data.strength = _OtherLightShadowData[lightIndex].x;
-	data.tileIndex = _OtherLightShadowData[lightIndex].y;
-	data.shadowMaskChannel = _OtherLightShadowData[lightIndex].w;
-	data.isPoint = _OtherLightShadowData[lightIndex].z == 1.0;
+	#if defined(USE_OTHER_LIGHT_BUFFER)
+		float4 sd = _OtherLightBuffer[lightIndex].shadowData;
+	#else
+		float4 sd = _OtherLightShadowData[lightIndex];
+	#endif
+	data.strength = sd.x;
+	data.tileIndex = sd.y;
+	data.shadowMaskChannel = sd.w;
+	data.isPoint = sd.z == 1.0;
 	data.lightPositionWS = 0.0;
 	data.lightDirectionWS = 0.0;
 	data.spotDirectionWS = 0.0;
@@ -91,18 +155,35 @@ OtherShadowData GetOtherShadowData (int lightIndex) {
 
 Light GetOtherLight (int index, Surface surfaceWS, ShadowData shadowData) {
 	Light light;
-	light.color = _OtherLightColors[index].rgb;
-	float3 position = _OtherLightPositions[index].xyz;
-	float3 ray = position - surfaceWS.position;
-	light.direction = normalize(ray);
-	float distanceSqr = max(dot(ray, ray), 0.00001);
-	float rangeAttenuation = Square(
-		saturate(1.0 - Square(distanceSqr * _OtherLightPositions[index].w))
-	);
-	float4 spotAngles = _OtherLightSpotAngles[index];
-	float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
-	#ifndef SHADER_API_GLES
-	light.renderingLayerMask = (uint)_OtherLightDirectionsAndMasks[index].w;
+	#if defined(USE_OTHER_LIGHT_BUFFER)
+		OtherLightData ld = _OtherLightBuffer[index];
+		light.color = ld.color.rgb;
+		float3 position = ld.position.xyz;
+		float3 ray = position - surfaceWS.position;
+		light.direction = normalize(ray);
+		float distanceSqr = max(dot(ray, ray), 0.00001);
+		float rangeAttenuation = Square(
+			saturate(1.0 - Square(distanceSqr * ld.position.w))
+		);
+		float4 spotAngles = ld.spotAngle;
+		float3 spotDirection = ld.directionAndMask.xyz;
+		#ifndef SHADER_API_GLES
+		light.renderingLayerMask = (uint)ld.directionAndMask.w;
+		#endif
+	#else
+		light.color = _OtherLightColors[index].rgb;
+		float3 position = _OtherLightPositions[index].xyz;
+		float3 ray = position - surfaceWS.position;
+		light.direction = normalize(ray);
+		float distanceSqr = max(dot(ray, ray), 0.00001);
+		float rangeAttenuation = Square(
+			saturate(1.0 - Square(distanceSqr * _OtherLightPositions[index].w))
+		);
+		float4 spotAngles = _OtherLightSpotAngles[index];
+		float3 spotDirection = _OtherLightDirectionsAndMasks[index].xyz;
+		#ifndef SHADER_API_GLES
+		light.renderingLayerMask = (uint)_OtherLightDirectionsAndMasks[index].w;
+		#endif
 	#endif
 	float spotAttenuation = Square(
 		saturate(dot(spotDirection, light.direction) *

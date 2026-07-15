@@ -29,6 +29,7 @@ struct Varyings {
 		float2 detailUV : VAR_DETAIL_UV;
 	#endif
 	GI_VARYINGS_DATA
+	float3 vertexLighting : VAR_VERTEX_LIGHTING;
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -49,6 +50,7 @@ Varyings LitPassVertex (Attributes input) {
 	#if defined(_DETAIL_MAP)
 		output.detailUV = TransformDetailUV(input.baseUV);
 	#endif
+	output.vertexLighting = GetVertexLighting(output.positionWS, output.normalWS);
 	return output;
 }
 
@@ -113,6 +115,7 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 		#endif
 	#endif
 	float3 color = GetLighting(config.fragment, surface, brdf, gi);
+	color += input.vertexLighting * brdf.diffuse * surface.occlusion;
 	#if UNITY_COLORSPACE_GAMMA
 		color += SRGBToLinear(GetEmission(config));
 		color = LinearToSRGB(color);

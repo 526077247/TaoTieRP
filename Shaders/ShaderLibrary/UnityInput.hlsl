@@ -1,7 +1,7 @@
 ﻿#ifndef TAOTIE_UNITY_INPUT_INCLUDED
 #define TAOTIE_UNITY_INPUT_INCLUDED
-// GLES3 causes a performance regression in some devices when using CBUFFER.
-#ifndef SHADER_API_GLES3
+// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_START(UnityPerDraw)
 #endif
 float4x4 unity_ObjectToWorld;
@@ -46,7 +46,7 @@ float4x4 unity_ProbeVolumeWorldToObject;
 float4 unity_ProbeVolumeSizeInv;
 float4 unity_ProbeVolumeMin;
 
-#ifndef SHADER_API_GLES3
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_END
 #endif
 

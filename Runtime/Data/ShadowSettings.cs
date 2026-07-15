@@ -151,7 +151,7 @@ namespace TaoTie.RenderPipelines
         
         [ShowIf(nameof(forwardPlus), ShowIfOperator.Equal, (int)ForwardPlusMode.Off)]
         [Range(0, 64)]
-        [Tooltip("Max other lights supported (capped at 8 on WebGL1/GLES2).")]
+        [Tooltip("Max per-pixel other lights. Excess Auto lights are demoted to per-vertex (Forward only). Deferred ignores this limit.")]
         public int maxOtherLights = 16;
         
         [ShowIf(nameof(forwardPlus), ShowIfOperator.NotEqual, (int)ForwardPlusMode.Off)]

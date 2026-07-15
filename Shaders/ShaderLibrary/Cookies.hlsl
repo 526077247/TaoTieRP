@@ -22,15 +22,15 @@ TEXTURE2D(_OtherLightCookie4); TEXTURE2D(_OtherLightCookie5);
 TEXTURE2D(_OtherLightCookie6); TEXTURE2D(_OtherLightCookie7);
 
 // World-to-light cookie projection matrices + enable flags
-// GLES3 causes a performance regression in some devices when using CBUFFER.
-#ifndef SHADER_API_GLES3
+// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_START(CookieMatrices)
 #endif
     float4x4 _DirLightCookieMatrix[MAX_DIRECTIONAL_LIGHT_COUNT];
     float4x4 _OtherLightCookieMatrix[MAX_COOKIE_OTHER_LIGHT_COUNT];
     float _DirLightCookieEnabled[MAX_DIRECTIONAL_LIGHT_COUNT];
     float _OtherLightCookieEnabled[MAX_COOKIE_OTHER_LIGHT_COUNT];
-#ifndef SHADER_API_GLES3
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_END
 #endif
 

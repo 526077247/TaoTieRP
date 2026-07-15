@@ -22,11 +22,18 @@ namespace TaoTie.RenderPipelines
 			_ => 256,
 		};
 
-		static readonly int wordsPerTile = Mathf.CeilToInt(maxOtherLightCount / 32f);
+		const int maxBufferedOtherLightCount = 1024;
+
+		static bool otherLightBufferActive;
+		static int effectiveMaxOtherLightCount = maxOtherLightCount;
+		static int effectiveWordsPerTile => Mathf.CeilToInt(effectiveMaxOtherLightCount / 32f);
 
 		private static readonly bool notOpenGLES = SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2 &&
 		                                           SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES3 &&
 		                                           SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLCore;
+
+		// StructuredBuffer in pixel/vertex shaders requires SM 4.5+
+		private static readonly bool supportsStructuredBuffer = notOpenGLES && SystemInfo.graphicsShaderLevel >= 45;
 
 		private static readonly int
 			dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
@@ -54,14 +61,43 @@ namespace TaoTie.RenderPipelines
 			otherLightDirectionsAndMasksId =
 				Shader.PropertyToID("_OtherLightDirectionsAndMasks"),
 			otherLightSpotAnglesId = Shader.PropertyToID("_OtherLightSpotAngles"),
-			otherLightShadowDataId = Shader.PropertyToID("_OtherLightShadowData");
+			otherLightShadowDataId = Shader.PropertyToID("_OtherLightShadowData"),
+			otherLightBufferId = Shader.PropertyToID("_OtherLightBuffer");
 
-		static readonly Vector4[]
+		static readonly GlobalKeyword otherLightBufferKeyword =
+			GlobalKeyword.Create("_OTHER_LIGHT_BUFFER");
+
+		static readonly GlobalKeyword supportsStructuredBufferKeyword =
+			GlobalKeyword.Create("_SUPPORTS_STRUCTURED_BUFFER");
+
+		struct OtherLightDataGPU
+		{
+			public Vector4 color;
+			public Vector4 position;
+			public Vector4 directionAndMask;
+			public Vector4 spotAngle;
+			public Vector4 shadowData;
+		}
+
+		static Vector4[]
 			otherLightColors = new Vector4[maxOtherLightCount],
 			otherLightPositions = new Vector4[maxOtherLightCount],
 			otherLightDirectionsAndMasks = new Vector4[maxOtherLightCount],
 			otherLightSpotAngles = new Vector4[maxOtherLightCount],
 			otherLightShadowData = new Vector4[maxOtherLightCount];
+
+		static OtherLightDataGPU[] otherLightDataGPU;
+		static ComputeBuffer otherLightDataBuffer;
+		static int otherLightDataBufferSize;
+
+		// _VertexLightCount = total (pixel + vertex) lights in shared _OtherLight arrays
+		static int totalLightCount;
+		static readonly int vertexLightCountId = Shader.PropertyToID("_VertexLightCount");
+
+		// Candidate classification arrays (reused per frame)
+		static int[] s_pixelCandidates, s_vertexCandidates;
+		static float[] s_pixelScores, s_vertexScores;
+		static int s_pixelCandidateCount, s_vertexCandidateCount;
 
 		static readonly int
 			dirCookieMatrixId = Shader.PropertyToID("_DirLightCookieMatrix"),
@@ -226,35 +262,26 @@ namespace TaoTie.RenderPipelines
 			NativeArray<VisibleLight> visibleLights = cullingResults.visibleLights;
 			int i;
 			dirLightCount = otherLightCount = 0;
+			totalLightCount = 0;
 			activeCookieCount = 0;
 			s_otherLightCount = 0;
-			int max;
-			if (s_useForwardPlus)
+			s_pixelCandidateCount = 0;
+			s_vertexCandidateCount = 0;
+
+			// Ensure candidate arrays
+			int visCount = visibleLights.Length;
+			if (s_candidateIndices == null || s_candidateIndices.Length < visCount)
 			{
-				max = s_maxLightsPerTile * TileCount;
-				if (maxOtherLightCount < max)
-					max = maxOtherLightCount;
-			}
-			else if (s_useDeferred)
-			{
-				max = maxOtherLightCount;
-			}
-			else
-			{
-				max = shadowSettings.maxOtherLights;
-				if (max > maxOtherLightCount)
-					max = maxOtherLightCount;
+				s_candidateIndices = new int[visCount];
+				s_candidateScores = new float[visCount];
+				s_pixelCandidates = new int[visCount];
+				s_pixelScores = new float[visCount];
+				s_vertexCandidates = new int[visCount];
+				s_vertexScores = new float[visCount];
 			}
 
 			// First pass: process Directional lights + collect Other light candidates
-			// Use static arrays to avoid per-frame allocation
-			if (s_candidateIndices == null || s_candidateIndices.Length < visibleLights.Length)
-			{
-				s_candidateIndices = new int[visibleLights.Length];
-				s_candidateScores = new float[visibleLights.Length];
-			}
-
-			int candidateCount = 0;
+			// Classified by Light.renderMode: Important→pixel, NotImportant→vertex, Auto→pixel
 			for (i = 0; i < visibleLights.Length; i++)
 			{
 				VisibleLight visibleLight = visibleLights[i];
@@ -274,7 +301,6 @@ namespace TaoTie.RenderPipelines
 							break;
 						case LightType.Point:
 						case LightType.Spot:
-							s_candidateIndices[candidateCount] = i;
 							Color c = visibleLight.finalColor;
 							float brightness = c.r * 0.2126f + c.g * 0.7152f + c.b * 0.0722f;
 							Rect r = visibleLight.screenRect;
@@ -282,41 +308,108 @@ namespace TaoTie.RenderPipelines
 							Vector4 lightPos4 = visibleLight.localToWorldMatrix.GetColumn(3);
 							Vector3 lightPos = new(lightPos4.x, lightPos4.y, lightPos4.z);
 							float distSqr = Vector3.SqrMagnitude(lightPos - cameraPosition);
-							s_candidateScores[candidateCount] = brightness * screenArea / Mathf.Max(distSqr, 1f);
-							candidateCount++;
+							float score = brightness * screenArea / Mathf.Max(distSqr, 1f);
+
+							// Deferred: all lights go to pixel path (no vertex lights)
+							if (s_useDeferred)
+							{
+								s_pixelCandidates[s_pixelCandidateCount] = i;
+								s_pixelScores[s_pixelCandidateCount] = score;
+								s_pixelCandidateCount++;
+							}
+							else if (light.renderMode == LightRenderMode.ForceVertex)
+							{
+								s_vertexCandidates[s_vertexCandidateCount] = i;
+								s_vertexScores[s_vertexCandidateCount] = score;
+								s_vertexCandidateCount++;
+							}
+							else
+							{
+								// ForcePixel and Auto both start as pixel candidates
+								s_pixelCandidates[s_pixelCandidateCount] = i;
+								s_pixelScores[s_pixelCandidateCount] = score;
+								// Boost ForcePixel lights so they sort higher and are never demoted
+								if (light.renderMode == LightRenderMode.ForcePixel)
+									s_pixelScores[s_pixelCandidateCount] += 1e9f;
+								s_pixelCandidateCount++;
+							}
 							break;
 					}
 				}
 			}
 
-			// Partial selection: keep top `max` candidates by score when exceeding limit
-			int otherLimit = Mathf.Min(candidateCount, max);
-			if (candidateCount > max)
+			// Hysteresis: enable StructuredBuffer when total other lights > maxOtherLightCount,
+			// disable when < maxOtherLightCount/2. Prevents flickering at the boundary.
+			int totalCandidateCount = s_pixelCandidateCount + s_vertexCandidateCount;
+			bool canUseBuffer = supportsStructuredBuffer;
+			bool useBuffer;
+			if (otherLightBufferActive)
+				useBuffer = canUseBuffer && totalCandidateCount >= maxOtherLightCount / 2;
+			else
+				useBuffer = canUseBuffer && totalCandidateCount > maxOtherLightCount;
+			otherLightBufferActive = useBuffer;
+
+			effectiveMaxOtherLightCount = useBuffer
+				? Mathf.Min(maxBufferedOtherLightCount, s_maxLightsPerTile * TileCount)
+				: maxOtherLightCount;
+
+			int max;
+			if (s_useForwardPlus)
 			{
-				// Quick partial selection: only ensure the top `max` entries are the highest scores.
+				max = s_maxLightsPerTile * TileCount;
+				if (effectiveMaxOtherLightCount < max)
+					max = effectiveMaxOtherLightCount;
+			}
+			else if (s_useDeferred)
+			{
+				// Deferred: all lights are per-pixel, no vertex lights, no cap
+				max = s_pixelCandidateCount;
+			}
+			else
+			{
+				max = shadowSettings.maxOtherLights;
+				if (max > effectiveMaxOtherLightCount)
+					max = effectiveMaxOtherLightCount;
+			}
+
+			// Ensure capacity for pixel + vertex lights (shared arrays)
+			EnsureOtherLightArrayCapacity(Mathf.Min(effectiveMaxOtherLightCount, s_pixelCandidateCount + s_vertexCandidateCount));
+
+			// Sort pixel candidates by score (descending)
+			int pixelLimit = Mathf.Min(s_pixelCandidateCount, max);
+			if (s_pixelCandidateCount > max)
+			{
 				for (int a = 0; a < max; a++)
 				{
 					int best = a;
-					for (int b = a + 1; b < candidateCount; b++)
+					for (int b = a + 1; b < s_pixelCandidateCount; b++)
 					{
-						if (s_candidateScores[b] > s_candidateScores[best])
+						if (s_pixelScores[b] > s_pixelScores[best])
 							best = b;
 					}
-
 					if (best != a)
 					{
-						(s_candidateScores[a], s_candidateScores[best]) =
-							(s_candidateScores[best], s_candidateScores[a]);
-						(s_candidateIndices[a], s_candidateIndices[best]) =
-							(s_candidateIndices[best], s_candidateIndices[a]);
+						(s_pixelScores[a], s_pixelScores[best]) = (s_pixelScores[best], s_pixelScores[a]);
+						(s_pixelCandidates[a], s_pixelCandidates[best]) = (s_pixelCandidates[best], s_pixelCandidates[a]);
+					}
+				}
+				// Demoted pixel lights (beyond pixelLimit) → vertex candidates (skip in Deferred: no vertex lights)
+				if (!s_useDeferred)
+				{
+					for (int a = pixelLimit; a < s_pixelCandidateCount; a++)
+					{
+						s_vertexCandidates[s_vertexCandidateCount] = s_pixelCandidates[a];
+						// Boost demoted pixel lights above ForceVertex: ForcePixel (+2e9f) > Auto (+1e9f) > ForceVertex (0)
+						s_vertexScores[s_vertexCandidateCount] = s_pixelScores[a] % 1e9f + 1e9f;
+						s_vertexCandidateCount++;
 					}
 				}
 			}
 
-			// Second pass: setup Other lights by priority order
-			for (i = 0; i < otherLimit; i++)
+			// Setup pixel lights
+			for (i = 0; i < pixelLimit; i++)
 			{
-				int vi = s_candidateIndices[i];
+				int vi = s_pixelCandidates[i];
 				VisibleLight visibleLight = visibleLights[vi];
 				Light light = visibleLight.light;
 				if (s_useForwardPlus)
@@ -327,8 +420,45 @@ namespace TaoTie.RenderPipelines
 					SetupSpotLight(otherLightCount, vi, ref visibleLight, light);
 				otherLightCount++;
 			}
-
 			s_otherLightCount = otherLightCount;
+
+			// Sort vertex candidates by score (descending)
+			int vertexMax = Mathf.Min(s_vertexCandidateCount, effectiveMaxOtherLightCount - otherLightCount);
+			if (s_vertexCandidateCount > 1)
+			{
+				int sortEnd = Mathf.Min(vertexMax, s_vertexCandidateCount);
+				for (int a = 0; a < sortEnd; a++)
+				{
+					int best = a;
+					for (int b = a + 1; b < s_vertexCandidateCount; b++)
+					{
+						if (s_vertexScores[b] > s_vertexScores[best])
+							best = b;
+					}
+					if (best != a)
+					{
+						(s_vertexScores[a], s_vertexScores[best]) = (s_vertexScores[best], s_vertexScores[a]);
+						(s_vertexCandidates[a], s_vertexCandidates[best]) = (s_vertexCandidates[best], s_vertexCandidates[a]);
+					}
+				}
+			}
+
+			// Setup vertex lights (appended to same _OtherLight arrays after pixel lights)
+			int vertexCount = 0;
+			for (i = 0; i < vertexMax; i++)
+			{
+				int vi = s_vertexCandidates[i];
+				VisibleLight visibleLight = visibleLights[vi];
+				Light light = visibleLight.light;
+				int idx = otherLightCount + vertexCount;
+				if (visibleLight.lightType == LightType.Point)
+					SetupVertexPointLight(idx, ref visibleLight, light);
+				else
+					SetupVertexSpotLight(idx, ref visibleLight, light);
+				vertexCount++;
+			}
+			totalLightCount = otherLightCount + vertexCount;
+
 			if (s_useForwardPlus)
 			{
 				int tileCountTotal = TileCount;
@@ -366,7 +496,8 @@ namespace TaoTie.RenderPipelines
 
 		void BuildZBinData()
 		{
-			int zBinTotal = s_zBinCount * wordsPerTile;
+			int wpt = effectiveWordsPerTile;
+			int zBinTotal = s_zBinCount * wpt;
 			if (!zBinData.IsCreated || zBinData.Length < zBinTotal)
 			{
 				if (zBinData.IsCreated) zBinData.Dispose();
@@ -388,7 +519,7 @@ namespace TaoTie.RenderPipelines
 				int wordIdx = i / 32;
 				uint bitMask = 1u << (i % 32);
 				for (int b = binMin; b <= binMax; b++)
-					zBinData[b * wordsPerTile + wordIdx] |= bitMask;
+					zBinData[b * wpt + wordIdx] |= bitMask;
 			}
 		}
 
@@ -406,18 +537,43 @@ namespace TaoTie.RenderPipelines
 			}
 
 			buffer.SetGlobalFloat(otherLightCountId, otherLightCount);
-			if (otherLightCount > 0)
+			buffer.SetGlobalFloat(vertexLightCountId, totalLightCount);
+			if (totalLightCount > 0)
 			{
-				buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
-				buffer.SetGlobalVectorArray(
-					otherLightPositionsId, otherLightPositions);
-				buffer.SetGlobalVectorArray(
-					otherLightDirectionsAndMasksId, otherLightDirectionsAndMasks);
-				buffer.SetGlobalVectorArray(
-					otherLightSpotAnglesId, otherLightSpotAngles);
-				buffer.SetGlobalVectorArray(
-					otherLightShadowDataId, otherLightShadowData);
+				if (otherLightBufferActive)
+				{
+					for (int li = 0; li < totalLightCount; li++)
+					{
+						otherLightDataGPU[li].color = otherLightColors[li];
+						otherLightDataGPU[li].position = otherLightPositions[li];
+						otherLightDataGPU[li].directionAndMask = otherLightDirectionsAndMasks[li];
+						otherLightDataGPU[li].spotAngle = otherLightSpotAngles[li];
+						otherLightDataGPU[li].shadowData = otherLightShadowData[li];
+					}
+					if (otherLightDataBuffer == null || otherLightDataBufferSize < effectiveMaxOtherLightCount)
+					{
+						otherLightDataBuffer?.Release();
+						otherLightDataBuffer = new ComputeBuffer(effectiveMaxOtherLightCount, 80);
+						otherLightDataBufferSize = effectiveMaxOtherLightCount;
+					}
+					otherLightDataBuffer.SetData(otherLightDataGPU, 0, 0, totalLightCount);
+					buffer.SetGlobalBuffer(otherLightBufferId, otherLightDataBuffer);
+				}
+				else
+				{
+					buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
+					buffer.SetGlobalVectorArray(
+						otherLightPositionsId, otherLightPositions);
+					buffer.SetGlobalVectorArray(
+						otherLightDirectionsAndMasksId, otherLightDirectionsAndMasks);
+					buffer.SetGlobalVectorArray(
+						otherLightSpotAnglesId, otherLightSpotAngles);
+					buffer.SetGlobalVectorArray(
+						otherLightShadowDataId, otherLightShadowData);
+				}
 			}
+			buffer.SetKeyword(otherLightBufferKeyword, otherLightBufferActive);
+			buffer.SetKeyword(supportsStructuredBufferKeyword, supportsStructuredBuffer);
 
 			if (activeCookieCount > 0)
 			{
@@ -451,7 +607,7 @@ namespace TaoTie.RenderPipelines
 		public static void RenderForwardPlusCull(CommandBuffer buffer)
 		{
 			if (!s_useForwardPlus) return;
-			bool canUseBuffer = notOpenGLES && tileBitmaskBuffer != null;
+			bool canUseBuffer = supportsStructuredBuffer && tileBitmaskBuffer != null;
 #if !UNITY_WEBGL || UNITY_EDITOR
 			bool useGpuCompute = canUseBuffer && CullComputeShader != null && cullKernel >= 0;
 #else
@@ -468,7 +624,7 @@ namespace TaoTie.RenderPipelines
 					CullComputeShader.SetBuffer(cullKernel, "_TileBitmask", tileBitmaskBuffer);
 					CullComputeShader.SetInt("_LightCount", s_otherLightCount);
 					CullComputeShader.SetVector("_TileCount", new Vector4(
-						s_tileCount.x, s_tileCount.y, s_tileDataTexSize.x, wordsPerTile));
+						s_tileCount.x, s_tileCount.y, s_tileDataTexSize.x, effectiveWordsPerTile));
 					CullComputeShader.SetVector("_ScreenUVToTileCoords", s_screenUVToTileCoords);
 					CullComputeShader.SetVector("_ScreenSize", new Vector2(s_screenSize.x, s_screenSize.y));
 					// Set depth texture for 2.5D culling (only when DepthPrePass is available)
@@ -536,7 +692,7 @@ namespace TaoTie.RenderPipelines
 			}
 
 			buffer.SetGlobalVector(dataSizeId, new Vector4(
-				s_tileDataTexSize.x, s_zBinCount, wordsPerTile, 0));
+				s_tileDataTexSize.x, s_zBinCount, effectiveWordsPerTile, 0));
 			buffer.SetGlobalVector(zBinParamsId, new Vector4(
 				s_zBinCount, s_cameraNear,
 				1f / Mathf.Max(s_cameraFar - s_cameraNear, 0.0001f),
@@ -544,7 +700,7 @@ namespace TaoTie.RenderPipelines
 			buffer.SetGlobalVector(tileSettingsId, new Vector4(
 				s_screenUVToTileCoords.x, s_screenUVToTileCoords.y,
 				s_tileCount.x,
-				wordsPerTile));
+				effectiveWordsPerTile));
 		}
 
 		static Color GetFinalColor(ref VisibleLight visibleLight)
@@ -649,6 +805,36 @@ namespace TaoTie.RenderPipelines
 			}
 		}
 
+		void SetupVertexPointLight(int index, ref VisibleLight visibleLight, Light light)
+		{
+			Vector4 color = GetFinalColor(ref visibleLight);
+			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
+			position.w = 1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
+			otherLightColors[index] = color;
+			otherLightPositions[index] = position;
+			otherLightDirectionsAndMasks[index] = Vector4.zero;
+			otherLightSpotAngles[index] = new Vector4(0f, 1f);
+			otherLightShadowData[index] = Vector4.zero;
+		}
+
+		void SetupVertexSpotLight(int index, ref VisibleLight visibleLight, Light light)
+		{
+			Vector4 color = GetFinalColor(ref visibleLight);
+			Vector4 position = visibleLight.localToWorldMatrix.GetColumn(3);
+			position.w = 1f / Mathf.Max(visibleLight.range * visibleLight.range, 0.00001f);
+			Vector4 dirAndMask = -visibleLight.localToWorldMatrix.GetColumn(2);
+			dirAndMask.w = RenderLayerMaskToFloat(light.renderingLayerMask);
+			float innerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * light.innerSpotAngle);
+			float outerCos = Mathf.Cos(Mathf.Deg2Rad * 0.5f * visibleLight.spotAngle);
+			float angleRangeInv = 1f / Mathf.Max(innerCos - outerCos, 0.001f);
+			Vector4 spotAngles = new Vector4(angleRangeInv, -outerCos * angleRangeInv);
+			otherLightColors[index] = color;
+			otherLightPositions[index] = position;
+			otherLightDirectionsAndMasks[index] = dirAndMask;
+			otherLightSpotAngles[index] = spotAngles;
+			otherLightShadowData[index] = Vector4.zero;
+		}
+
 		public static void Dispose()
 		{
 			if (tileBitmaskArray.IsCreated) tileBitmaskArray.Dispose();
@@ -662,7 +848,9 @@ namespace TaoTie.RenderPipelines
 			zBinBuffer?.Release();
 			lightBoundsBuffer?.Release();
 			lightZRangesBuffer?.Release();
+			otherLightDataBuffer?.Release();
 			tileBitmaskBufferSize = zBinBufferSize = lightBoundsBufferSize = lightZRangesBufferSize = 0;
+			otherLightDataBufferSize = 0;
 			cullKernel = -1;
 			cullKernelChecked = false;
 		}
@@ -722,16 +910,38 @@ namespace TaoTie.RenderPipelines
 #endif
 		}
 
+		static void EnsureOtherLightArrayCapacity(int requiredSize)
+		{
+			if (otherLightColors.Length >= requiredSize) return;
+			int newSize = Mathf.NextPowerOfTwo(requiredSize);
+			Array.Resize(ref otherLightColors, newSize);
+			Array.Resize(ref otherLightPositions, newSize);
+			Array.Resize(ref otherLightDirectionsAndMasks, newSize);
+			Array.Resize(ref otherLightSpotAngles, newSize);
+			Array.Resize(ref otherLightShadowData, newSize);
+			Array.Resize(ref lightBounds, newSize);
+			if (otherLightDataGPU == null || otherLightDataGPU.Length < newSize)
+				otherLightDataGPU = new OtherLightDataGPU[newSize];
+		}
+
 		void EnsureLightBoundsNative()
 		{
-			if (!lightBoundsNative.IsCreated)
-				lightBoundsNative = new NativeArray<float4>(maxOtherLightCount, Allocator.Persistent);
+			int size = effectiveMaxOtherLightCount;
+			if (!lightBoundsNative.IsCreated || lightBoundsNative.Length < size)
+			{
+				if (lightBoundsNative.IsCreated) lightBoundsNative.Dispose();
+				lightBoundsNative = new NativeArray<float4>(size, Allocator.Persistent);
+			}
 		}
 
 		void EnsureLightZRangesNative()
 		{
-			if (!lightZRangesNative.IsCreated)
-				lightZRangesNative = new NativeArray<float2>(maxOtherLightCount, Allocator.Persistent);
+			int size = effectiveMaxOtherLightCount;
+			if (!lightZRangesNative.IsCreated || lightZRangesNative.Length < size)
+			{
+				if (lightZRangesNative.IsCreated) lightZRangesNative.Dispose();
+				lightZRangesNative = new NativeArray<float2>(size, Allocator.Persistent);
+			}
 		}
 
 		void BuildTileBitmaskJob(int tileCountTotal)
@@ -752,7 +962,7 @@ namespace TaoTie.RenderPipelines
 				tileCount = new int2(s_tileCount.x, s_tileCount.y),
 				dataStride = s_tileDataTexSize.x,
 				screenUVToTileCoords = new float2(s_screenUVToTileCoords.x, s_screenUVToTileCoords.y),
-				wordsPerTile = wordsPerTile,
+				wordsPerTile = effectiveWordsPerTile,
 				tileBitmask = tileBitmaskArray,
 			};
 			JobHandle handle = job.Schedule(s_otherLightCount, 64);
@@ -761,11 +971,12 @@ namespace TaoTie.RenderPipelines
 
 		void EnsureTileBuffers(Vector2Int tileSize)
 		{
+			int wpt = effectiveWordsPerTile;
 			int dataW = Mathf.Min(NextPow2(Mathf.Max(tileSize.x, 1)), maxTexSize);
 			int dataH = Mathf.Min(NextPow2(Mathf.Max(tileSize.y, 1)), maxTexSize);
-			int bitmaskTexW = Mathf.Min(dataW * wordsPerTile, maxTexSize);
+			int bitmaskTexW = Mathf.Min(dataW * wpt, maxTexSize);
 			int bitmaskTexH = Mathf.Min(dataH, maxTexSize);
-			int zBinTexW = Mathf.Min(wordsPerTile, maxTexSize);
+			int zBinTexW = Mathf.Min(wpt, maxTexSize);
 			int zBinTexH = Mathf.Min(s_zBinCount, maxTexSize);
 			if (tileBitmaskTexture == null ||
 			    tileBitmaskTexture.width < bitmaskTexW ||
@@ -791,15 +1002,15 @@ namespace TaoTie.RenderPipelines
 				};
 			}
 
-			s_tileDataTexSize = new Vector2Int(tileBitmaskTexture.width / wordsPerTile, tileBitmaskTexture.height);
-			int actualBitmaskSize = s_tileDataTexSize.x * s_tileDataTexSize.y * wordsPerTile;
+			s_tileDataTexSize = new Vector2Int(tileBitmaskTexture.width / wpt, tileBitmaskTexture.height);
+			int actualBitmaskSize = s_tileDataTexSize.x * s_tileDataTexSize.y * wpt;
 			if (!tileBitmaskArray.IsCreated || tileBitmaskArray.Length < actualBitmaskSize)
 			{
 				if (tileBitmaskArray.IsCreated) tileBitmaskArray.Dispose();
 				tileBitmaskArray = new NativeArray<uint>(actualBitmaskSize, Allocator.Persistent);
 			}
 #if !UNITY_WEBGL || UNITY_EDITOR
-			if (notOpenGLES)
+			if (supportsStructuredBuffer)
 			{
 				if (tileBitmaskBufferSize < actualBitmaskSize)
 				{
@@ -808,7 +1019,7 @@ namespace TaoTie.RenderPipelines
 					tileBitmaskBufferSize = actualBitmaskSize;
 				}
 
-				int zBinTotal = s_zBinCount * wordsPerTile;
+				int zBinTotal = s_zBinCount * wpt;
 				if (zBinBufferSize < zBinTotal)
 				{
 					zBinBuffer?.Release();
@@ -816,18 +1027,18 @@ namespace TaoTie.RenderPipelines
 					zBinBufferSize = zBinTotal;
 				}
 
-				if (lightBoundsBufferSize < maxOtherLightCount)
+				if (lightBoundsBufferSize < effectiveMaxOtherLightCount)
 				{
 					lightBoundsBuffer?.Release();
-					lightBoundsBuffer = new ComputeBuffer(maxOtherLightCount, 16);
-					lightBoundsBufferSize = maxOtherLightCount;
+					lightBoundsBuffer = new ComputeBuffer(effectiveMaxOtherLightCount, 16);
+					lightBoundsBufferSize = effectiveMaxOtherLightCount;
 				}
 
-				if (lightZRangesBufferSize < maxOtherLightCount)
+				if (lightZRangesBufferSize < effectiveMaxOtherLightCount)
 				{
 					lightZRangesBuffer?.Release();
-					lightZRangesBuffer = new ComputeBuffer(maxOtherLightCount, 8); // float2 = 8 bytes
-					lightZRangesBufferSize = maxOtherLightCount;
+					lightZRangesBuffer = new ComputeBuffer(effectiveMaxOtherLightCount, 8); // float2 = 8 bytes
+					lightZRangesBufferSize = effectiveMaxOtherLightCount;
 				}
 			}
 #endif

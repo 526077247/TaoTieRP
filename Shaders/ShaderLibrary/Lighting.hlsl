@@ -9,6 +9,30 @@ float3 GetLighting (Surface surface,BRDF brdf, Light light) {
     return IncomingLight(surface, light) * DirectBRDF(surface, brdf, light);
 }
 
+// Vertex lighting: simplified per-vertex diffuse accumulation (no shadows/cookies)
+// Iterates shared _OtherLight arrays from _OtherLightCount to _VertexLightCount
+float3 GetVertexLighting (float3 positionWS, float3 normalWS) {
+    int start = (int)_OtherLightCount;
+    int end = (int)_VertexLightCount;
+    float3 color = 0.0;
+    #if defined(SHADER_API_GLES)
+    [loop]
+    for (int i = 0; i < MAX_OTHER_LIGHT_COUNT; i++) {
+        if (i >= end) break;
+        if (i < start) continue;
+        VertexLight vl = GetVertexOtherLight(i, positionWS);
+        color += saturate(dot(normalWS, vl.direction)) * vl.attenuation * vl.color;
+    }
+    #else
+    [loop]
+    for (int i = start; i < end; i++) {
+        VertexLight vl = GetVertexOtherLight(i, positionWS);
+        color += saturate(dot(normalWS, vl.direction)) * vl.attenuation * vl.color;
+    }
+    #endif
+    return color;
+}
+
 bool RenderingLayersOverlap (Surface surface, Light light)
 {
     #if defined(SHADER_API_GLES)
