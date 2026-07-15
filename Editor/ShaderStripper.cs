@@ -164,8 +164,8 @@ namespace TaoTie.RenderPipelines.Editor
 
         bool ShouldStripLensFlare()
         {
-            // Strip if no LensFlareData assets exist in the project
-            var guids = AssetDatabase.FindAssets("t:LensFlareData");
+            // Strip if no LensFlareDataSRP assets exist in the project
+            var guids = AssetDatabase.FindAssets("t:LensFlareDataSRP");
             return guids.Length == 0;
         }
 

@@ -189,7 +189,7 @@ Each post-processing effect has a corresponding `VolumeComponent` subclass in `R
 - **Depth Priming Mode** — Auto (depth pre-pass only when needed) or Forced (always)
 - **Bicubic Rescaling** — Off / Up-only / Up-and-down
 - **Per-Camera Final Blend Mode** — Configurable source/destination blend mode
-- **Lens Flare (SRP)** — Data-driven lens flare system with Image/Circle/Polygon shapes
+- **Lens Flare (SRP)** — Data-driven lens flare system powered by LensFlareCommonSRP (Image/Circle/Polygon shapes, occlusion, light attenuation)
 - **WebGL/Mobile Compatibility** — ComputeBuffer → Texture2D fallback, no deferred on WebGL, 8 light cap on GLES2
 - **Debug Tools** — Rendering Debugger panels accessible via **Window → Analysis → Rendering Debugger**:
   - **Forward+ Debugger** — Visualizes tile light counts as a heat map overlay
@@ -202,7 +202,7 @@ Automatic stripping of unused shader variants based on build target and Graphics
 
 - Debugger shaders and Meta passes always stripped
 - ShadowCaster pass stripped when `directional.maxLightCount == 0`; `_SHADOW_MASK` keyword stripped when shadows disabled
-- Lens Flare shader stripped when no `LensFlareData` assets exist in the project
+- Lens Flare shader stripped when no `LensFlareDataSRP` assets exist in the project
 - SMAA passes stripped when not selected; SMAA always stripped on WebGL1 builds (detected via `PlayerSettings.GetGraphicsAPIs` — no OpenGLES3 = WebGL1)
 - `_TAOTIE_FORWARD_PLUS` keyword variants stripped when Forward+ is Off or WebGL1 target
 - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in any `PostFXSettings` in the project
@@ -223,7 +223,7 @@ Automatic stripping of unused shader variants based on build target and Graphics
 | `Hidden/TaoTie RP/Camera Renderer` | Internal blit/copy operations |
 | `Hidden/TaoTie RP/TAA` | Temporal anti-aliasing resolve |
 | `Hidden/TaoTie RP/SSAO` | Screen Space Ambient Occlusion |
-| `Hidden/TaoTie RP/Lens Flare` | Lens flare |
+| `Hidden/TaoTie RP/Lens Flare` | Lens flare (LensFlareCommonSRP, SM3.5+) |
 | `Hidden/TaoTie RP/Outline` | Post-process outline |
 | `Hidden/TaoTie RP/Depth Of Field` | Depth of field |
 | `Hidden/TaoTie RP/Volumetric Fog` | Raymarched volumetric fog |

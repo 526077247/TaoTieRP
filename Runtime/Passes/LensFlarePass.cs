@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
@@ -10,51 +8,28 @@ namespace TaoTie.RenderPipelines
     {
         static readonly ProfilingSampler sampler = new("Lens Flare");
 
-        static readonly int
-            flareTextureID = Shader.PropertyToID("_FlareTexture"),
-            flareDataID = Shader.PropertyToID("_FlareData"),
-            flareColorID = Shader.PropertyToID("_FlareColor"),
-            flarePolygonSidesID = Shader.PropertyToID("_FlarePolygonSides");
-
         static Material flareMaterial;
         static Shader cachedShader;
 
-        // Reusable mesh for drawing flare quads
-        static Mesh flareQuad;
-
-        struct FlareDraw
-        {
-            public LensFlareElement element;
-            public Vector2 screenPos;       // [0,1] screen UV
-            public float screenDepth;      // linear eye depth at flare source
-            public Color color;
-            public float intensity;
-            public float scale;
-            public bool onScreen;
-            public float occlusionFade;
-        }
-
-        List<FlareDraw> draws = new();
+        // Shader property IDs matching LensFlareCommonSRP expectations
+        static readonly int
+            flareOcclusionRemapTexID = Shader.PropertyToID("_FlareOcclusionRemapTex"),
+            flareOcclusionTexID = Shader.PropertyToID("_FlareOcclusionTex"),
+            flareOcclusionIndexID = Shader.PropertyToID("_FlareOcclusionIndex"),
+            flareCloudOpacityID = Shader.PropertyToID("_FlareCloudOpacity"),
+            flareSunOcclusionTexID = Shader.PropertyToID("_FlareSunOcclusionTex"),
+            flareTexID = Shader.PropertyToID("_FlareTex"),
+            flareColorValueID = Shader.PropertyToID("_FlareColorValue"),
+            flareData0ID = Shader.PropertyToID("_FlareData0"),
+            flareData1ID = Shader.PropertyToID("_FlareData1"),
+            flareData2ID = Shader.PropertyToID("_FlareData2"),
+            flareData3ID = Shader.PropertyToID("_FlareData3"),
+            flareData4ID = Shader.PropertyToID("_FlareData4");
 
         Camera camera;
         Vector2Int bufferSize;
         TextureHandle colorTarget;
-        TextureHandle depthTexture;
-        bool useDepthTexture;
-
-        static Mesh GetQuad()
-        {
-            if (flareQuad != null) return flareQuad;
-            flareQuad = new Mesh { hideFlags = HideFlags.HideAndDontSave };
-            flareQuad.vertices = new Vector3[] {
-                new(-1, -1, 0), new(1, -1, 0), new(1, 1, 0), new(-1, 1, 0)
-            };
-            flareQuad.uv = new Vector2[] {
-                new(0, 0), new(1, 0), new(1, 1), new(0, 1)
-            };
-            flareQuad.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
-            return flareQuad;
-        }
+        bool taaEnabled;
 
         static void EnsureMaterial()
         {
@@ -72,85 +47,54 @@ namespace TaoTie.RenderPipelines
             }
         }
 
+        static float GetLensFlareLightAttenuation(Light light, Camera cam, Vector3 wo)
+        {
+            if (light == null) return 1f;
+
+            return light.type switch
+            {
+                LightType.Directional => LensFlareCommonSRP.ShapeAttenuationDirLight(light.transform.forward, wo),
+                LightType.Spot => LensFlareCommonSRP.ShapeAttenuationSpotConeLight(
+                    light.transform.forward, wo, light.spotAngle,
+                    light.innerSpotAngle / 90f),
+                _ => LensFlareCommonSRP.ShapeAttenuationPointLight(),
+            };
+        }
+
         void Render(RenderGraphContext context)
         {
-            if (flareMaterial == null || draws.Count == 0) return;
+            if (flareMaterial == null) return;
+            if (LensFlareCommonSRP.Instance.IsEmpty()) return;
 
             CommandBuffer cmd = context.cmd;
-            Mesh quad = GetQuad();
+            Camera cam = camera;
+            float actualWidth = bufferSize.x;
+            float actualHeight = bufferSize.y;
+            Matrix4x4 viewProjMatrix = cam.nonJitteredProjectionMatrix * cam.worldToCameraMatrix;
 
-            for (int i = 0; i < draws.Count; i++)
-            {
-                var draw = draws[i];
-                if (!draw.onScreen && draw.occlusionFade <= 0f) continue;
+            // Compute occlusion into occlusionRT (no-op when !IsOcclusionRTCompatible, e.g. GLES2)
+            LensFlareCommonSRP.ComputeOcclusion(
+                flareMaterial, cam, actualWidth, actualHeight,
+                false, 0f, 1f, false,
+                cam.transform.position, viewProjMatrix, cmd,
+                taaEnabled, false, null, null,
+                flareOcclusionTexID, flareCloudOpacityID, flareOcclusionIndexID,
+                flareTexID, flareColorValueID, flareSunOcclusionTexID,
+                flareData0ID, flareData1ID, flareData2ID, flareData3ID, flareData4ID);
 
-                var elem = draw.element;
-                float intensity = draw.intensity * elem.intensity * draw.occlusionFade;
-
-                // Direction from screen center to flare position
-                Vector2 center = new(0.5f, 0.5f);
-                Vector2 dir = (draw.screenPos - center);
-                float dirMag = dir.magnitude;
-                if (dirMag > 0.001f)
-                    dir /= dirMag;
-                else
-                    dir = Vector2.zero;
-
-                // Position along the axis: position=0 at light, position=1 at opposite end
-                Vector2 flareScreenPos = draw.screenPos + dir * (elem.position * elem.translationScale);
-
-                // Convert to clip space [-1, 1]
-                Vector2 clipPos = new(
-                    flareScreenPos.x * 2f - 1f,
-                    flareScreenPos.y * 2f - 1f
-                );
-
-                float size = elem.sizeScale * draw.scale * 0.1f;
-
-                // Build matrix: scale + translate
-                Matrix4x4 matrix = Matrix4x4.TRS(
-                    new Vector3(clipPos.x, clipPos.y, 0),
-                    Quaternion.Euler(0, 0, elem.rotation + elem.angularOffset),
-                    new Vector3(size, size, 1)
-                );
-
-                // Set material properties
-                if (elem.type == LensFlareElement.ElementType.Image && elem.imageTexture != null)
-                    cmd.SetGlobalTexture(flareTextureID, elem.imageTexture);
-                else
-                    cmd.SetGlobalTexture(flareTextureID, Texture2D.whiteTexture);
-
-                float typeIndex = elem.type switch
-                {
-                    LensFlareElement.ElementType.Image => 0f,
-                    LensFlareElement.ElementType.Circle => 1f,
-                    LensFlareElement.ElementType.Polygon => 2f,
-                    _ => 1f
-                };
-
-                cmd.SetGlobalVector(flareDataID, new Vector4(
-                    intensity,
-                    (elem.rotation + elem.angularOffset) * Mathf.Deg2Rad,
-                    (float)bufferSize.x / bufferSize.y,
-                    typeIndex));
-                cmd.SetGlobalColor(flareColorID, draw.color * elem.tint);
-                cmd.SetGlobalFloat(flarePolygonSidesID, elem.polygonSides);
-
-                // Set blend mode
-                switch (elem.blendMode)
-                {
-                    case LensFlareElement.BlendMode.Additive:
-                        flareMaterial.SetPass(0);
-                        break;
-                    default:
-                        flareMaterial.SetPass(0);
-                        break;
-                }
-
-                cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
-                cmd.DrawMesh(quad, matrix, flareMaterial, 0, 0);
-                cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
-            }
+            // Draw lens flares into color target
+            LensFlareCommonSRP.DoLensFlareDataDrivenCommon(
+                flareMaterial, cam, actualWidth, actualHeight,
+                false, 0f, 1f, false,
+                cam.transform.position, viewProjMatrix, cmd,
+                taaEnabled, false, null, null,
+                colorTarget,
+                GetLensFlareLightAttenuation,
+                flareOcclusionRemapTexID, flareOcclusionTexID, flareOcclusionIndexID,
+                flareCloudOpacityID, flareSunOcclusionTexID,
+                flareTexID, flareColorValueID,
+                flareData0ID, flareData1ID, flareData2ID, flareData3ID, flareData4ID,
+                false);
 
             context.renderContext.ExecuteCommandBuffer(cmd);
             cmd.Clear();
@@ -162,12 +106,11 @@ namespace TaoTie.RenderPipelines
             in CameraRendererTextures textures,
             bool useDepthTexture,
             Vector2Int bufferSize,
-            bool useHDR)
+            bool useHDR,
+            bool taaEnabled)
         {
-            // Collect all active LensFlareComponents (static registration, no FindObjectsByType)
-            var components = LensFlareComponent.ActiveComponents;
-
-            if (components == null || components.Count == 0) return;
+            if (LensFlareCommonSRP.Instance.IsEmpty()) return;
+            if (SystemInfo.graphicsShaderLevel < 35) return;
 
             EnsureMaterial();
             if (flareMaterial == null) return;
@@ -177,81 +120,26 @@ namespace TaoTie.RenderPipelines
 
             pass.camera = camera;
             pass.bufferSize = bufferSize;
-            pass.useDepthTexture = useDepthTexture;
+            pass.taaEnabled = taaEnabled;
             pass.colorTarget = builder.UseColorBuffer(textures.colorAttachment, 0);
-            if (useDepthTexture)
-            {
-                TextureHandle depthTex = textures.depthCopy.IsValid()
-                    ? textures.depthCopy
-                    : textures.depthAttachment;
-                pass.depthTexture = builder.ReadTexture(depthTex);
-            }
-            pass.draws.Clear();
-
-            // Build draw list
-            int componentCount = components.Count;
-            for (int i = 0; i < componentCount; i++)
-            {
-                var comp = components[i];
-                if (comp.flareData == null) continue;
-
-                // World-to-screen position
-                Vector3 worldPos = comp.WorldPosition;
-                Vector3 screenPos = camera.WorldToViewportPoint(worldPos);
-                bool onScreen = screenPos.z > 0 &&
-                    screenPos.x >= 0 && screenPos.x <= 1 &&
-                    screenPos.y >= 0 && screenPos.y <= 1;
-
-                // For off-screen flares, still allow if allowOffScreen
-                if (!onScreen && !comp.allowOffScreen)
-                    continue;
-
-                float depth = screenPos.z; // linear eye depth
-                Color color = comp.GetColor();
-                float intensity = comp.intensity;
-                float scale = comp.scale;
-
-                float occlusionFade = 1f;
-                if (!onScreen)
-                    occlusionFade = 0f;
-
-                var elements = comp.flareData.elements;
-                if (elements == null) continue;
-
-                for (int j = 0; j < elements.Length; j++)
-                {
-                    pass.draws.Add(new FlareDraw
-                    {
-                        element = elements[j],
-                        screenPos = new Vector2(screenPos.x, screenPos.y),
-                        screenDepth = depth,
-                        color = color,
-                        intensity = intensity,
-                        scale = scale,
-                        onScreen = onScreen,
-                        occlusionFade = occlusionFade,
-                    });
-                }
-            }
-
-            if (pass.draws.Count == 0) return;
 
             builder.AllowPassCulling(false);
             builder.SetRenderFunc<LensFlarePass>(
                 static (pass, context) => pass.Render(context));
         }
 
+        public static void Initialize()
+        {
+            LensFlareCommonSRP.Initialize();
+        }
+
         public static void Dispose()
         {
+            LensFlareCommonSRP.Dispose();
             if (flareMaterial != null)
             {
                 CoreUtils.Destroy(flareMaterial);
                 flareMaterial = null;
-            }
-            if (flareQuad != null)
-            {
-                CoreUtils.Destroy(flareQuad);
-                flareQuad = null;
             }
         }
     }

@@ -40,6 +40,8 @@ namespace TaoTie.RenderPipelines
                 null);
 #endif
 
+            LensFlarePass.Initialize();
+
             // Pre-warm PostFX material to avoid first-frame hitch
             if (settings.postFXSettings != null)
             {

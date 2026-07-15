@@ -86,10 +86,10 @@ namespace TaoTie.RenderPipelines
             PostFXStack postFXStack, int colorLUTResolution,
             TaoTieRenderPipelineSettings settings, Camera camera, bool hasActivePostFX,
             Vector2Int bufferSize, bool useHDR, CullingResults cullingResults,
-            int renderingLayerMask)
+            int renderingLayerMask, bool useTAA)
         {
-            LensFlarePass.Record(renderGraph, camera, textures, useDepthTexture, bufferSize, useHDR);
-
+            LensFlarePass.Record(renderGraph, camera, textures, useDepthTexture, bufferSize, useHDR, useTAA);
+            
             if (hasActivePostFX)
             {
                 if (!PostFXPass.Record(
@@ -386,7 +386,7 @@ namespace TaoTie.RenderPipelines
                     RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                         postFXStack, (int) settings.colorLUTResolution,
                         settings, camera, hasActivePostFX, bufferSize, useHDR,
-                        cullingResults, cameraSettings.renderingLayerMask);
+                        cullingResults, cameraSettings.renderingLayerMask, useTAA);
 #endif
                 }
                 else
@@ -439,7 +439,7 @@ namespace TaoTie.RenderPipelines
                         RecordPostFXAndDebug(renderGraph, copier, textures, useDepthTexture,
                             postFXStack, (int) settings.colorLUTResolution,
                             settings, camera, hasActivePostFX, bufferSize, useHDR,
-                            cullingResults, cameraSettings.renderingLayerMask);
+                            cullingResults, cameraSettings.renderingLayerMask, useTAA);
                     }
                     else
                     {
