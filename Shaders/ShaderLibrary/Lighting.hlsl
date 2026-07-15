@@ -52,7 +52,7 @@ bool RenderingLayersOverlap (Surface surface, Light light)
 // Plain Forward / Deferred without Forward+: iterate all (capped) lights.
 #if defined(TAOTIE_FORWARD_PLUS)
 
-    #if SHADER_TARGET >= 50 && !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
         // Non-GLES: firstbitlow to iterate only set bits (SM5.0+)
         #define LIGHT_LOOP_BEGIN(fragment, surfaceWS, brdf, shadowData, color) \
         { \

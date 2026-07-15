@@ -350,14 +350,6 @@ namespace TaoTie.RenderPipelines.Editor
                 StripKeyword(data, "_TAOTIE_FORWARD_PLUS");
             }
 
-#if !UNITY_WEBGL
-            if (ShouldStripForwardPlus())
-#endif
-            {
-                StripKeyword(data, "_OTHER_LIGHT_BUFFER");
-                StripKeyword(data, "_SUPPORTS_STRUCTURED_BUFFER");
-            }
-
             // _SSAO_ENABLED keyword on Lit and DeferredLighting
             if (ShouldStripSSAO())
             {

@@ -18,7 +18,7 @@ float4 _ForwardPlusDataSize;
 // w: camera far
 float4 _ZBinParams;
 
-#if defined(_SUPPORTS_STRUCTURED_BUFFER)
+#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
     StructuredBuffer<uint> _ForwardPlusTileBitmaskBuf;
     StructuredBuffer<uint> _ForwardPlusZBinBuf;
 #else
@@ -49,7 +49,7 @@ uint LoadTileBitmaskWord(int2 tileCoord, int wordIdx)
     int dataStride = (int)_ForwardPlusDataSize.x;
     int linearIdx = tileCoord.y * dataStride + tileCoord.x;
     int bufferIdx = linearIdx * GetWordsPerTile() + wordIdx;
-    #if defined(_SUPPORTS_STRUCTURED_BUFFER)
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
         return _ForwardPlusTileBitmaskBuf[bufferIdx];
     #else
         int texW = (int)_ForwardPlusDataSize.x * GetWordsPerTile();
@@ -63,7 +63,7 @@ uint LoadTileBitmaskWord(int2 tileCoord, int wordIdx)
 uint LoadZBinBitmaskWord(int zBinIdx, int wordIdx)
 {
     int bufferIdx = zBinIdx * GetWordsPerTile() + wordIdx;
-    #if defined(_SUPPORTS_STRUCTURED_BUFFER)
+    #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
         return _ForwardPlusZBinBuf[bufferIdx];
     #else
         int texW = GetWordsPerTile();
