@@ -1,10 +1,10 @@
 ﻿#ifndef TAOTIE_META_PASS_INCLUDED
 #define TAOTIE_META_PASS_INCLUDED
 
-#include "ShaderLibrary/Surface.hlsl"
-#include "ShaderLibrary/Shadows.hlsl"
-#include "ShaderLibrary/Light.hlsl"
-#include "ShaderLibrary/BRDF.hlsl"
+#include "Surface.hlsl"
+#include "Shadows.hlsl"
+#include "Light.hlsl"
+#include "BRDF.hlsl"
 
 bool4 unity_MetaFragmentControl;
 float unity_OneOverOutputBoost;

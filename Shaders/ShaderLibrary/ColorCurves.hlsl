@@ -5,7 +5,7 @@
 // Uses baked 1D LUT textures (256px) sampled per-channel.
 // 8 curves: Master, Red, Green, Blue, HueVsHue, HueVsSat, SatVsSat, LumVsSat
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_CCMaster);   // R = master curve
 TEXTURE2D(_CCRGB);      // R = red, G = green, B = blue curves

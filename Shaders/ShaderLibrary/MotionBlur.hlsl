@@ -7,7 +7,7 @@
 // 3. Velocity = current UV - previous UV
 // 4. Sample along velocity direction (multi-sample gather)
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_MBSource);
 

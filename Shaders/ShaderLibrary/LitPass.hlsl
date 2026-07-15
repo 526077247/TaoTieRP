@@ -1,12 +1,13 @@
-﻿#ifndef TAOTIE_LIT_PASS_INCLUDED
+#ifndef TAOTIE_LIT_PASS_INCLUDED
 #define TAOTIE_LIT_PASS_INCLUDED
 
-#include "ShaderLibrary/Surface.hlsl"
-#include "ShaderLibrary/Shadows.hlsl"
-#include "ShaderLibrary/Light.hlsl"
-#include "ShaderLibrary/BRDF.hlsl"
-#include "ShaderLibrary/GI.hlsl"
-#include "ShaderLibrary/Lighting.hlsl"
+#include "Surface.hlsl"
+#include "Shadows.hlsl"
+#include "Light.hlsl"
+#include "BRDF.hlsl"
+#include "GI.hlsl"
+#include "Lighting.hlsl"
+#include "GBuffer.hlsl"
 
 struct Attributes {
 	float3 positionOS : POSITION;
@@ -74,15 +75,15 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	
 	Surface surface;
 	surface.position = input.positionWS;
+	surface.screenUV = config.fragment.screenUV;
 	#if defined(_NORMAL_MAP)
 		surface.normal = NormalTangentToWorld(
 			GetNormalTS(config), input.normalWS, input.tangentWS
 		);
-		surface.interpolatedNormal = input.normalWS;
 	#else
 		surface.normal = normalize(input.normalWS);
-		surface.interpolatedNormal = surface.normal;
 	#endif
+	surface.interpolatedNormal = surface.normal;
 	surface.viewDirection = normalize(_WorldSpaceCameraPos - input.positionWS);
 	surface.depth = -TransformWorldToView(input.positionWS).z;
 	surface.color = base.rgb;
@@ -123,7 +124,7 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 		color += GetEmission(config);
 	#endif
 
-	// DEBUG: 0=off, 1=worldPos, 2=viewDir, 3=normal, 4=albedo, 5=GI diffuse, 6=direct light only
+	// DEBUG: 0=off, 1=worldPos, 2=viewDir, 3=normal, 4=albedo, 5=GI diffuse, 6=direct light only, 7=GetLighting only, 8=dir shadow only
 	#define DEBUG_STAGE 0
 	#if DEBUG_STAGE == 1
 		return float4(frac(surface.position * 0.5), 1.0);
@@ -138,6 +139,17 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	#elif DEBUG_STAGE == 6
 		float3 indirect = IndirectBRDF(surface, brdf, gi.diffuse, gi.specular);
 		return float4(color - indirect, 1.0);
+	#elif DEBUG_STAGE == 7
+		return float4(GetLighting(config.fragment, surface, brdf, gi), 1.0);
+	#elif DEBUG_STAGE == 8
+	{
+		ShadowData sd = GetShadowData(surface);
+		DirectionalShadowData dsd = GetDirectionalShadowData(0, sd);
+		float atten = GetDirectionalShadowAttenuation(dsd, sd, surface);
+		return float4(atten, atten, atten, 1.0);
+	}
+	#elif DEBUG_STAGE == 9
+		return float4(surface.interpolatedNormal * 0.5 + 0.5, 1.0);
 	#endif
 
 	return float4(color, GetFinalAlpha(surface.alpha));

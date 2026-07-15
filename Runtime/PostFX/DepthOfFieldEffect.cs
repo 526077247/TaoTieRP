@@ -15,7 +15,8 @@ namespace TaoTie.RenderPipelines
             dofSourceID = Shader.PropertyToID("_DOFSource"),
             dofCoCTextureID = Shader.PropertyToID("_DOFCoCTexture"),
             dofParamsID = Shader.PropertyToID("_DOFParams"),
-            dofTexelSizeID = Shader.PropertyToID("_DOFTexelSize");
+            dofTexelSizeID = Shader.PropertyToID("_DOFTexelSize"),
+            cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         [HideInInspector] public Shader dofShader;
 
@@ -205,7 +206,7 @@ namespace TaoTie.RenderPipelines
 
                 // Pass 0: CoC into cocResult
                 cmd.SetGlobalTexture(dofSourceID, source);
-                cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+                cmd.SetGlobalTexture(cameraDepthTextureID, depthTexture);
                 cmd.SetGlobalVector(dofParamsID, dofParams);
                 cmd.SetGlobalVector(dofTexelSizeID, texelSize);
 

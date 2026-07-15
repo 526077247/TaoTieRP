@@ -1,7 +1,7 @@
 #ifndef TAOTIE_VIGNETTE_INCLUDED
 #define TAOTIE_VIGNETTE_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_VignetteSource);
 

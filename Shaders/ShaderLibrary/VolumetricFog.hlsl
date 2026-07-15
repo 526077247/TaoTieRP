@@ -5,10 +5,10 @@
 // Enhanced for TaoTie RP: per-light shadow sampling, Beer-Lambert extinction,
 // height-based density variation, real light direction Mie scattering.
 
-#include "ShaderLibrary/Common.hlsl"
-#include "ShaderLibrary/Surface.hlsl"
-#include "ShaderLibrary/Shadows.hlsl"
-#include "ShaderLibrary/Light.hlsl"
+#include "Common.hlsl"
+#include "Surface.hlsl"
+#include "Shadows.hlsl"
+#include "Light.hlsl"
 
 TEXTURE2D(_VFogSource);
 
@@ -42,7 +42,7 @@ VFogVaryings VFogPassVertex(float3 positionOS : POSITION, float2 uv : TEXCOORD0)
 
 float sqr(float v) { return v * v; }
 
-// Mie phase function — from https://github.com/SlightlyMad/VolumetricLights (BSD)
+// Mie phase function �?from https://github.com/SlightlyMad/VolumetricLights (BSD)
 float MiePhase(float cosAngle, float mieG)
 {
     float gSqr = sqr(mieG);

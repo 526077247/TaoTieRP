@@ -7,6 +7,7 @@ struct Surface {
     float3 interpolatedNormal;
     float3 viewDirection;
     float depth;
+    float2 screenUV;
     float3 color;
     float alpha;
     float metallic;

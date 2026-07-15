@@ -17,7 +17,8 @@ namespace TaoTie.RenderPipelines
             taaVarianceClampScaleID = Shader.PropertyToID("_TAAVarianceClampScale"),
             taaJitterID = Shader.PropertyToID("_TAAJitter"),
             inverseNonJitteredViewProjID = Shader.PropertyToID("_InverseNonJitteredViewProj"),
-            prevViewProjID = Shader.PropertyToID("_PrevViewProj");
+            prevViewProjID = Shader.PropertyToID("_PrevViewProj"),
+            cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         static Material taaMaterial;
         static Shader taaShaderSource;
@@ -56,7 +57,7 @@ namespace TaoTie.RenderPipelines
 
             cmd.SetGlobalTexture(taaCurrentColorID, currentColor);
             cmd.SetGlobalTexture(taaHistoryColorID, historyColor);
-            cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+            cmd.SetGlobalTexture(cameraDepthTextureID, depthTexture);
             cmd.SetGlobalVector(taaTexelSizeID, new Vector4(
                 1f / bufferSize.x, 1f / bufferSize.y, bufferSize.x, bufferSize.y));
             cmd.SetGlobalFloat(taaFrameInfluenceID, frameInfluence);

@@ -44,10 +44,15 @@ float3 DecodeGBufferNormal(float2 f) {
 float4x4 _InverseViewProj;
 
 // Reconstruct world-space position from depth and screen UV.
-// screenUV must be in D3D texture convention (Y=0 at top on D3D)
-// matching the _InverseViewProj computed with GL.GetGPUProjectionMatrix(, false).
+// _InverseViewProj computed with GL.GetGPUProjectionMatrix(, true) includes Y-flip,
+// so we flip clipPos.y to match.
 float3 ReconstructWorldPos(float2 screenUV, float rawDepth) {
-    float4 clipPos = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
+    #if UNITY_REVERSED_Z
+        float depth = rawDepth;
+    #else
+        float depth = rawDepth * 2.0 - 1.0;
+    #endif
+    float4 clipPos = float4(screenUV.x * 2.0 - 1.0, screenUV.y * 2.0 - 1.0, depth, 1.0);
     float4 worldPos = mul(_InverseViewProj, clipPos);
     return worldPos.xyz / worldPos.w;
 }

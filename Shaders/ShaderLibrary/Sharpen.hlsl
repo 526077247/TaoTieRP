@@ -1,7 +1,7 @@
 #ifndef TAOTIE_SHARPEN_INCLUDED
 #define TAOTIE_SHARPEN_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_SharpenSource);
 

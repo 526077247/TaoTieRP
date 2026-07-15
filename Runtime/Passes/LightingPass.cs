@@ -419,7 +419,6 @@ namespace TaoTie.RenderPipelines
 
 			if (s_useForwardPlus)
 			{
-				int tileCountTotal = TileCount;
 				EnsureTileBuffers(s_tileCount);
 				EnsureComputeKernel();
 				EnsureLightBoundsNative();
@@ -428,7 +427,7 @@ namespace TaoTie.RenderPipelines
 				BuildZBinData();
 				bool useGpuCompute = notOpenGLES && CullComputeShader != null && cullKernel >= 0;
 				if (!useGpuCompute)
-					BuildTileBitmaskJob(tileCountTotal);
+					BuildTileBitmaskJob();
 				tileDataDirty = true;
 			}
 		}
@@ -870,7 +869,7 @@ namespace TaoTie.RenderPipelines
 			}
 		}
 
-		void BuildTileBitmaskJob(int tileCountTotal)
+		void BuildTileBitmaskJob()
 		{
 			for (int i = 0; i < s_otherLightCount; i++)
 				lightBoundsNative[i] = lightBounds[i];
@@ -884,7 +883,6 @@ namespace TaoTie.RenderPipelines
 			var job = new TileCullJob
 			{
 				lightBounds = lightBoundsNative,
-				lightCount = s_otherLightCount,
 				tileCount = new int2(s_tileCount.x, s_tileCount.y),
 				dataStride = s_tileDataTexSize.x,
 				screenUVToTileCoords = new float2(s_screenUVToTileCoords.x, s_screenUVToTileCoords.y),

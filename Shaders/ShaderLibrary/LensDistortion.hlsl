@@ -4,7 +4,7 @@
 // Adapted from URP Lens Distortion implementation
 // Reference: https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@14.0/manual/Post-Processing-Lens-Distortion.html
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_LDSource);
 

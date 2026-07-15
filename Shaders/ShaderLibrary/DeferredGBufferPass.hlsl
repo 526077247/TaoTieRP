@@ -1,13 +1,13 @@
 #ifndef TAOTIE_DEFERRED_GBUFFER_PASS_INCLUDED
 #define TAOTIE_DEFERRED_GBUFFER_PASS_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
-#include "ShaderLibrary/Surface.hlsl"
-#include "ShaderLibrary/Shadows.hlsl"
-#include "ShaderLibrary/Light.hlsl"
-#include "ShaderLibrary/BRDF.hlsl"
-#include "ShaderLibrary/GI.hlsl"
-#include "ShaderLibrary/GBuffer.hlsl"
+#include "Common.hlsl"
+#include "Surface.hlsl"
+#include "Shadows.hlsl"
+#include "Light.hlsl"
+#include "BRDF.hlsl"
+#include "GI.hlsl"
+#include "GBuffer.hlsl"
 #include "LitInput.hlsl"
 
 struct Attributes {
@@ -89,6 +89,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     // Build surface + BRDF to compute GI diffuse (deferred lighting pass can't access lightmap UVs)
     Surface surface;
     surface.position = input.positionWS;
+    surface.screenUV = config.fragment.screenUV;
     surface.normal = normalWS;
     surface.interpolatedNormal = normalWS;
     surface.viewDirection = viewDir;
@@ -117,7 +118,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     #endif
 
     // Bake GI diffuse into emission so deferred lighting pass can use it without lightmap UVs.
-    // Don't apply occlusion here — deferred lighting pass applies it via surface.occlusion (incl. SSAO).
+    // Don't apply occlusion here �?deferred lighting pass applies it via surface.occlusion (incl. SSAO).
     float3 bakedGI = gi.diffuse * brdf.diffuse;
 
     GBufferOutput output;

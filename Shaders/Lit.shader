@@ -62,7 +62,7 @@
 	SubShader {
 		HLSLINCLUDE
 		#include "ShaderLibrary/Common.hlsl"
-		#include "LitInput.hlsl"
+		#include "ShaderLibrary/LitInput.hlsl"
 		ENDHLSL
 
 		Pass {
@@ -81,6 +81,7 @@
 			#pragma shader_feature_local _DETAIL_MAP
 			#pragma multi_compile_local _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
 			#pragma multi_compile_local _ _SHADOW_MASK
+			#pragma multi_compile _ _SCREEN_SPACE_SHADOWS
 			#pragma multi_compile _ _TAOTIE_FORWARD_PLUS
 			#pragma multi_compile _ _SSAO_ENABLED
 			#pragma multi_compile_local _ LIGHTMAP_ON
@@ -88,7 +89,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex LitPassVertex
 			#pragma fragment LitPassFragment
-			#include "LitPass.hlsl"
+			#include "ShaderLibrary/LitPass.hlsl"
             ENDHLSL
         }
         Pass {
@@ -104,7 +105,7 @@
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
-			#include "ShadowCasterPass.hlsl"
+			#include "ShaderLibrary/ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -121,7 +122,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex DepthOnlyPassVertex
 			#pragma fragment DepthOnlyPassFragment
-			#include "DepthOnlyPass.hlsl"
+			#include "ShaderLibrary/DepthOnlyPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -143,7 +144,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex DeferredGBufferPassVertex
 			#pragma fragment DeferredGBufferPassFragment
-			#include "DeferredGBufferPass.hlsl"
+			#include "ShaderLibrary/DeferredGBufferPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -157,7 +158,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
-			#include "MetaPass.hlsl"
+			#include "ShaderLibrary/MetaPass.hlsl"
 			ENDHLSL
 		}
     }

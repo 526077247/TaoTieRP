@@ -9,7 +9,6 @@ namespace TaoTie.RenderPipelines
     struct TileCullJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<float4> lightBounds;
-        public int lightCount;
         public int2 tileCount;
         public int dataStride;
         public float2 screenUVToTileCoords;

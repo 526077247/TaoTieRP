@@ -10,7 +10,7 @@
     #define MAX_OTHER_LIGHT_COUNT 256
 #endif
 
-#include "ShaderLibrary/Cookies.hlsl"
+#include "Cookies.hlsl"
 
 // GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)

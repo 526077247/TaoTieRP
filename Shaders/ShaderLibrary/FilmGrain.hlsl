@@ -1,7 +1,7 @@
 #ifndef TAOTIE_FILM_GRAIN_INCLUDED
 #define TAOTIE_FILM_GRAIN_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_GrainSource);
 
@@ -25,7 +25,7 @@ GrainVaryings GrainPassVertex(float3 positionOS : POSITION, float2 uv : TEXCOORD
     return output;
 }
 
-// Hash-based noise — no texture lookup needed
+// Hash-based noise �?no texture lookup needed
 float Hash(float2 p)
 {
     float2 seed = p + float2(_Time.y * 0.5 + 0.1, _Time.y * 0.7 + 0.3);

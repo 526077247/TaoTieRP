@@ -15,7 +15,8 @@ namespace TaoTie.RenderPipelines
             mbIntensityID = Shader.PropertyToID("_MBIntensity"),
             mbSampleCountID = Shader.PropertyToID("_MBSampleCount"),
             mbInverseVPID = Shader.PropertyToID("_MBInverseVP"),
-            mbPreviousVPID = Shader.PropertyToID("_MBPreviousVP");
+            mbPreviousVPID = Shader.PropertyToID("_MBPreviousVP"),
+            cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         static Material mbMaterial;
 
@@ -179,7 +180,7 @@ namespace TaoTie.RenderPipelines
             {
                 CommandBuffer cmd = context.cmd;
                 cmd.SetGlobalTexture(mbSourceID, source);
-                cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+                cmd.SetGlobalTexture(cameraDepthTextureID, depthTexture);
                 cmd.SetGlobalFloat(mbIntensityID, intensity);
                 cmd.SetGlobalInt(mbSampleCountID, sampleCount);
                 cmd.SetGlobalMatrix(mbInverseVPID, inverseVP);

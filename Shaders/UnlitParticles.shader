@@ -47,7 +47,7 @@
     {
         HLSLINCLUDE
 		#include "ShaderLibrary/Common.hlsl"
-		#include "UnlitInput.hlsl"
+		#include "ShaderLibrary/UnlitInput.hlsl"
 		ENDHLSL
         
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
@@ -67,7 +67,7 @@
             #pragma shader_feature _DISTORTION
             #pragma vertex UnlitPassVertex
 			#pragma fragment UnlitPassFragment
-			#include "UnlitPass.hlsl"
+			#include "ShaderLibrary/UnlitPass.hlsl"
             ENDHLSL
         }
     	
@@ -88,7 +88,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
-			#include "ShadowCasterPass.hlsl"
+			#include "ShaderLibrary/ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
     }

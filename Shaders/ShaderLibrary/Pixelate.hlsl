@@ -1,7 +1,7 @@
 #ifndef TAOTIE_PIXELATE_INCLUDED
 #define TAOTIE_PIXELATE_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_PixelateSource);
 

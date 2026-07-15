@@ -7,6 +7,7 @@ namespace TaoTie.RenderPipelines
     public class ForwardPlusCullPass
     {
         static readonly ProfilingSampler sampler = new("Forward+ Cull");
+        static readonly int cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         TextureHandle depthTexture;
         bool useDepth25D;
@@ -16,7 +17,7 @@ namespace TaoTie.RenderPipelines
             CommandBuffer buffer = context.cmd;
             if (useDepth25D)
             {
-                buffer.SetGlobalTexture(Shader.PropertyToID("_CameraDepthTexture"), depthTexture);
+                buffer.SetGlobalTexture(cameraDepthTextureID, depthTexture);
             }
             LightingPass.RenderForwardPlusCull(buffer);
             context.renderContext.ExecuteCommandBuffer(buffer);

@@ -16,12 +16,12 @@ namespace TaoTie.RenderPipelines
             inverseProjID = Shader.PropertyToID("_SSAOInverseProj"),
             projID = Shader.PropertyToID("_SSAOProj"),
             sourceID = Shader.PropertyToID("_SSAOSource"),
-            ssaoTexID = Shader.PropertyToID("_ScreenSpaceOcclusionTexture");
+            ssaoTexID = Shader.PropertyToID("_ScreenSpaceOcclusionTexture"),
+            cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         TextureHandle depthTexture;
         TextureHandle ssaoTemp;
         TextureHandle ssaoResult;
-        Vector2Int bufferSize;
         Vector2Int ssaoSize;
         SSAOSettings settings;
         Matrix4x4 inverseProj;
@@ -66,7 +66,7 @@ namespace TaoTie.RenderPipelines
             cmd.SetGlobalMatrix(projID, proj);
 
             // Pass 0: Generate SSAO
-            cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+            cmd.SetGlobalTexture(cameraDepthTextureID, depthTexture);
             cmd.SetRenderTarget(ssaoTemp,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             cmd.SetViewport(new Rect(0, 0, ssaoSize.x, ssaoSize.y));
@@ -157,7 +157,6 @@ namespace TaoTie.RenderPipelines
             desc.name = "SSAO Result (horizontal blur)";
             pass.ssaoResult = builder.WriteTexture(renderGraph.CreateTexture(desc));
 
-            pass.bufferSize = bufferSize;
             pass.ssaoSize = ssaoSize;
             pass.settings = settings;
             pass.inverseProj = invProj;

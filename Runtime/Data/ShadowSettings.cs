@@ -163,5 +163,10 @@ namespace TaoTie.RenderPipelines
         };
 
         public SSAOSettings ssao = new SSAOSettings();
+        
+        [Tooltip("Screen Space Shadows - bake directional light shadow to a screen texture. " +
+                 "Opaque objects sample this texture (1 fetch) instead of per-pixel shadow map filtering. " +
+                 "Requires depth texture. Transparent objects always use per-pixel shadows.")]
+        public bool screenSpaceShadows = false;
     }
 }

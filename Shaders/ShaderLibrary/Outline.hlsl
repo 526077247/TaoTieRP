@@ -1,8 +1,8 @@
 #ifndef TAOTIE_OUTLINE_INCLUDED
 #define TAOTIE_OUTLINE_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
-#include "ShaderLibrary/GBuffer.hlsl"
+#include "Common.hlsl"
+#include "GBuffer.hlsl"
 
 TEXTURE2D(_GBufferNormalMS);
 TEXTURE2D(_OutlineSource);
@@ -37,7 +37,7 @@ float4 OutlinePassFragment(OutlineVaryings input) : SV_Target
     float2 uv = input.screenUV;
     float2 texel = _CameraBufferSize.xy * _OutlineWidth;
 
-    // Roberts Cross on depth — 4-tap pattern
+    // Roberts Cross on depth �?4-tap pattern
     float d0 = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_point_clamp, uv, 0);
     float d1 = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_point_clamp, uv + float2(texel.x, 0.0), 0);
     float d2 = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, sampler_point_clamp, uv + float2(0.0, texel.y), 0);
@@ -52,7 +52,7 @@ float4 OutlinePassFragment(OutlineVaryings input) : SV_Target
     float depthDiff = max(abs(ld0 - ld3), abs(ld1 - ld2));
     float depthEdge = smoothstep(0.0, _OutlineDepthSensitivity, depthDiff);
 
-    // Normal edge detection — only in deferred path where G-Buffer normals exist
+    // Normal edge detection �?only in deferred path where G-Buffer normals exist
     float normalEdge = 0.0;
 
     #if defined(_OUTLINE_USE_GBUFFER_NORMALS)

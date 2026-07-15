@@ -148,6 +148,13 @@ namespace TaoTie.RenderPipelines.Editor
             return s.shadows?.ssao?.enabled != true;
         }
 
+        bool ShouldStripScreenSpaceShadows()
+        {
+            var s = GetSettings();
+            if (s == null) return false;
+            return s.shadows?.screenSpaceShadows != true;
+        }
+
         bool ShouldStripBloom()
         {
             var s = GetSettings();
@@ -355,7 +362,12 @@ namespace TaoTie.RenderPipelines.Editor
             {
                 StripKeyword(data, "_SSAO_ENABLED");
             }
-            
+
+            if (ShouldStripScreenSpaceShadows())
+            {
+                StripKeyword(data, "_SCREEN_SPACE_SHADOWS");
+            }
+
             // --- Strip DeferredGBuffer pass from Lit.shader when in Forward mode ---
             if (shader.name == "TaoTie RP/Lit" && IsForward())
             {

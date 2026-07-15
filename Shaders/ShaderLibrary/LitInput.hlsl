@@ -6,9 +6,7 @@
 TEXTURE2D(_BaseMap);
 TEXTURE2D(_MaskMap);
 TEXTURE2D(_EmissionMap);
-SAMPLER(sampler_BaseMap);
 TEXTURE2D(_DetailAlbedoMap);
-SAMPLER(sampler_DetailAlbedoMap);
 TEXTURE2D(_DetailNormalMap);
 TEXTURE2D(_BumpMap);
 
@@ -60,7 +58,7 @@ float2 TransformDetailUV (float2 detailUV) {
 
 float4 GetDetail (InputConfig c) {
     if (c.useDetail) {
-        float4 map = SAMPLE_TEXTURE2D(_DetailAlbedoMap, sampler_DetailAlbedoMap, c.detailUV);
+        float4 map = SAMPLE_TEXTURE2D(_DetailAlbedoMap, sampler_linear_repeat, c.detailUV);
         return map * 2.0 - 1.0;
     }
     return 0.0;
@@ -68,13 +66,13 @@ float4 GetDetail (InputConfig c) {
 
 float4 GetMask (InputConfig c) {
     if (c.useMask) {
-        return SAMPLE_TEXTURE2D(_MaskMap, sampler_BaseMap, c.baseUV);
+        return SAMPLE_TEXTURE2D(_MaskMap, sampler_linear_repeat, c.baseUV);
     }
     return 1.0;
 }
 
 float4 GetBase (InputConfig c) {
-    float4 map = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, c.baseUV);
+    float4 map = SAMPLE_TEXTURE2D(_BaseMap, sampler_linear_repeat, c.baseUV);
     float4 color = INPUT_PROP(_BaseColor);
     
     if (c.useDetail) {
@@ -88,18 +86,18 @@ float4 GetBase (InputConfig c) {
 }
 
 float3 GetEmission (InputConfig c) {
-    float4 map = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, c.baseUV);
+    float4 map = SAMPLE_TEXTURE2D(_EmissionMap, sampler_linear_repeat, c.baseUV);
     float4 color = INPUT_PROP(_EmissionColor);
     return map.rgb * color.rgb;
 }
 
 float3 GetNormalTS (InputConfig c) {
-    float4 map = SAMPLE_TEXTURE2D(_BumpMap, sampler_BaseMap, c.baseUV);
+    float4 map = SAMPLE_TEXTURE2D(_BumpMap, sampler_linear_repeat, c.baseUV);
     float scale = INPUT_PROP(_BumpScale);
     float3 normal = DecodeNormal(map, scale);
 
     if (c.useDetail) {
-        map = SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailAlbedoMap, c.detailUV);
+        map = SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_linear_repeat, c.detailUV);
         scale = INPUT_PROP(_DetailNormalScale) * GetMask(c).b;
         float3 detail = DecodeNormal(map, scale);
         normal = BlendNormalRNM(normal, detail);

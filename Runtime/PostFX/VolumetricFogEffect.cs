@@ -23,7 +23,8 @@ namespace TaoTie.RenderPipelines
             vfogColorID = Shader.PropertyToID("_VFogColor"),
             vfogMaxDistanceID = Shader.PropertyToID("_VFogMaxDistance"),
             vfogBaseHeightID = Shader.PropertyToID("_VFogBaseHeight"),
-            vfogHeightFalloffID = Shader.PropertyToID("_VFogHeightFalloff");
+            vfogHeightFalloffID = Shader.PropertyToID("_VFogHeightFalloff"),
+            cameraDepthTextureID = Shader.PropertyToID("_CameraDepthTexture");
 
         static Material vfogMaterial;
 
@@ -215,7 +216,7 @@ namespace TaoTie.RenderPipelines
             {
                 CommandBuffer cmd = context.cmd;
                 cmd.SetGlobalTexture(vfogSourceID, source);
-                cmd.SetGlobalTexture("_CameraDepthTexture", depthTexture);
+                cmd.SetGlobalTexture(cameraDepthTextureID, depthTexture);
                 cmd.SetGlobalInt(vfogSampleCountID, sampleCount);
                 cmd.SetGlobalVector(vfogStepParamsID, stepParams);
                 cmd.SetGlobalFloat(vfogJitterID, jitter);

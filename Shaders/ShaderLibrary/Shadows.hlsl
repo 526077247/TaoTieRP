@@ -25,8 +25,13 @@
 
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
 TEXTURE2D_SHADOW(_OtherShadowAtlas);
+TEXTURE2D(_ScreenSpaceShadowmapTexture);
 #define SHADOW_SAMPLER sampler_linear_clamp_compare
 SAMPLER_CMP(SHADOW_SAMPLER);
+
+float SampleScreenSpaceShadowmap(float2 screenUV) {
+	return SAMPLE_TEXTURE2D(_ScreenSpaceShadowmapTexture, sampler_point_clamp, screenUV).r;
+}
 
 // GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
@@ -212,6 +217,10 @@ float GetDirectionalShadowAttenuation (
 	if (!surfaceWS.receiveShadows) {
 		return 1.0;
 	}
+
+	#if defined(_SCREEN_SPACE_SHADOWS)
+		return SampleScreenSpaceShadowmap(surfaceWS.screenUV);
+	#endif
 
 	float shadow;
 	if (directional.strength * global.strength <= 0.0) {

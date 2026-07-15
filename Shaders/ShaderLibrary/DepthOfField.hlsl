@@ -1,7 +1,7 @@
 #ifndef TAOTIE_DOF_INCLUDED
 #define TAOTIE_DOF_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_DOFSource);
 TEXTURE2D(_DOFCoCTexture);

@@ -5,7 +5,7 @@
 // Cylindrical projection that keeps vertical and radial lines straight.
 // Reference: https://wiki.panotools.org/The_General_Panini_Projection
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_PPSource);
 

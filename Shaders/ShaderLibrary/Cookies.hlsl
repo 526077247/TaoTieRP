@@ -1,7 +1,7 @@
 #ifndef TAOTIE_COOKIES_INCLUDED
 #define TAOTIE_COOKIES_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 #define MAX_DIRECTIONAL_LIGHT_COUNT 4
 #define MAX_COOKIE_OTHER_LIGHT_COUNT 8
@@ -12,7 +12,7 @@
 // exceed the limit, so cookie textures are only declared on non-GLES APIs.
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
 
-// Cookie textures — per-light global textures
+// Cookie textures �?per-light global textures
 TEXTURE2D(_DirLightCookie0); TEXTURE2D(_DirLightCookie1);
 TEXTURE2D(_DirLightCookie2); TEXTURE2D(_DirLightCookie3);
 

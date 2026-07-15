@@ -30,6 +30,8 @@ SamplerState _Sampler_ClampU_ClampV_Point;
 
 SAMPLER(sampler_linear_clamp);
 SAMPLER(sampler_point_clamp);
+SAMPLER(sampler_linear_repeat);
+SAMPLER(sampler_point_repeat);
 
 TEXTURE2D(_ScreenSpaceOcclusionTexture);
 SAMPLER(sampler_ScreenSpaceOcclusionTexture);

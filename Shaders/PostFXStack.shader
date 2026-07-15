@@ -7,7 +7,7 @@
 		
 		HLSLINCLUDE
 		#include "ShaderLibrary/Common.hlsl"
-		#include "PostFXStackPasses.hlsl"
+		#include "ShaderLibrary/PostFXStackPasses.hlsl"
 		ENDHLSL
 
 		Pass {
@@ -148,7 +148,7 @@
 				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FXAAPassFragment
-				#include "FXAAPass.hlsl"
+				#include "ShaderLibrary/FXAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -159,7 +159,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAAEdgeDetectionPassFragment
-				#include "SMAAPass.hlsl"
+				#include "ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -170,7 +170,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAABlendingWeightCalculationPassFragment
-				#include "SMAAPass.hlsl"
+				#include "ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -181,7 +181,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAANeighborhoodBlendingPassFragment
-				#include "SMAAPass.hlsl"
+				#include "ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 	}

@@ -7,7 +7,7 @@ Shader "Hidden/TaoTie RP/Camera Renderer" {
 		
 		HLSLINCLUDE
 		#include "ShaderLibrary/Common.hlsl"
-		#include "CameraRendererPasses.hlsl"
+		#include "ShaderLibrary/CameraRendererPasses.hlsl"
 		ENDHLSL
 
 		Pass {

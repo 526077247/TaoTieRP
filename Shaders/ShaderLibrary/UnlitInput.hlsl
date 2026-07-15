@@ -6,6 +6,7 @@
 TEXTURE2D(_BaseMap);
 TEXTURE2D(_DistortionMap);
 SAMPLER(sampler_BaseMap);
+SAMPLER(sampler_DistortionMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)

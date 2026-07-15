@@ -1,7 +1,7 @@
 #ifndef TAOTIE_POSTERIZE_INCLUDED
 #define TAOTIE_POSTERIZE_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_PosterizeSource);
 

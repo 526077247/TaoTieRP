@@ -282,6 +282,15 @@ namespace TaoTie.RenderPipelines
                 CameraBufferSettings.DepthPrimingMode.Forced => useDepthTexture = true,
                 _ => false
             };
+            // Screen Space Shadows: requires depth texture + depth prepass
+            bool useScreenSpaceShadows = shadowSettings.screenSpaceShadows &&
+                                         !isReflectionCamera &&
+                                         SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
+            if (useScreenSpaceShadows)
+            {
+                useDepthTexture = true;
+                useDepthPrePass = true;
+            }
             // Forward+ 2.5D depth culling only when DepthPrePass is actually available
             bool useDepth25D = useForwardPlus && useDepthPrePass;
             // MRT + MSAA is not reliably supported; disable MSAA for deferred.
@@ -322,6 +331,10 @@ namespace TaoTie.RenderPipelines
                     Shader.EnableKeyword("_TAOTIE_FORWARD_PLUS");
                 else
                     Shader.DisableKeyword("_TAOTIE_FORWARD_PLUS");
+                if (useScreenSpaceShadows)
+                    Shader.EnableKeyword("_SCREEN_SPACE_SHADOWS");
+                else
+                    Shader.DisableKeyword("_SCREEN_SPACE_SHADOWS");
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
@@ -336,6 +349,10 @@ namespace TaoTie.RenderPipelines
                 {
                     DepthPrePass.Record(renderGraph, camera, cullingResults,
                         cameraSettings.renderingLayerMask, textures);
+                }
+                if (useScreenSpaceShadows)
+                {
+                    ScreenSpaceShadowsPass.Record(renderGraph, textures, bufferSize, camera);
                 }
                 if (useDeferred)
                 {
@@ -363,13 +380,16 @@ namespace TaoTie.RenderPipelines
 
                     // SSAO (after depth copy, before transparent)
                     bool useSSAO = shadowSettings.ssao.enabled && useDepthTexture &&
-                                   !isReflectionCamera;
+                                   !isReflectionCamera &&
+                                   SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
                     if (useSSAO)
                         SSAOPass.Record(renderGraph, textures, bufferSize, shadowSettings.ssao, camera);
                     if (useSSAO) Shader.EnableKeyword("_SSAO_ENABLED");
                     else Shader.DisableKeyword("_SSAO_ENABLED");
 
                     // Transparent objects always use forward path (with Forward+ if available).
+                    if (useScreenSpaceShadows)
+                        ScreenSpaceShadowsPostPass.Record(renderGraph);
                     GeometryPass.Record(
                         renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                     UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
@@ -419,6 +439,8 @@ namespace TaoTie.RenderPipelines
                         if (useSSAO) Shader.EnableKeyword("_SSAO_ENABLED");
                         else Shader.DisableKeyword("_SSAO_ENABLED");
 
+                        if (useScreenSpaceShadows)
+                            ScreenSpaceShadowsPostPass.Record(renderGraph);
                         GeometryPass.Record(
                             renderGraph, camera, cullingResults, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
                         UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
@@ -483,6 +505,7 @@ namespace TaoTie.RenderPipelines
             TAACameraData.CleanupAll();
             SMAATextures.Dispose();
             SSAOPass.Dispose();
+            ScreenSpaceShadowsPass.Dispose();
             LensFlarePass.Dispose();
             CameraRendererCopier.Cleanup();
         }

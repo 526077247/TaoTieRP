@@ -1,7 +1,7 @@
 #ifndef TAOTIE_CHROMATIC_ABERRATION_INCLUDED
 #define TAOTIE_CHROMATIC_ABERRATION_INCLUDED
 
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 TEXTURE2D(_CASource);
 

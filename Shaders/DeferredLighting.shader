@@ -8,6 +8,7 @@ Shader "Hidden/TaoTie RP/Deferred Lighting" {
             HLSLPROGRAM
             #pragma exclude_renderers gles
             #pragma multi_compile _ _TAOTIE_FORWARD_PLUS
+            #pragma multi_compile _ _SCREEN_SPACE_SHADOWS
             #pragma multi_compile _ _SSAO_ENABLED
             #pragma multi_compile_local _ LIGHTMAP_ON
             #pragma multi_compile_local _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
@@ -15,7 +16,7 @@ Shader "Hidden/TaoTie RP/Deferred Lighting" {
             #pragma vertex DeferredLightingVertex
             #pragma fragment DeferredLightingFragment
             #define TAOTIE_DEFERRED_LIGHTING 1
-            #include "DeferredLightingPass.hlsl"
+            #include "ShaderLibrary/DeferredLightingPass.hlsl"
             ENDHLSL
         }
     }

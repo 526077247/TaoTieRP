@@ -2,7 +2,7 @@
 #define TAOTIE_LENS_FLARE_SETUP_INCLUDED
 
 // Include TaoTie RP common (provides TEXTURE2D, SAMPLER, _ScreenParams, _CameraDepthTexture, etc.)
-#include "ShaderLibrary/Common.hlsl"
+#include "Common.hlsl"
 
 // LensFlareCommon.hlsl uses XR texture macros (TEXTURE2D_X, LOAD_TEXTURE2D_X_LOD, etc.)
 // which are only defined in URP/HDRP, not in the core RP package.

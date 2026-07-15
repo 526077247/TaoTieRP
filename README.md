@@ -53,21 +53,21 @@ A custom Unity Scriptable Render Pipeline (SRP) built on the Render Graph API, f
 
 **Forward path:**
 ```
-LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GeometryPass(opaque, CustomLit) → SkyboxPass
-→ [ResolvePass(MSAA)] → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
+LightingPass → SetupPass → [DepthPrePass] → [ScreenSpaceShadowsPass] → [ForwardPlusCullPass] → GeometryPass(opaque, CustomLit) → SkyboxPass
+→ [ResolvePass(MSAA)] → CopyAttachmentsPass → [SSAOPass] → [ScreenSpaceShadowsPostPass] → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [ResolvePass] → [TAAResolvePass] → LensFlarePass
 → PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
 ```
 
 **Deferred path:**
 ```
-LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
-→ SkyboxPass → CopyAttachmentsPass → [SSAOPass] → GeometryPass(transparent, CustomLit)
+LightingPass → SetupPass → [DepthPrePass] → [ScreenSpaceShadowsPass] → [ForwardPlusCullPass] → GBufferPass(opaque, DeferredGBuffer) → DeferredLightingPass
+→ SkyboxPass → CopyAttachmentsPass → [SSAOPass] → [ScreenSpaceShadowsPostPass] → GeometryPass(transparent, CustomLit)
 → UnsupportedShadersPass → [TAAResolvePass] → LensFlarePass
 → PostFXPass / FinalPass → DepthDebuggerPass → ForwardPlusDebuggerPass → GizmosPass
 ```
 
-> `[...]` = optional, depends on settings. DepthPrePass runs before both Forward and Deferred paths when `depthPrimingMode` is Forced, or in Forward when MSAA + Copy Depth is enabled (Auto mode). In Deferred, `depthPrimingMode = Auto` never triggers DepthPrePass (MSAA is always off). ForwardPlusCullPass runs when Forward+ is active, after DepthPrePass (if any) and before geometry/GBuffer rendering. 2.5D depth culling only activates when DepthPrePass is running. SSAOPass runs when SSAO is enabled and depth texture is available. TAAResolvePass runs when TAA is enabled. PostFXPass runs when active post-processing effects exist; otherwise FinalPass blits directly.
+> `[...]` = optional, depends on settings. DepthPrePass runs before both Forward and Deferred paths when `depthPrimingMode` is Forced, or in Forward when MSAA + Copy Depth is enabled (Auto mode), or when Screen Space Shadows is enabled. In Deferred, `depthPrimingMode = Auto` never triggers DepthPrePass unless SSS is on (MSAA is always off). ScreenSpaceShadowsPass runs after DepthPrePass, bakes directional light shadow to screen texture; ScreenSpaceShadowsPostPass disables it before transparent rendering. ForwardPlusCullPass runs when Forward+ is active, after DepthPrePass (if any) and before geometry/GBuffer rendering. 2.5D depth culling only activates when DepthPrePass is running. SSAOPass runs when SSAO is enabled and depth texture is available. TAAResolvePass runs when TAA is enabled. PostFXPass runs when active post-processing effects exist; otherwise FinalPass blits directly.
 
 > **Reflection cameras** use a simplified path: `LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GeometryPass(opaque) → [CopyAttachmentsPass] → FinalPass`. They skip deferred, skybox, SSAO, TAA, and post-processing entirely.
 
@@ -95,6 +95,7 @@ LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GBuf
 - Configurable shadow atlas resolution (256–8192)
 - Configurable shadow max distance and distance fade
 - **Forward+ settings**: `maxLightsPerTile`, `tileSize` (8–256px, adaptive), `zBinCount` (8–64 depth bins)
+- **Screen Space Shadows** — Bakes directional light shadow to a screen-space R8 texture. Opaque objects sample this texture (1 fetch) instead of per-pixel shadow map filtering (4–16 taps). Requires depth prepass (auto-enabled when SSS is on). Transparent objects always use per-pixel shadows. Works in both Forward and Deferred paths. `_SCREEN_SPACE_SHADOWS` shader keyword toggled at runtime; variants stripped at build time when SSS is disabled. Not available on GLES2.
 
 ### SSAO (Screen Space Ambient Occlusion)
 
@@ -219,6 +220,7 @@ Automatic stripping of unused shader variants based on build target and Graphics
 - Dedicated PostFX shaders (DOF, Outline, Vignette, etc.) stripped when their effect type is not present in any `PostFXSettings` in the project
 - Bloom/ColorGrading passes stripped when those effects are absent from all `PostFXSettings` queues
 - `_SSAO_ENABLED` keyword variants stripped when SSAO is disabled
+- `_SCREEN_SPACE_SHADOWS` keyword variants stripped when Screen Space Shadows is disabled
 - Deferred lighting shader and `DeferredGBuffer` pass stripped in Forward mode
 
 ### Shaders
@@ -234,6 +236,7 @@ Automatic stripping of unused shader variants based on build target and Graphics
 | `Hidden/TaoTie RP/Camera Renderer` | Internal blit/copy operations |
 | `Hidden/TaoTie RP/TAA` | Temporal anti-aliasing resolve |
 | `Hidden/TaoTie RP/SSAO` | Screen Space Ambient Occlusion |
+| `Hidden/TaoTie RP/Screen Space Shadows` | Screen-space directional shadow bake |
 | `Hidden/TaoTie RP/Lens Flare` | Lens flare (LensFlareCommonSRP, SM3.5+) |
 | `Hidden/TaoTie RP/Outline` | Post-process outline |
 | `Hidden/TaoTie RP/Depth Of Field` | Depth of field |

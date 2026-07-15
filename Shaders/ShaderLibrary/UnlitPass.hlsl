@@ -43,10 +43,10 @@ Varyings UnlitPassVertex (Attributes input) {
 }
 
 float2 GetDistortion (InputConfig c) {
-    float4 rawMap = SAMPLE_TEXTURE2D(_DistortionMap, sampler_BaseMap, c.baseUV);
+    float4 rawMap = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, c.baseUV);
     if (c.flipbookBlending) {
         rawMap = lerp(
-            rawMap, SAMPLE_TEXTURE2D(_DistortionMap, sampler_BaseMap, c.flipbookUVB.xy),
+            rawMap, SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, c.flipbookUVB.xy),
             c.flipbookUVB.z
         );
     }
