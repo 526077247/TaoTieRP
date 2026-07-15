@@ -66,6 +66,7 @@ bool RenderingLayersOverlap (Surface surface, Light light)
                 uint zBinMask = LoadZBinBitmaskWord(zBinIdx, w); \
                 uint mask = tileMask & zBinMask; \
                 uint remaining = mask; \
+                [loop] \
                 while (remaining) \
                 { \
                     int bit = firstbitlow(remaining); \
