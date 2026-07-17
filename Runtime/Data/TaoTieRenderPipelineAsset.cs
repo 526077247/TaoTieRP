@@ -5,6 +5,9 @@ namespace TaoTie.RenderPipelines
 {
     public partial class TaoTieRenderPipelineAsset : RenderPipelineAsset
     {
+#if ODIN_INSPECTOR
+        [Sirenix.OdinInspector.DrawWithUnity]
+#endif
         [SerializeField] public TaoTieRenderPipelineSettings settings = new TaoTieRenderPipelineSettings();
 
         protected override RenderPipeline CreatePipeline()
