@@ -71,6 +71,27 @@ LightingPass → SetupPass → [DepthPrePass] → [ScreenSpaceShadowsPass] → [
 
 > **Reflection cameras** use a simplified path: `LightingPass → SetupPass → [DepthPrePass] → [ForwardPlusCullPass] → GeometryPass(opaque) → [CopyAttachmentsPass] → FinalPass`. They skip deferred, skybox, SSAO, TAA, and post-processing entirely.
 
+### Render Direct To Screen
+
+A per-camera `RenderingMode` option on `TaoTieRenderPipelineCamera`. When set to `RenderDirectToScreen`, the camera renders geometry directly to the CameraTarget (backbuffer) without allocating temporary render textures or going through `SetupPass` / `FinalPass` / `LightingPass`. This is the most lightweight rendering path, suitable for UI overlay cameras and simple 3D overlay cameras.
+
+**RenderDirectToScreen path:**
+```
+Cull → SetupCameraProperties → DrawRenderers(opaque + transparent) directly to CameraTarget
+```
+
+| Feature | Base | RenderDirectToScreen |
+|---------|:----:|:-------------------:|
+| Temp RT allocation | ✅ (color + depth) | ❌ Zero allocation |
+| SetupPass | ✅ | ❌ Bypassed |
+| FinalPass blit | ✅ | ❌ Bypassed |
+| LightingPass | ✅ | ❌ Skipped (reuses Base camera's light data on GPU) |
+| PostFX / AA / TAA / SSAO | ✅ | ❌ Skipped |
+| DepthPrePass / Skybox / Resolve / Copy | ✅ | ❌ Skipped |
+| Per-vertex lighting | ✅ | ✅ |
+
+> `RenderDirectToScreen` cameras must render after a Base camera in the same frame. The Base camera's `LightingPass` sets global light data (CBUFFER / StructuredBuffer / shadow atlas textures) that persists on the GPU after the Base camera's `RenderGraph` scope ends. `RenderDirectToScreen` relies on this residual state — no `LightingPass` is executed, no shadow maps are rendered. Geometry is drawn directly to `CameraTarget` using `ScriptableRenderContext.DrawRenderers` with opaque overwrite (no alpha blend).
+
 ### Forward+ Tile-Based Light Culling
 
 - **Bitmask tile data** — Each tile stores a fixed-size uint32 bitmask (1 word for 32 lights). On non-GLES platforms, `firstbitlow` iterates only set bits; GLES3/WebGL2 uses 32-bit for-loop fallback

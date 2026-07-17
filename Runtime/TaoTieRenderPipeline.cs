@@ -60,12 +60,30 @@ namespace TaoTie.RenderPipelines
 
         private CameraRenderer renderer;
 
+        static CameraSettings defaultCameraSettings = new CameraSettings();
+
+        static CameraSettings GetCameraSettings(Camera camera)
+        {
+            if (camera.TryGetComponent(out TaoTieRenderPipelineCamera crpCamera))
+                return crpCamera.Settings;
+            return defaultCameraSettings;
+        }
+        
+        void RenderCameraStack(ScriptableRenderContext context, Camera baseCamera)
+        {
+            CameraSettings baseSettings = GetCameraSettings(baseCamera);
+            if (baseSettings.renderingMode == CameraSettings.RenderingMode.RenderDirectToScreen)
+                renderer.RenderOverlayDirect(context, baseCamera, settings);
+            else
+                renderer.Render(renderGraph, context, baseCamera, settings);
+        }
+
         protected override void Render(ScriptableRenderContext context, Camera[] cameras)
         {
             RenderForEditor();
             for (int i = 0; i < cameras.Length; i++)
             {
-                renderer.Render(renderGraph, context, cameras[i], settings);
+                RenderCameraStack(context, cameras[i]);
             }
 
             renderGraph.EndFrame();
@@ -76,7 +94,7 @@ namespace TaoTie.RenderPipelines
             RenderForEditor();
             for (int i = 0; i < cameras.Count; i++)
             {
-                renderer.Render(renderGraph, context, cameras[i], settings);
+                RenderCameraStack(context, cameras[i]);
             }
 
             renderGraph.EndFrame();

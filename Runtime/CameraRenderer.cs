@@ -22,6 +22,13 @@ namespace TaoTie.RenderPipelines
 #if !UNITY_WEBGL || UNITY_EDITOR
         Shader deferredLightingShader;
 #endif
+        
+        static readonly ShaderTagId[] geometryShaderTagIDs = { new("SRPDefaultUnlit"), new("CustomLit") };
+
+        // Shared RTHandles for camera stacking (allocated/released per-frame by pipeline)
+        RTHandle sharedColorRT;
+        RTHandle sharedDepthRT;
+        bool hasSharedRT;
 
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
@@ -372,7 +379,7 @@ namespace TaoTie.RenderPipelines
                         renderGraph, copier, textures, gBuffer, shadowTextures, deferredLightingShader);
 
                     // Skybox renders after deferred lighting, only where depth is far
-                    SkyboxPass.Record(renderGraph, camera, textures);
+                    SkyboxPass.Record(renderGraph, camera, textures, bufferSize);
 
                     CopyAttachmentsPass.Record(
                         renderGraph, useColorTexture, useDepthTexture, copier, textures,
@@ -420,7 +427,7 @@ namespace TaoTie.RenderPipelines
 
                     if (!isReflectionCamera)
                     {
-                        SkyboxPass.Record(renderGraph, camera, textures);
+                        SkyboxPass.Record(renderGraph, camera, textures, bufferSize);
 
                         if (useMSAA)
                         {
@@ -488,6 +495,68 @@ namespace TaoTie.RenderPipelines
                 taaData.prevViewProjMatrix = nonJitteredVP;
                 taaData.AdvanceFrame();
             }
+        }
+
+        /// <summary>
+        /// Render an overlay UI camera directly to CameraTarget (backbuffer) without RenderGraph.
+        /// No temp RT, no SetupPass, no FinalPass blit — geometry renders directly to backbuffer with alpha blend.
+        /// Skips: PostFX/AA/SSAO/TAA/Skybox/DepthPre/Resolve/Copy
+        /// </summary>
+        public void RenderOverlayDirect(ScriptableRenderContext context, Camera camera,
+            TaoTieRenderPipelineSettings settings)
+        {
+            CameraSettings cameraSettings;
+            if (camera.TryGetComponent(out TaoTieRenderPipelineCamera crpCamera))
+                cameraSettings = crpCamera.Settings;
+            else
+                cameraSettings = defaultCameraSettings;
+
+            ShadowSettings shadowSettings = settings.shadows;
+
+            if (!camera.TryGetCullingParameters(out ScriptableCullingParameters cullParams))
+                return;
+            cullParams.shadowDistance = Mathf.Min(shadowSettings.maxDistance, camera.farClipPlane);
+            CullingResults cullingResults = context.Cull(ref cullParams);
+
+            CommandBuffer buffer = CommandBufferPool.Get(camera.name);
+
+            // Setup camera properties
+            context.SetupCameraProperties(camera);
+
+            // Set CameraTarget with Load action to preserve Base camera's output
+            buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,
+                RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
+                BuiltinRenderTextureType.CameraTarget,
+                RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+            buffer.SetViewport(camera.pixelRect);
+
+            context.ExecuteCommandBuffer(buffer);
+            buffer.Clear();
+
+            // Draw opaque geometry
+            var sortingSettings = new SortingSettings(camera) { criteria = SortingCriteria.CommonOpaque };
+            var drawingSettings = new DrawingSettings(geometryShaderTagIDs[0], sortingSettings);
+            drawingSettings.SetShaderPassName(1, geometryShaderTagIDs[1]);
+            drawingSettings.perObjectData = PerObjectData.ReflectionProbes | PerObjectData.Lightmaps |
+                PerObjectData.ShadowMask | PerObjectData.LightProbe | PerObjectData.OcclusionProbe |
+                PerObjectData.LightProbeProxyVolume | PerObjectData.OcclusionProbeProxyVolume;
+            var filteringSettings = new FilteringSettings(RenderQueueRange.opaque,
+                cameraSettings.renderingLayerMask);
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
+
+            // Draw transparent geometry
+            sortingSettings = new SortingSettings(camera) { criteria = SortingCriteria.CommonTransparent };
+            drawingSettings = new DrawingSettings(geometryShaderTagIDs[0], sortingSettings);
+            drawingSettings.SetShaderPassName(1, geometryShaderTagIDs[1]);
+            drawingSettings.perObjectData = PerObjectData.ReflectionProbes | PerObjectData.Lightmaps |
+                PerObjectData.ShadowMask | PerObjectData.LightProbe | PerObjectData.OcclusionProbe |
+                PerObjectData.LightProbeProxyVolume | PerObjectData.OcclusionProbeProxyVolume;
+            filteringSettings = new FilteringSettings(RenderQueueRange.transparent,
+                cameraSettings.renderingLayerMask);
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
+
+            context.Submit();
+            CommandBufferPool.Release(buffer);
         }
 
         public void Dispose()

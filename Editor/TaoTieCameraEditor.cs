@@ -38,9 +38,9 @@ namespace TaoTie.RenderPipelines.Editor
             public static readonly GUIContent AddComponentBtn =
                 new("Add TaoTie RP Camera Component");
 
-            public static readonly GUIContent SetOverlayBtn =
-                new("Set as Overlay Camera",
-                    "Sets Clear Flags to Don't Clear and Final Blend Mode to Alpha Blend for overlay rendering.");
+            public static readonly GUIContent SetBlendBtn =
+                new("Set as Blend Camera",
+                    "Sets Rendering Mode to Blend, Clear Flags to Don't Clear and Final Blend Mode to Alpha Blend.");
         }
 
         void InitProperties()
@@ -121,13 +121,20 @@ namespace TaoTie.RenderPipelines.Editor
             // Rebuild SerializedObject every frame so it survives domain reloads
             // and picks up component add/remove immediately.
             var taoTieCams = new List<Object>();
+            int overlayCount = 0;
             foreach (var t in targets)
             {
                 var cam = t as Camera;
                 if (cam == null) continue;
                 var c = cam.GetComponent<TaoTieRenderPipelineCamera>();
                 if (c != null)
+                {
                     taoTieCams.Add(c);
+                    if (c.Settings.renderingMode == CameraSettings.RenderingMode.RenderDirectToScreen)
+                    {
+                        overlayCount++;
+                    }
+                }
             }
 
             if (taoTieCams.Count > 0)
@@ -146,9 +153,9 @@ namespace TaoTie.RenderPipelines.Editor
                 }
 
                 EditorGUILayout.Space(4);
-                if (GUILayout.Button(Styles.SetOverlayBtn))
+                if (overlayCount <= 0 && GUILayout.Button(Styles.SetBlendBtn))
                 {
-                    SetAsOverlayCamera(targets, taoTieCams.ToArray());
+                    SetAsBlendCamera(targets, taoTieCams.ToArray());
                 }
             }
             else
@@ -168,10 +175,10 @@ namespace TaoTie.RenderPipelines.Editor
             }
         }
 
-        static void SetAsOverlayCamera(Object[] targets, Object[] taoTieCams)
+        static void SetAsBlendCamera(Object[] targets, Object[] taoTieCams)
         {
-            Undo.RecordObjects(targets, "Set as Overlay Camera");
-            Undo.RecordObjects(taoTieCams, "Set as Overlay Camera");
+            Undo.RecordObjects(targets, "Set as Blend Camera");
+            Undo.RecordObjects(taoTieCams, "Set as Blend Camera");
 
             foreach (var t in targets)
             {

@@ -10,25 +10,24 @@ namespace TaoTie.RenderPipelines
 
         Camera camera;
         TextureHandle colorAttachment, depthAttachment;
+        Vector2Int bufferSize;
 
         void Render(RenderGraphContext context)
         {
             CommandBuffer cmd = context.cmd;
-            // Explicitly bind color + depth so skybox ZTest works against
-            // geometry depth written by the G-Buffer / forward opaque pass.
             cmd.SetRenderTarget(
                 colorAttachment,
                 RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
                 depthAttachment,
                 RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
-            cmd.SetViewport(new Rect(0, 0, camera.pixelWidth, camera.pixelHeight));
+            cmd.SetViewport(new Rect(0, 0, bufferSize.x, bufferSize.y));
             context.renderContext.ExecuteCommandBuffer(cmd);
             cmd.Clear();
             context.renderContext.DrawSkybox(camera);
         }
 
         public static void Record(RenderGraph renderGraph, Camera camera,
-            in CameraRendererTextures textures)
+            in CameraRendererTextures textures, Vector2Int bufferSize)
         {
             if (camera.clearFlags == CameraClearFlags.Skybox)
             {
@@ -37,6 +36,7 @@ namespace TaoTie.RenderPipelines
                 pass.camera = camera;
                 pass.colorAttachment = textures.colorAttachment;
                 pass.depthAttachment = textures.depthAttachment;
+                pass.bufferSize = bufferSize;
 
                 builder.WriteTexture(textures.colorAttachment);
                 builder.ReadTexture(textures.depthAttachment);

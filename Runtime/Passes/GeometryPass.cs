@@ -18,9 +18,19 @@ namespace TaoTie.RenderPipelines
 		};
 
 		RendererListHandle list;
+		TextureHandle colorAttachment, depthAttachment;
+		bool needRenderTargetSetup;
 
 		void Render(RenderGraphContext context)
 		{
+			if (needRenderTargetSetup)
+			{
+				context.cmd.SetRenderTarget(
+					colorAttachment,
+					RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
+					depthAttachment,
+					RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+			}
 			context.cmd.DrawRendererList(list);
 			context.renderContext.ExecuteCommandBuffer(context.cmd);
 			context.cmd.Clear();
@@ -55,6 +65,12 @@ namespace TaoTie.RenderPipelines
 					renderQueueRange = opaque ? RenderQueueRange.opaque : RenderQueueRange.transparent,
 					renderingLayerMask = (uint) renderingLayerMask
 				}));
+
+			pass.colorAttachment = textures.colorAttachment;
+			pass.depthAttachment = textures.depthAttachment;
+			// Transparent pass: explicitly rebind color+depth to ensure depth from opaque/GBuffer is available
+			// (DeferredLightingPass may have unbound depth, CopyAttachmentsPass may have changed RT state)
+			pass.needRenderTargetSetup = !opaque;
 
 			builder.ReadWriteTexture(textures.colorAttachment);
 			builder.ReadWriteTexture(textures.depthAttachment);
