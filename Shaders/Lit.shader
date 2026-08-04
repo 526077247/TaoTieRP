@@ -93,6 +93,7 @@
             ENDHLSL
         }
         Pass {
+			Name "ShadowCaster"
 			Tags {
 				"LightMode" = "ShadowCaster"
 			}
@@ -109,6 +110,7 @@
 			ENDHLSL
 		}
 		Pass {
+			Name "DepthOnly"
 			Tags {
 				"LightMode" = "DepthOnly"
 			}
@@ -148,6 +150,7 @@
 			ENDHLSL
 		}
 		Pass {
+			Name "Meta"
 			Tags {
 				"LightMode" = "Meta"
 			}

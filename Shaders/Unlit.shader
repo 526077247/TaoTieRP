@@ -42,6 +42,7 @@ Shader "TaoTie RP/Unlit"
         }
     	Pass
 		{
+			Name "ShadowCaster"
 			Tags
 			{
 				"LightMode" = "ShadowCaster"
@@ -59,6 +60,7 @@ Shader "TaoTie RP/Unlit"
 			ENDHLSL
 		}
 		Pass {
+			Name "DepthOnly"
 			Tags {
 				"LightMode" = "DepthOnly"
 			}
@@ -76,6 +78,7 @@ Shader "TaoTie RP/Unlit"
 			ENDHLSL
 		}
         Pass {
+			Name "Meta"
 			Tags {
 				"LightMode" = "Meta"
 			}
