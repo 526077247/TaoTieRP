@@ -12,6 +12,7 @@ namespace TaoTie.RenderPipelines
 
         const int ForwardPlusEnableThreshold = 16;
         const int ForwardPlusDisableThreshold = 8;
+        const string k_OverlayBufferName = "Overlay Camera";
         static bool forwardPlusActive;
 
         static CameraSettings defaultCameraSettings = new CameraSettings();
@@ -518,7 +519,7 @@ namespace TaoTie.RenderPipelines
             cullParams.shadowDistance = Mathf.Min(shadowSettings.maxDistance, camera.farClipPlane);
             CullingResults cullingResults = context.Cull(ref cullParams);
 
-            CommandBuffer buffer = CommandBufferPool.Get(camera.name);
+            CommandBuffer buffer = CommandBufferPool.Get(k_OverlayBufferName);
 
             // Setup camera properties
             context.SetupCameraProperties(camera);
