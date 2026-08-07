@@ -30,6 +30,7 @@ Shader "TaoTie RP/Unlit"
        
         Pass
         {
+        	Name "UnlitPass"
             Blend [_SrcBlend] [_DstBlend]
             ZWrite [_ZWrite]
             HLSLPROGRAM

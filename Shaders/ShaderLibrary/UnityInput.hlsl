@@ -4,43 +4,61 @@
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
 CBUFFER_START(UnityPerDraw)
 #endif
+// Space block feature
 float4x4 unity_ObjectToWorld;
 float4x4 unity_WorldToObject;
 float4 unity_LODFade;
 real4 unity_WorldTransformParams;
 
+// Render Layer block feature
 float4 unity_RenderingLayer;
 
+// Light Indices block feature
+float4 unity_PackedLightIndices;
+half4 unity_LightData;
 
 float4 unity_ProbesOcclusion;
 
-float4 unity_SpecCube0_HDR;
+// Reflection Probe block feature
+real4 unity_SpecCube0_HDR;
+real4 unity_SpecCube1_HDR;
 
-// Reflection probe blending + box projection (engine-managed globals)
-TEXTURECUBE(unity_SpecCube0);
-SAMPLER(samplerunity_SpecCube0);
-TEXTURECUBE(unity_SpecCube1);
-SAMPLER(samplerunity_SpecCube1);
-
-// Box projection: xyz = box center, w = enable flag (1 = box, 0 = infinite)
-float4 unity_SpecCube0_BoxMin;
 float4 unity_SpecCube0_BoxMax;
-float4 unity_SpecCube1_BoxMin;
+float4 unity_SpecCube0_BoxMin;
+float4 unity_SpecCube0_ProbePosition;
+float4 unity_SpecCube0_Rotation;
 float4 unity_SpecCube1_BoxMax;
-// Blend weight for second probe: unity_SpecCube1_HDR.a or separate
-float4 unity_SpecCube1_HDR;
+float4 unity_SpecCube1_BoxMin;
+float4 unity_SpecCube1_ProbePosition;
+float4 unity_SpecCube1_Rotation;
 
+// Lightmap block feature
 float4 unity_LightmapST;
 float4 unity_DynamicLightmapST;
 
-float4 unity_SHAr;
-float4 unity_SHAg;
-float4 unity_SHAb;
-float4 unity_SHBr;
-float4 unity_SHBg;
-float4 unity_SHBb;
-float4 unity_SHC;
+// SH block feature
+real4 unity_SHAr;
+real4 unity_SHAg;
+real4 unity_SHAb;
+real4 unity_SHBr;
+real4 unity_SHBg;
+real4 unity_SHBb;
+real4 unity_SHC;
 
+// Renderer bounding box
+float4 unity_RendererBounds_Min;
+float4 unity_RendererBounds_Max;
+
+// Velocity
+float4x4 unity_MatrixPreviousM;
+float4x4 unity_MatrixPreviousMI;
+float4 unity_MotionVectorsParams;
+
+// Sprite
+float4 unity_SpriteColor;
+float4 unity_SpriteProps;
+
+// Light Probe Proxy Volume
 float4 unity_ProbeVolumeParams;
 float4x4 unity_ProbeVolumeWorldToObject;
 float4 unity_ProbeVolumeSizeInv;
@@ -50,11 +68,15 @@ float4 unity_ProbeVolumeMin;
 CBUFFER_END
 #endif
 
+// Reflection probe textures (outside cbuffer for SRP Batcher compatibility)
+TEXTURECUBE(unity_SpecCube0);
+SAMPLER(samplerunity_SpecCube0);
+TEXTURECUBE(unity_SpecCube1);
+SAMPLER(samplerunity_SpecCube1);
+
 float4x4 unity_MatrixVP;
 float4x4 unity_MatrixV;
 float4x4 unity_MatrixInvV;
-float4x4 unity_prev_MatrixM;
-float4x4 unity_prev_MatrixIM;
 float4x4 glstate_matrix_projection;
 
 float3 _WorldSpaceCameraPos;

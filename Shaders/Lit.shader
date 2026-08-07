@@ -66,6 +66,7 @@
 		ENDHLSL
 
 		Pass {
+			Name "ForwardPass"
 			Tags {
 				"LightMode" = "CustomLit"
 			}
@@ -128,6 +129,7 @@
 			ENDHLSL
 		}
 		Pass {
+			Name "DeferredPass"
 			Tags {
 				"LightMode" = "DeferredGBuffer"
 			}

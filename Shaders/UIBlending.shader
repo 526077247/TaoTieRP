@@ -41,16 +41,28 @@
 		Pass {
 			Name "Default"
 			
-			CGPROGRAM
+			HLSLPROGRAM
 			#pragma vertex UIPassVertex
 			#pragma fragment UIPassFragment
 			#pragma target 2.0
 
-			#include "UnityCG.cginc"
-			#include "UnityUI.cginc"
-
 			#pragma multi_compile_local _ UNITY_UI_CLIP_RECT
 			#pragma multi_compile_local _ UNITY_UI_ALPHACLIP
+			#pragma multi_compile_instancing
+
+			#include "ShaderLibrary/Common.hlsl"
+
+			TEXTURE2D(_MainTex);
+			SAMPLER(sampler_MainTex);
+
+			CBUFFER_START(UnityPerMaterial)
+				float4 _MainTex_ST;
+				float4 _Color;
+			CBUFFER_END
+
+			// Per-renderer globals (set by Canvas, not material properties)
+			float4 _TextureSampleAdd;
+			float4 _ClipRect;
 
 			struct Attributes {
 				float4 positionOS : POSITION;
@@ -67,35 +79,30 @@
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
-			sampler2D _MainTex;
-			float4 _MainTex_ST;
-			float4 _Color;
-			float4 _TextureSampleAdd;
-			float4 _ClipRect;
-
 			Varyings UIPassVertex (Attributes input) {
 				Varyings output;
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-				output.positionCS = UnityObjectToClipPos(input.positionOS);
+				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
 				output.positionUI = input.positionOS.xy;
-				output.baseUV = TRANSFORM_TEX(input.baseUV, _MainTex);
+				output.baseUV = input.baseUV * _MainTex_ST.xy + _MainTex_ST.zw;
 				output.color = input.color * _Color;
 				return output;
 			}
 
 			float4 UIPassFragment (Varyings input) : SV_Target {
 				float4 color =
-					(tex2D(_MainTex, input.baseUV) + _TextureSampleAdd) * input.color;
+					(SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.baseUV) + _TextureSampleAdd) * input.color;
 				#if defined(UNITY_UI_CLIP_RECT)
-					color.a *= UnityGet2DClipping(input.positionUI, _ClipRect);
+					float2 inside = step(_ClipRect.xy, input.positionUI) * step(input.positionUI, _ClipRect.zw);
+					color.a *= inside.x * inside.y;
 				#endif
 				#if defined(UNITY_UI_ALPHACLIP)
 					clip (color.a - 0.001);
 				#endif
 				return color;
 			}
-			ENDCG
+			ENDHLSL
 		}
 	}
 	CustomEditor "LWGUI.LWGUI"
