@@ -76,10 +76,11 @@ namespace TaoTie.RenderPipelines
             cmd.SetViewProjectionMatrices(cameraView, cameraProj);
 
             // Copy result to color attachment for PostFX/Final
-            cmd.CopyTexture(tempResult, colorAttachment);
+            // Use Blit instead of CopyTexture to avoid D3D11 format group mismatch
+            cmd.Blit(tempResult, colorAttachment);
 
             // Copy result to history for next frame
-            cmd.CopyTexture(tempResult, historyOutput);
+            cmd.Blit(tempResult, historyOutput);
 
             context.renderContext.ExecuteCommandBuffer(cmd);
             cmd.Clear();
