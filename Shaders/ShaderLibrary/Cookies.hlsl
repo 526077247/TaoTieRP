@@ -3,8 +3,12 @@
 
 #include "Common.hlsl"
 
-#define MAX_DIRECTIONAL_LIGHT_COUNT 4
-#define MAX_COOKIE_OTHER_LIGHT_COUNT 8
+#ifndef MAX_DIRECTIONAL_LIGHT_COUNT
+    #define MAX_DIRECTIONAL_LIGHT_COUNT 4
+#endif
+#ifndef MAX_COOKIE_OTHER_LIGHT_COUNT
+    #define MAX_COOKIE_OTHER_LIGHT_COUNT 8
+#endif
 
 // Each TEXTURE2D consumes one sampler slot. On GLES2/GLES3/WebGL2 the
 // combined sampler limit is 16, and the Lit shader already uses ~10-14
@@ -21,18 +25,8 @@ TEXTURE2D(_OtherLightCookie2); TEXTURE2D(_OtherLightCookie3);
 TEXTURE2D(_OtherLightCookie4); TEXTURE2D(_OtherLightCookie5);
 TEXTURE2D(_OtherLightCookie6); TEXTURE2D(_OtherLightCookie7);
 
-// World-to-light cookie projection matrices + enable flags
-// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_START(CookieMatrices)
-#endif
-    float4x4 _DirLightCookieMatrix[MAX_DIRECTIONAL_LIGHT_COUNT];
-    float4x4 _OtherLightCookieMatrix[MAX_COOKIE_OTHER_LIGHT_COUNT];
-    float _DirLightCookieEnabled[MAX_DIRECTIONAL_LIGHT_COUNT];
-    float _OtherLightCookieEnabled[MAX_COOKIE_OTHER_LIGHT_COUNT];
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_END
-#endif
+// Cookie projection matrices + enable flags are declared once, centrally, inside the
+// CookieMatrices constant buffer in UnityPerFrameCBuffers.hlsl.
 
 // Directional: orthographic projection, tile with frac()
 float3 SampleDirectionalCookie(int index, float3 positionWS)

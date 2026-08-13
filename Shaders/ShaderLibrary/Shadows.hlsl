@@ -19,9 +19,15 @@
 	#define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_3x3
 #endif
 
-#define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
-#define MAX_SHADOWED_OTHER_LIGHT_COUNT 16
-#define MAX_CASCADE_COUNT 4
+#ifndef MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT
+    #define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
+#endif
+#ifndef MAX_SHADOWED_OTHER_LIGHT_COUNT
+    #define MAX_SHADOWED_OTHER_LIGHT_COUNT 16
+#endif
+#ifndef MAX_CASCADE_COUNT
+    #define MAX_CASCADE_COUNT 4
+#endif
 
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
 TEXTURE2D_SHADOW(_OtherShadowAtlas);
@@ -32,26 +38,6 @@ SAMPLER_CMP(SHADOW_SAMPLER);
 float SampleScreenSpaceShadowmap(float2 screenUV) {
 	return SAMPLE_TEXTURE2D(_ScreenSpaceShadowmapTexture, sampler_point_clamp, screenUV).r;
 }
-
-// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_START(_CustomShadows)
-#endif
-	float _CascadeCount;
-	float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
-	float4 _CascadeData[MAX_CASCADE_COUNT];
-	float4x4 _DirectionalShadowMatrices
-		[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
-	float4x4 _OtherShadowMatrices[MAX_SHADOWED_OTHER_LIGHT_COUNT];
-	float4 _OtherShadowTiles[MAX_SHADOWED_OTHER_LIGHT_COUNT];
-	float4 _ShadowAtlasSize;
-	float4 _ShadowDistanceFade;
-	float _SoftCascadeBlend;
-	float _ShadowMaskMode;
-
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_END
-#endif
 
 struct ShadowMask {
 	bool always;

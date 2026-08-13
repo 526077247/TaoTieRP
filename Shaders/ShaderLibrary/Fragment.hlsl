@@ -4,7 +4,6 @@
 TEXTURE2D(_CameraColorTexture);
 TEXTURE2D(_CameraDepthTexture);
 
-float4 _CameraBufferSize;
 
 struct Fragment {
     float2 positionSS;

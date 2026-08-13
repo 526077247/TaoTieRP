@@ -1,23 +1,6 @@
 #ifndef TAOTIE_FORWARD_PLUS_INCLUDED
 #define TAOTIE_FORWARD_PLUS_INCLUDED
 
-// xy: Screen UV to tile coordinates.
-// z: Tiles per row, as integer.
-// w: wordsPerTile (number of uint32 words per tile bitmask)
-float4 _ForwardPlusTileSettings;
-
-// x: dataStride (texture width / wordsPerTile, power-of-2)
-// y: zBinCount
-// z: wordsPerTile
-// w: unused
-float4 _ForwardPlusDataSize;
-
-// x: zBinCount
-// y: camera near
-// z: 1 / (far - near)
-// w: camera far
-float4 _ZBinParams;
-
 #if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3) && !defined(SHADER_API_GLCORE)
     StructuredBuffer<uint> _ForwardPlusTileBitmaskBuf;
     StructuredBuffer<uint> _ForwardPlusZBinBuf;

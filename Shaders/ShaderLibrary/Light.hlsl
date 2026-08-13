@@ -1,36 +1,23 @@
 #ifndef TAOTIE_LIGHT_INCLUDED
 #define TAOTIE_LIGHT_INCLUDED
 
-#define MAX_DIRECTIONAL_LIGHT_COUNT 4
-#if defined(SHADER_API_GLES)
-    #define MAX_OTHER_LIGHT_COUNT 8
-#elif defined(SHADER_API_GLES3)
-	#define MAX_OTHER_LIGHT_COUNT 32
-#else
-    #define MAX_OTHER_LIGHT_COUNT 256
+#ifndef MAX_DIRECTIONAL_LIGHT_COUNT
+    #define MAX_DIRECTIONAL_LIGHT_COUNT 4
+#endif
+#ifndef MAX_OTHER_LIGHT_COUNT
+    #if defined(SHADER_API_GLES)
+        #define MAX_OTHER_LIGHT_COUNT 8
+    #elif defined(SHADER_API_GLES3)
+        #define MAX_OTHER_LIGHT_COUNT 32
+    #else
+        #define MAX_OTHER_LIGHT_COUNT 256
+    #endif
 #endif
 
 #include "Cookies.hlsl"
 
-// GLES2/GLES3: CBUFFER arrays not supported or cause performance regression.
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_START(_CustomLight)
-#endif
-	float _DirectionalLightCount;
-	float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
-	float4 _DirectionalLightDirectionsAndMasks[MAX_DIRECTIONAL_LIGHT_COUNT];
-	float4 _DirectionalLightShadowData[MAX_DIRECTIONAL_LIGHT_COUNT];
-
-	float _OtherLightCount;
-	float _VertexLightCount;
-	float4 _OtherLightColors[MAX_OTHER_LIGHT_COUNT];
-	float4 _OtherLightPositions[MAX_OTHER_LIGHT_COUNT];
-	float4 _OtherLightDirectionsAndMasks[MAX_OTHER_LIGHT_COUNT];
-	float4 _OtherLightSpotAngles[MAX_OTHER_LIGHT_COUNT];
-	float4 _OtherLightShadowData[MAX_OTHER_LIGHT_COUNT];
-#if !defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
-CBUFFER_END
-#endif
+// Directional / other light uniforms are declared once, centrally, inside the
+// CustomLight constant buffer in UnityPerFrameCBuffers.hlsl.
 
 struct VertexLight {
 	float3 color;

@@ -40,8 +40,6 @@ float3 DecodeGBufferNormal(float2 f) {
     return normalize(n);
 }
 
-// Inverse view-projection matrix, set from C# for reliable world position reconstruction.
-float4x4 _InverseViewProj;
 
 // Reconstruct world-space position from depth and screen UV.
 // _InverseViewProj computed with GL.GetGPUProjectionMatrix(, true) includes Y-flip,

@@ -1,8 +1,6 @@
 ﻿#ifndef TAOTIE_SHADOW_CASTER_PASS_INCLUDED
 #define TAOTIE_SHADOW_CASTER_PASS_INCLUDED
 
-bool _ShadowPancaking;
-
 struct Attributes {
     float3 positionOS : POSITION;
     float2 baseUV : TEXCOORD0;
