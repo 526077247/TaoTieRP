@@ -233,6 +233,7 @@ namespace TaoTie.RenderPipelines
                         break;
                     case CameraBufferSettings.HighQualityAAMode.TAA:
                         useTAA = !isReflectionCamera &&
+                                 !camera.orthographic &&
                                  camera.cameraType != CameraType.Preview &&
                                  SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
                         break;
@@ -312,6 +313,18 @@ namespace TaoTie.RenderPipelines
             Matrix4x4 nonJitteredProj = camera.projectionMatrix;
             Vector2 taaJitter = Vector2.zero;
             var taaSettings = bufferSettings.taaSettings ?? new CameraBufferSettings.TAASettings();
+            // Detect projection mode change (perspective ↔ orthographic) and reset TAA history
+            // to prevent wild reprojection artifacts after switching SceneView 2D mode.
+            if (cameraSettings.allowHighQualityAA &&
+                bufferSettings.highQualityAA == CameraBufferSettings.HighQualityAAMode.TAA)
+            {
+                var taaDataForReset = TAACameraData.Get(camera);
+                if (taaDataForReset.prevOrthographic != camera.orthographic)
+                {
+                    taaDataForReset.prevOrthographic = camera.orthographic;
+                    taaDataForReset.hasHistory = false;
+                }
+            }
             if (useTAA)
             {
                 taaData = TAACameraData.Get(camera);

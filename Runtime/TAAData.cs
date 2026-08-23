@@ -11,6 +11,7 @@ namespace TaoTie.RenderPipelines
         public Matrix4x4 prevViewProjMatrix;
         public int frameIndex;
         public bool hasHistory;
+        public bool prevOrthographic;
 
         static readonly Dictionary<Camera, TAACameraData> dataMap = new();
 
