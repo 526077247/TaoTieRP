@@ -13,7 +13,7 @@ Shader "Hidden/TaoTie RP/Overdraw Resolve"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
 
             float _OverdrawOpacity;
             TEXTURE2D(_OverdrawCounterTex);

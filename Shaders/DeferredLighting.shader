@@ -16,7 +16,7 @@ Shader "Hidden/TaoTie RP/Deferred Lighting" {
             #pragma vertex DeferredLightingVertex
             #pragma fragment DeferredLightingFragment
             #define TAOTIE_DEFERRED_LIGHTING 1
-            #include "ShaderLibrary/DeferredLightingPass.hlsl"
+            #include "../ShaderLibrary/DeferredLightingPass.hlsl"
             ENDHLSL
         }
     }

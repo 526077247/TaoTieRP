@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Lens Distortion" {
             Name "Lens Distortion"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/LensDistortion.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/LensDistortion.hlsl"
             #pragma vertex LDPassVertex
             #pragma fragment LDFragment
             ENDHLSL

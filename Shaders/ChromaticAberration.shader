@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Chromatic Aberration" {
             Name "Chromatic Aberration"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/ChromaticAberration.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/ChromaticAberration.hlsl"
             #pragma vertex CAPassVertex
             #pragma fragment CAFragment
             ENDHLSL

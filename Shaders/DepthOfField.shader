@@ -5,8 +5,8 @@ Shader "Hidden/TaoTie RP/Depth Of Field" {
         ZWrite Off
 
         HLSLINCLUDE
-        #include "ShaderLibrary/Common.hlsl"
-        #include "ShaderLibrary/DepthOfField.hlsl"
+        #include "../ShaderLibrary/Common.hlsl"
+        #include "../ShaderLibrary/DepthOfField.hlsl"
         ENDHLSL
 
         // Pass 0: Calculate CoC and store in alpha

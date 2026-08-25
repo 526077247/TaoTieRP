@@ -302,8 +302,8 @@ com.taotie.render-pipelines/
 ├── Editor/
 │   ├── ShaderStripper.cs          # Build-time shader stripping
 │   └── ...                        # Property drawers, asset creators
+├── ShaderLibrary/                 # HLSL includes (Common, Lighting, BRDF, GI, ForwardPlus, etc.)
 ├── Shaders/
-│   ├── ShaderLibrary/             # HLSL includes (Common, Lighting, BRDF, GI, ForwardPlus, etc.)
 │   ├── ForwardPlusCulling.compute # GPU tile light culling
 │   ├── Lit.shader                 # PBR lit shader
 │   ├── PostFXStack.shader         # Post-processing stack

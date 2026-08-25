@@ -1,4 +1,4 @@
-﻿Shader "Hidden/TaoTie RP/Post FX Stack" {
+Shader "Hidden/TaoTie RP/Post FX Stack" {
 	
 	SubShader {
 		Cull Off
@@ -6,8 +6,8 @@
 		ZWrite Off
 		
 		HLSLINCLUDE
-		#include "ShaderLibrary/Common.hlsl"
-		#include "ShaderLibrary/PostFXStackPasses.hlsl"
+		#include "../ShaderLibrary/Common.hlsl"
+		#include "../ShaderLibrary/PostFXStackPasses.hlsl"
 		ENDHLSL
 
 		Pass {
@@ -148,7 +148,7 @@
 				
 				#pragma vertex DefaultPassVertex
 				#pragma fragment FXAAPassFragment
-				#include "ShaderLibrary/FXAAPass.hlsl"
+				#include "../ShaderLibrary/FXAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -159,7 +159,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAAEdgeDetectionPassFragment
-				#include "ShaderLibrary/SMAAPass.hlsl"
+				#include "../ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -170,7 +170,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAABlendingWeightCalculationPassFragment
-				#include "ShaderLibrary/SMAAPass.hlsl"
+				#include "../ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -181,7 +181,7 @@
 			HLSLPROGRAM
 				#pragma vertex DefaultPassVertex
 				#pragma fragment SMAANeighborhoodBlendingPassFragment
-				#include "ShaderLibrary/SMAAPass.hlsl"
+				#include "../ShaderLibrary/SMAAPass.hlsl"
 			ENDHLSL
 		}
 	}

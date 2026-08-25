@@ -1,4 +1,4 @@
-﻿Shader "TaoTie RP/UI TaoTie Blending" {
+Shader "TaoTie RP/UI TaoTie Blending" {
 	Properties {
 		[PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
 		_Color ("Tint", Color) = (1,1,1,1)
@@ -50,7 +50,7 @@
 			#pragma multi_compile_local _ UNITY_UI_ALPHACLIP
 			#pragma multi_compile_instancing
 
-			#include "ShaderLibrary/Common.hlsl"
+			#include "../ShaderLibrary/Common.hlsl"
 
 			TEXTURE2D(_MainTex);
 			SAMPLER(sampler_MainTex);

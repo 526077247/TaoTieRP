@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Volumetric Fog" {
             Name "Volumetric Fog"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/VolumetricFog.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/VolumetricFog.hlsl"
             #pragma vertex VFogPassVertex
             #pragma fragment VolumetricFogFragment
             ENDHLSL

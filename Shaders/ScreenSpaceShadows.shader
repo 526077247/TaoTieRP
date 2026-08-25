@@ -14,12 +14,12 @@ Shader "Hidden/TaoTie RP/Screen Space Shadows" {
             #pragma multi_compile_local _ _SHADOW_FILTER_MEDIUM _SHADOW_FILTER_HIGH
             #pragma multi_compile_local _ _SHADOW_MASK
 
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/Fragment.hlsl"
-            #include "ShaderLibrary/Surface.hlsl"
-            #include "ShaderLibrary/Shadows.hlsl"
-            #include "ShaderLibrary/Light.hlsl"
-            #include "ShaderLibrary/GBuffer.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Fragment.hlsl"
+            #include "../ShaderLibrary/Surface.hlsl"
+            #include "../ShaderLibrary/Shadows.hlsl"
+            #include "../ShaderLibrary/Light.hlsl"
+            #include "../ShaderLibrary/GBuffer.hlsl"
 
             struct Varyings {
                 float4 positionCS : SV_POSITION;

@@ -1,4 +1,4 @@
-﻿Shader "Hidden/TaoTie RP/ForwardPlus Debugger"
+Shader "Hidden/TaoTie RP/ForwardPlus Debugger"
 {	
 	SubShader
 	{
@@ -7,8 +7,8 @@
 		ZWrite Off
 		
 		HLSLINCLUDE
-		#include "../ShaderLibrary/Common.hlsl"
-		#include "ForwardPlusDebuggerPasses.hlsl"
+		#include "../../ShaderLibrary/Common.hlsl"
+		#include "../../ShaderLibrary/Debugger/ForwardPlusDebuggerPasses.hlsl"
 		ENDHLSL
 
 		Pass

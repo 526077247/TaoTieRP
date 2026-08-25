@@ -5,7 +5,7 @@ Shader "Hidden/TaoTie RP/TAA" {
         ZWrite Off
 
         HLSLINCLUDE
-        #include "ShaderLibrary/Common.hlsl"
+        #include "../ShaderLibrary/Common.hlsl"
 
         TEXTURE2D(_TAACurrentColor);
         TEXTURE2D(_TAAHistoryColor);

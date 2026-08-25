@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Panini Projection" {
             Name "Panini Projection"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/PaniniProjection.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/PaniniProjection.hlsl"
             #pragma vertex PPPassVertex
             #pragma fragment PPFragment
             ENDHLSL

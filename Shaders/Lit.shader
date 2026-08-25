@@ -1,4 +1,4 @@
-﻿Shader "TaoTie RP/Lit" {
+Shader "TaoTie RP/Lit" {
 	
 	Properties {
 		[Main(Surface, _, off, off)]
@@ -61,8 +61,8 @@
 	
 	SubShader {
 		HLSLINCLUDE
-		#include "ShaderLibrary/Common.hlsl"
-		#include "ShaderLibrary/LitInput.hlsl"
+		#include "../ShaderLibrary/Common.hlsl"
+		#include "../ShaderLibrary/LitInput.hlsl"
 		ENDHLSL
 
 		Pass {
@@ -90,7 +90,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex LitPassVertex
 			#pragma fragment LitPassFragment
-			#include "ShaderLibrary/LitPass.hlsl"
+			#include "../ShaderLibrary/LitPass.hlsl"
             ENDHLSL
         }
         Pass {
@@ -107,7 +107,7 @@
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
-			#include "ShaderLibrary/ShadowCasterPass.hlsl"
+			#include "../ShaderLibrary/ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -125,7 +125,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex DepthOnlyPassVertex
 			#pragma fragment DepthOnlyPassFragment
-			#include "ShaderLibrary/DepthOnlyPass.hlsl"
+			#include "../ShaderLibrary/DepthOnlyPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -148,7 +148,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex DeferredGBufferPassVertex
 			#pragma fragment DeferredGBufferPassFragment
-			#include "ShaderLibrary/DeferredGBufferPass.hlsl"
+			#include "../ShaderLibrary/DeferredGBufferPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -163,7 +163,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
-			#include "ShaderLibrary/MetaPass.hlsl"
+			#include "../ShaderLibrary/MetaPass.hlsl"
 			ENDHLSL
 		}
     }

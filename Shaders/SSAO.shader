@@ -5,7 +5,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
         ZWrite Off
 
         HLSLINCLUDE
-        #include "ShaderLibrary/Common.hlsl"
+        #include "../ShaderLibrary/Common.hlsl"
         ENDHLSL
 
         // Pass 0: Generate SSAO
@@ -18,7 +18,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
             #pragma fragment SSAOGenerateFragment
             #pragma multi_compile _ SSAO_LOW SSAO_MEDIUM SSAO_HIGH
 
-            #include "ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
 
             float4 _SSAOTexelSize;    // (1/w, 1/h, w, h)
             float4 _SSAOParams;      // x=intensity, y=radius, z=falloff, w=downsample
@@ -193,7 +193,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
             #pragma vertex SSAOVertex
             #pragma fragment HorizontalBlurFragment
 
-            #include "ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
 
             float4 _SSAOTexelSize;
 
@@ -249,7 +249,7 @@ Shader "Hidden/TaoTie RP/SSAO" {
             #pragma vertex SSAOVertex
             #pragma fragment VerticalBlurFragment
 
-            #include "ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
 
             float4 _SSAOTexelSize;
 

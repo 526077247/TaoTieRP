@@ -1,3 +1,16 @@
 {
-	"name": "TaoTie.RenderPipelines.Shaders"
+    "name": "TaoTie.RenderPipelines.Shaders",
+    "rootNamespace": "",
+    "references": [
+        "GUID:0f6804685d4908a48a3f708ae9cc2e15"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

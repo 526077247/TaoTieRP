@@ -21,8 +21,8 @@ Shader "TaoTie RP/Unlit"
     SubShader
     {
         HLSLINCLUDE
-		#include "ShaderLibrary/Common.hlsl"
-		#include "ShaderLibrary/UnlitInput.hlsl"
+		#include "../ShaderLibrary/Common.hlsl"
+		#include "../ShaderLibrary/UnlitInput.hlsl"
 		ENDHLSL
         
         Tags { "RenderType"="Opaque" }
@@ -38,7 +38,7 @@ Shader "TaoTie RP/Unlit"
             #pragma multi_compile_instancing
             #pragma vertex UnlitPassVertex
 			#pragma fragment UnlitPassFragment
-			#include "ShaderLibrary/UnlitPass.hlsl"
+			#include "../ShaderLibrary/UnlitPass.hlsl"
             ENDHLSL
         }
     	Pass
@@ -57,7 +57,7 @@ Shader "TaoTie RP/Unlit"
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
-			#include "ShaderLibrary/ShadowCasterPass.hlsl"
+			#include "../ShaderLibrary/ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
 		Pass {
@@ -75,7 +75,7 @@ Shader "TaoTie RP/Unlit"
 			#pragma multi_compile_instancing
 			#pragma vertex DepthOnlyPassVertex
 			#pragma fragment DepthOnlyPassFragment
-			#include "ShaderLibrary/DepthOnlyPass.hlsl"
+			#include "../ShaderLibrary/DepthOnlyPass.hlsl"
 			ENDHLSL
 		}
         Pass {
@@ -90,7 +90,7 @@ Shader "TaoTie RP/Unlit"
 			#pragma multi_compile_instancing
 			#pragma vertex MetaPassVertex
 			#pragma fragment MetaPassFragment
-			#include "ShaderLibrary/MetaPass.hlsl"
+			#include "../ShaderLibrary/MetaPass.hlsl"
 			ENDHLSL
 		}
     }

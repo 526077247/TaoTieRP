@@ -17,7 +17,7 @@ Shader "Hidden/TaoTie RP/Overdraw"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
-            #include "ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
 
             struct Attributes
             {

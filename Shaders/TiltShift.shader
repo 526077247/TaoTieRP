@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Tilt Shift" {
             Name "TiltShift"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/TiltShift.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/TiltShift.hlsl"
             #pragma vertex TiltShiftPassVertex
             #pragma fragment TiltShiftFragment
             ENDHLSL

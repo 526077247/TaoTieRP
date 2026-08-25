@@ -1,4 +1,4 @@
-﻿Shader "TaoTie RP/Particles/Unlit"
+Shader "TaoTie RP/Particles/Unlit"
 {
     Properties
     {
@@ -46,8 +46,8 @@
     SubShader
     {
         HLSLINCLUDE
-		#include "ShaderLibrary/Common.hlsl"
-		#include "ShaderLibrary/UnlitInput.hlsl"
+		#include "../ShaderLibrary/Common.hlsl"
+		#include "../ShaderLibrary/UnlitInput.hlsl"
 		ENDHLSL
         
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
@@ -67,7 +67,7 @@
             #pragma shader_feature _DISTORTION
             #pragma vertex UnlitPassVertex
 			#pragma fragment UnlitPassFragment
-			#include "ShaderLibrary/UnlitPass.hlsl"
+			#include "../ShaderLibrary/UnlitPass.hlsl"
             ENDHLSL
         }
     	
@@ -88,7 +88,7 @@
 			#pragma multi_compile_instancing
 			#pragma vertex ShadowCasterPassVertex
 			#pragma fragment ShadowCasterPassFragment
-			#include "ShaderLibrary/ShadowCasterPass.hlsl"
+			#include "../ShaderLibrary/ShadowCasterPass.hlsl"
 			ENDHLSL
 		}
     }

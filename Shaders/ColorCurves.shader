@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Color Curves" {
             Name "Color Curves"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/ColorCurves.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/ColorCurves.hlsl"
             #pragma vertex CCPassVertex
             #pragma fragment CCFragment
             ENDHLSL

@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Film Grain" {
             Name "Film Grain"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/FilmGrain.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/FilmGrain.hlsl"
             #pragma vertex GrainPassVertex
             #pragma fragment GrainFragment
             ENDHLSL

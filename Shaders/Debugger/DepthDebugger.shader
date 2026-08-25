@@ -5,8 +5,8 @@ Shader "Hidden/TaoTie RP/Depth Debugger" {
 		ZWrite Off
 
 		HLSLINCLUDE
-			#include "../ShaderLibrary/Common.hlsl"
-			#include "DepthDebuggerPass.hlsl"
+			#include "../../ShaderLibrary/Common.hlsl"
+			#include "../../ShaderLibrary/Debugger/DepthDebuggerPass.hlsl"
 		ENDHLSL
 
 		Pass {

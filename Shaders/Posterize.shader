@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Posterize" {
             Name "Posterize"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/Posterize.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Posterize.hlsl"
             #pragma vertex PosterizePassVertex
             #pragma fragment PosterizeFragment
             ENDHLSL

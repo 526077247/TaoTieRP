@@ -21,7 +21,7 @@ Shader "Hidden/TaoTie RP/Lens Flare" {
             #pragma multi_compile _ FLARE_HAS_OCCLUSION
             #pragma multi_compile _ FLARE_OPENGL3_OR_OPENGLCORE
 
-            #include "ShaderLibrary/LensFlareSetup.hlsl"
+            #include "../ShaderLibrary/LensFlareSetup.hlsl"
             ENDHLSL
         }
 
@@ -39,7 +39,7 @@ Shader "Hidden/TaoTie RP/Lens Flare" {
             #pragma multi_compile _ FLARE_HAS_OCCLUSION
             #pragma multi_compile _ FLARE_OPENGL3_OR_OPENGLCORE
 
-            #include "ShaderLibrary/LensFlareSetup.hlsl"
+            #include "../ShaderLibrary/LensFlareSetup.hlsl"
             ENDHLSL
         }
 
@@ -58,7 +58,7 @@ Shader "Hidden/TaoTie RP/Lens Flare" {
             #pragma multi_compile _ FLARE_HAS_OCCLUSION
             #pragma multi_compile _ FLARE_OPENGL3_OR_OPENGLCORE
 
-            #include "ShaderLibrary/LensFlareSetup.hlsl"
+            #include "../ShaderLibrary/LensFlareSetup.hlsl"
             ENDHLSL
         }
 
@@ -76,7 +76,7 @@ Shader "Hidden/TaoTie RP/Lens Flare" {
             #pragma multi_compile _ FLARE_HAS_OCCLUSION
             #pragma multi_compile _ FLARE_OPENGL3_OR_OPENGLCORE
 
-            #include "ShaderLibrary/LensFlareSetup.hlsl"
+            #include "../ShaderLibrary/LensFlareSetup.hlsl"
             ENDHLSL
         }
 
@@ -91,7 +91,7 @@ Shader "Hidden/TaoTie RP/Lens Flare" {
             #pragma fragment fragOcclusion
 
             #define FLARE_COMPUTE_OCCLUSION
-            #include "ShaderLibrary/LensFlareSetup.hlsl"
+            #include "../ShaderLibrary/LensFlareSetup.hlsl"
             ENDHLSL
         }
     }

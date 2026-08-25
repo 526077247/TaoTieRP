@@ -11,7 +11,7 @@ Shader "Hidden/TaoTie RP/Outline" {
             #pragma multi_compile _ _OUTLINE_USE_GBUFFER_NORMALS
             #pragma vertex OutlinePassVertex
             #pragma fragment OutlinePassFragment
-            #include "ShaderLibrary/Outline.hlsl"
+            #include "../ShaderLibrary/Outline.hlsl"
             ENDHLSL
         }
 
@@ -21,7 +21,7 @@ Shader "Hidden/TaoTie RP/Outline" {
             HLSLPROGRAM
             #pragma vertex OutlinePassVertex
             #pragma fragment OutlineCopyFragment
-            #include "ShaderLibrary/Outline.hlsl"
+            #include "../ShaderLibrary/Outline.hlsl"
             ENDHLSL
         }
     }

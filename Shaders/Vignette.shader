@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Vignette" {
             Name "Vignette"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/Vignette.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Vignette.hlsl"
             #pragma vertex VignettePassVertex
             #pragma fragment VignetteFragment
             ENDHLSL

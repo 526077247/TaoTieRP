@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Pixelate" {
             Name "Pixelate"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/Pixelate.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/Pixelate.hlsl"
             #pragma vertex PixelatePassVertex
             #pragma fragment PixelateFragment
             ENDHLSL

@@ -8,8 +8,8 @@ Shader "Hidden/TaoTie RP/Motion Blur" {
             Name "Motion Blur"
 
             HLSLPROGRAM
-            #include "ShaderLibrary/Common.hlsl"
-            #include "ShaderLibrary/MotionBlur.hlsl"
+            #include "../ShaderLibrary/Common.hlsl"
+            #include "../ShaderLibrary/MotionBlur.hlsl"
             #pragma vertex MBPassVertex
             #pragma fragment MBFragment
             ENDHLSL
