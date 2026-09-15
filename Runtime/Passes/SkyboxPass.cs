@@ -29,7 +29,18 @@ namespace TaoTie.RenderPipelines
         public static void Record(RenderGraph renderGraph, Camera camera,
             in CameraRendererTextures textures, Vector2Int bufferSize)
         {
-            if (camera.clearFlags == CameraClearFlags.Skybox)
+            bool shouldRenderSkybox = camera.clearFlags == CameraClearFlags.Skybox;
+#if UNITY_EDITOR
+            // SceneView camera may not have clearFlags set to Skybox on the very
+            // first frame after domain reload / project open.  When RenderSettings
+            // has a skybox material we still want to draw it.
+            if (!shouldRenderSkybox && camera.cameraType == CameraType.SceneView &&
+                RenderSettings.skybox != null)
+            {
+                shouldRenderSkybox = true;
+            }
+#endif
+            if (shouldRenderSkybox)
             {
                 using RenderGraphBuilder builder = renderGraph.AddRenderPass(
                     sampler.name, out SkyboxPass pass, sampler);
