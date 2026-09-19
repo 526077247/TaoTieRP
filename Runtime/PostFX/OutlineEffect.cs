@@ -161,6 +161,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(outlineMaterial);
                 outlineMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class OutlineRenderPass

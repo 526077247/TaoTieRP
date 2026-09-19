@@ -24,6 +24,11 @@ namespace TaoTie.RenderPipelines
             return data;
         }
 
+        public static void Cleanup(Camera camera)
+        {
+            dataMap.Remove(camera);
+        }
+
         public static void CleanupAll()
         {
             dataMap.Clear();

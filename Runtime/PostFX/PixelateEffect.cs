@@ -126,6 +126,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(pixelateMaterial);
                 pixelateMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class PixelateRenderPass

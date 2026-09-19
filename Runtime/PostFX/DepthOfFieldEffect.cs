@@ -183,6 +183,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(dofMaterial);
                 dofMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class DOFBlurPass

@@ -122,6 +122,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(ppMaterial);
                 ppMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class PPRenderPass

@@ -189,6 +189,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(vfogMaterial);
                 vfogMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class VFogRenderPass

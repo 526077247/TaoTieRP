@@ -126,6 +126,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(caMaterial);
                 caMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class CARenderPass

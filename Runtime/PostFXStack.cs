@@ -79,17 +79,32 @@ namespace TaoTie.RenderPipelines
             if (mat == null) return;
             if (mat == lastMaterial && passIndexMap.Count > 0) return;
             lastMaterial = mat;
-            if (!passMaps.TryGetValue(mat, out passIndexMap))
+            if (passMaps.TryGetValue(mat, out passIndexMap)) return;
+
+            // Prune entries whose material was destroyed (e.g. leftover from previous play sessions)
+            if (passMaps.Count > 0)
             {
-                passIndexMap = new Dictionary<string, int>();
-                for (int i = 0; i < mat.passCount; i++)
+                List<Material> stale = null;
+                foreach (var key in passMaps.Keys)
                 {
-                    string name = mat.GetPassName(i);
-                    if (!string.IsNullOrEmpty(name))
-                        passIndexMap[name] = i;
+                    if (key == null)
+                        (stale ??= new List<Material>()).Add(key);
                 }
-                passMaps[mat] = passIndexMap;
+                if (stale != null)
+                {
+                    foreach (var m in stale)
+                        passMaps.Remove(m);
+                }
             }
+
+            passIndexMap = new Dictionary<string, int>();
+            for (int i = 0; i < mat.passCount; i++)
+            {
+                string name = mat.GetPassName(i);
+                if (!string.IsNullOrEmpty(name))
+                    passIndexMap[name] = i;
+            }
+            passMaps[mat] = passIndexMap;
         }
 
         public int GetPassIndex(string passName)

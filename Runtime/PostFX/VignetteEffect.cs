@@ -136,6 +136,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(vignetteMaterial);
                 vignetteMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class VignetteRenderPass

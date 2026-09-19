@@ -162,6 +162,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(mbMaterial);
                 mbMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class MBRenderPass

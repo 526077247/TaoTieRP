@@ -127,6 +127,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(grainMaterial);
                 grainMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class GrainRenderPass

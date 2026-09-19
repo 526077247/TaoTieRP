@@ -133,6 +133,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(sharpenMaterial);
                 sharpenMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class SharpenRenderPass

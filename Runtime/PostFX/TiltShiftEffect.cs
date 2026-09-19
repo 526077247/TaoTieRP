@@ -149,6 +149,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(tiltShiftMaterial);
                 tiltShiftMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class TiltShiftRenderPass

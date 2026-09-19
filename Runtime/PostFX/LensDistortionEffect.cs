@@ -130,6 +130,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(ldMaterial);
                 ldMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class LDRenderPass

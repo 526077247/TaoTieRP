@@ -21,7 +21,9 @@ namespace TaoTie.RenderPipelines
 
         void OnDisable()
         {
-            TAACameraData.Cleanup(GetComponent<Camera>());
+            Camera camera = GetComponent<Camera>();
+            TAACameraData.Cleanup(camera);
+            MotionCameraData.Cleanup(camera);
         }
     }
 }

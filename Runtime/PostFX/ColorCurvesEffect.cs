@@ -23,6 +23,7 @@ namespace TaoTie.RenderPipelines
         static Material ccMaterial;
         static Shader cachedShader;
         static bool disposedRegistered;
+        bool lutsDisposeRegistered;
 
         [HideInInspector] public Shader ccShader;
 
@@ -255,6 +256,11 @@ namespace TaoTie.RenderPipelines
                 disposedRegistered = true;
                 RegisterDispose(Dispose);
             }
+            if (!lutsDisposeRegistered)
+            {
+                lutsDisposeRegistered = true;
+                RegisterDispose(DestroyLUTs);
+            }
         }
 
         protected override void DisposeInternal() => Dispose();
@@ -265,6 +271,27 @@ namespace TaoTie.RenderPipelines
             {
                 CoreUtils.Destroy(ccMaterial);
                 ccMaterial = null;
+            }
+            disposedRegistered = false;
+        }
+
+        void DestroyLUTs()
+        {
+            DestroyLUT(ref masterLUT);
+            DestroyLUT(ref rgbLUT);
+            DestroyLUT(ref hueHueLUT);
+            DestroyLUT(ref hueSatLUT);
+            DestroyLUT(ref satSatLUT);
+            DestroyLUT(ref lumSatLUT);
+            lutsDirty = true;
+        }
+
+        static void DestroyLUT(ref Texture2D tex)
+        {
+            if (tex != null)
+            {
+                CoreUtils.Destroy(tex);
+                tex = null;
             }
         }
 

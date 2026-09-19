@@ -26,11 +26,6 @@ namespace TaoTie.RenderPipelines
         
         static readonly ShaderTagId[] geometryShaderTagIDs = { new("SRPDefaultUnlit"), new("CustomLit") };
 
-        // Shared RTHandles for camera stacking (allocated/released per-frame by pipeline)
-        RTHandle sharedColorRT;
-        RTHandle sharedDepthRT;
-        bool hasSharedRT;
-
         public CameraRenderer(Shader shader, Shader deferredLightingShader,
             Shader forwardPlusDebuggerShader, Shader depthDebuggerShader,
             Shader overdrawResolveShader,
@@ -586,6 +581,7 @@ namespace TaoTie.RenderPipelines
             DepthDebugger.Cleanup();
             TAAResolvePass.Dispose();
             TAACameraData.CleanupAll();
+            MotionCameraData.CleanupAll();
             SMAATextures.Dispose();
             SSAOPass.Dispose();
             ScreenSpaceShadowsPass.Dispose();

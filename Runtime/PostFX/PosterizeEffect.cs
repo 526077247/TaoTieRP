@@ -126,6 +126,7 @@ namespace TaoTie.RenderPipelines
                 CoreUtils.Destroy(posterizeMaterial);
                 posterizeMaterial = null;
             }
+            disposedRegistered = false;
         }
 
         class PosterizeRenderPass
