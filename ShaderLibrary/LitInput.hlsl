@@ -3,7 +3,7 @@
 
 #define INPUT_PROP(name) UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, name)
 
-TEXTURE2D(_BaseMap);
+TEXTURE2D(_MainTex);
 TEXTURE2D(_MaskMap);
 TEXTURE2D(_EmissionMap);
 TEXTURE2D(_DetailAlbedoMap);
@@ -11,9 +11,9 @@ TEXTURE2D(_DetailNormalMap);
 TEXTURE2D(_BumpMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _MainTex_ST)
     UNITY_DEFINE_INSTANCED_PROP(float4, _DetailAlbedoMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
     UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
     UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
     UNITY_DEFINE_INSTANCED_PROP(float, _ZWrite)
@@ -47,7 +47,7 @@ InputConfig GetInputConfig (float4 positionSS,float2 baseUV, float2 detailUV = 0
 }
 
 float2 TransformBaseUV (float2 baseUV) {
-    float4 baseST = INPUT_PROP(_BaseMap_ST);
+    float4 baseST = INPUT_PROP(_MainTex_ST);
     return baseUV * baseST.xy + baseST.zw;
 }
 
@@ -72,8 +72,8 @@ float4 GetMask (InputConfig c) {
 }
 
 float4 GetBase (InputConfig c) {
-    float4 map = SAMPLE_TEXTURE2D(_BaseMap, sampler_linear_repeat, c.baseUV);
-    float4 color = INPUT_PROP(_BaseColor);
+    float4 map = SAMPLE_TEXTURE2D(_MainTex, sampler_linear_repeat, c.baseUV);
+    float4 color = INPUT_PROP(_Color);
     
     if (c.useDetail) {
         float detail = GetDetail(c).r * INPUT_PROP(_DetailAlbedoScale);

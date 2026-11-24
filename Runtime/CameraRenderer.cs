@@ -15,6 +15,13 @@ namespace TaoTie.RenderPipelines
         const string k_OverlayBufferName = "Overlay Camera";
         static bool forwardPlusActive;
 
+        static readonly Vector4[] screenMaskCircles =
+            new Vector4[ScreenMaskProviderRegistry.MaxCircles];
+        static readonly float[] screenMaskStrengths =
+            new float[ScreenMaskProviderRegistry.MaxCircles];
+        static readonly float[] screenMaskEyeDepths =
+            new float[ScreenMaskProviderRegistry.MaxCircles];
+
         static CameraSettings defaultCameraSettings = new CameraSettings();
 
         PostFXStack postFXStack = new PostFXStack();
@@ -199,6 +206,28 @@ namespace TaoTie.RenderPipelines
                 bufferSize.y = camera.pixelHeight;
             }
 
+            ScreenMaskData screenMask = default;
+            bool useScreenMask = !isReflectionCamera &&
+                camera.cameraType != CameraType.SceneView &&
+                camera.cameraType != CameraType.Preview &&
+                ScreenMaskProviderRegistry.ProviderCount > 0;
+            if (useScreenMask)
+            {
+                int maskCount = ScreenMaskProviderRegistry.Collect(
+                    camera, screenMaskCircles, screenMaskStrengths, screenMaskEyeDepths);
+                if (maskCount > 0)
+                {
+                    screenMask = new ScreenMaskData
+                    {
+                        Circles = screenMaskCircles,
+                        Strengths = screenMaskStrengths,
+                        EyeDepths = screenMaskEyeDepths,
+                        Count = maskCount,
+                        Aspect = (float) bufferSize.x / Mathf.Max(1, bufferSize.y)
+                    };
+                }
+            }
+
             if (!cameraSettings.allowPostProcessAA)
                 bufferSettings.postProcessAA = CameraBufferSettings.PostProcessAA.Off;
 
@@ -351,6 +380,10 @@ namespace TaoTie.RenderPipelines
                     Shader.EnableKeyword("_SCREEN_SPACE_SHADOWS");
                 else
                     Shader.DisableKeyword("_SCREEN_SPACE_SHADOWS");
+                if (screenMask.Enabled)
+                    Shader.EnableKeyword("_SCREEN_MASK_ENABLED");
+                else
+                    Shader.DisableKeyword("_SCREEN_MASK_ENABLED");
                 ShadowTextures shadowTextures = LightingPass.Record(
                     renderGraph, cullingResults, bufferSize,shadowSettings,
                     cameraSettings.maskLights ? cameraSettings.renderingLayerMask :
@@ -359,7 +392,7 @@ namespace TaoTie.RenderPipelines
                 CameraRendererTextures textures = SetupPass.Record(
                     renderGraph, useColorTexture, useDepthTexture,
                     useHDR, bufferSize, camera, msaaSamples,
-                    taaJitter, useTAA);
+                    taaJitter, useTAA, screenMask);
                 var copier = new CameraRendererCopier(material, camera, cameraSettings.finalBlendMode);
                 if (useDepthPrePass)
                 {
@@ -383,9 +416,19 @@ namespace TaoTie.RenderPipelines
                         cameraSettings.renderingLayerMask, useHDR, bufferSize,
                         textures.depthAttachment, shadowTextures);
 
-                    // Deferred lighting writes to color attachment, skips sky pixels (depth clip)
+                    // Deferred lighting writes to color attachment, skips sky pixels (depth clip).
+                    // Pass the same jittered projection SetupPass applied: it must be restored
+                    // after this fullscreen pass so transparent geometry stays in the same
+                    // projection space as the G-Buffer depth (no TAA z-fighting / flicker).
+                    Matrix4x4 jitteredProj = nonJitteredProj;
+                    if (useTAA)
+                    {
+                        jitteredProj.m02 += taaJitter.x * 2f / bufferSize.x;
+                        jitteredProj.m12 += taaJitter.y * 2f / bufferSize.y;
+                    }
                     DeferredLightingPass.Record(
-                        renderGraph, copier, textures, gBuffer, shadowTextures, deferredLightingShader);
+                        renderGraph, copier, textures, gBuffer, shadowTextures,
+                        deferredLightingShader, jitteredProj);
 
                     // Skybox renders after deferred lighting, only where depth is far
                     SkyboxPass.Record(renderGraph, camera, textures, bufferSize);

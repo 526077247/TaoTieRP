@@ -3,14 +3,14 @@
 
 #define INPUT_PROP(name) UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, name)
 
-TEXTURE2D(_BaseMap);
+TEXTURE2D(_MainTex);
 TEXTURE2D(_DistortionMap);
-SAMPLER(sampler_BaseMap);
+SAMPLER(sampler_MainTex);
 SAMPLER(sampler_DistortionMap);
 
 UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseMap_ST)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _BaseColor)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _MainTex_ST)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
     UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeDistance)
     UNITY_DEFINE_INSTANCED_PROP(float, _NearFadeRange)
     UNITY_DEFINE_INSTANCED_PROP(float, _SoftParticlesDistance)
@@ -44,15 +44,15 @@ InputConfig GetInputConfig (float4 positionSS,float2 baseUV) {
 }
 
 float2 TransformBaseUV (float2 baseUV) {
-    float4 baseST = INPUT_PROP(_BaseMap_ST);
+    float4 baseST = INPUT_PROP(_MainTex_ST);
     return baseUV * baseST.xy + baseST.zw;
 }
 
 float4 GetBase (InputConfig c) {
-    float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, c.baseUV);
+    float4 baseMap = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, c.baseUV);
     if (c.flipbookBlending) {
         baseMap = lerp(
-            baseMap, SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, c.flipbookUVB.xy),
+            baseMap, SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, c.flipbookUVB.xy),
             c.flipbookUVB.z
         );
     }
@@ -67,7 +67,7 @@ float4 GetBase (InputConfig c) {
             INPUT_PROP(_SoftParticlesRange);
         baseMap.a *= saturate(nearAttenuation);
     }
-    float4 baseColor = INPUT_PROP(_BaseColor);
+    float4 baseColor = INPUT_PROP(_Color);
     return baseMap * baseColor * c.color;
 }
 

@@ -5,8 +5,8 @@ Shader "TaoTie RP/Unlit"
 		[Main(Base, _, off, off)]
 		_group ("Base", float) = 0
 		[Space()]
-		[Tex(Base, _BaseColor)]_BaseMap("Texture", 2D) = "white" {}
-		[HideInInspector][HDR]_BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
+		[Tex(Base, _Color)]_MainTex("Texture", 2D) = "white" {}
+		[HideInInspector][HDR]_Color("Color", Color) = (0.5, 0.5, 0.5, 1.0)
 
 		[Main(Clipping, _, off, off)]
 		_groupClipping ("Clipping", float) = 0
@@ -37,6 +37,7 @@ Shader "TaoTie RP/Unlit"
             #pragma shader_feature _CLIPPING
             #pragma multi_compile_instancing
             #pragma vertex UnlitPassVertex
+            #pragma multi_compile _ _SCREEN_MASK_ENABLED
 			#pragma fragment UnlitPassFragment
 			#include "../ShaderLibrary/UnlitPass.hlsl"
             ENDHLSL
@@ -74,6 +75,7 @@ Shader "TaoTie RP/Unlit"
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_instancing
 			#pragma vertex DepthOnlyPassVertex
+			#pragma multi_compile _ _SCREEN_MASK_ENABLED
 			#pragma fragment DepthOnlyPassFragment
 			#include "../ShaderLibrary/DepthOnlyPass.hlsl"
 			ENDHLSL

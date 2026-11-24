@@ -8,7 +8,7 @@ namespace TaoTie
     {
 
         static int 
-            baseColorId = Shader.PropertyToID("_BaseColor"),
+            baseColorId = Shader.PropertyToID("_Color"),
             metallicId = Shader.PropertyToID("_Metallic"),
             smoothnessId = Shader.PropertyToID("_Smoothness");
 

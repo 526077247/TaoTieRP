@@ -31,6 +31,7 @@ void DepthOnlyPassFragment (Varyings input) {
         float4 base = GetBase(config);
         clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
+    ClipByScreenMask(config.fragment);
 }
 
 #endif

@@ -10,13 +10,19 @@ namespace TaoTie.RenderPipelines
         static readonly ProfilingSampler sampler = new("Setup");
 
         static readonly int attachmentSizeID = Shader.PropertyToID("_CameraBufferSize");
-        
+        static readonly int screenMaskCirclesID = Shader.PropertyToID("_ScreenMaskCircles");
+        static readonly int screenMaskStrengthsID = Shader.PropertyToID("_ScreenMaskStrengths");
+        static readonly int screenMaskEyeDepthsID = Shader.PropertyToID("_ScreenMaskEyeDepths");
+        static readonly int screenMaskCountID = Shader.PropertyToID("_ScreenMaskCount");
+        static readonly int screenMaskAspectID = Shader.PropertyToID("_ScreenMaskAspect");
+
         TextureHandle colorAttachment, depthAttachment;
         Vector2Int attachmentSize;
         Camera camera;
         CameraClearFlags clearFlags;
         Vector2 jitter;
         bool useJitter;
+        ScreenMaskData screenMask;
 
         void Render(RenderGraphContext context)
         {
@@ -48,13 +54,25 @@ namespace TaoTie.RenderPipelines
                 1f / attachmentSize.x, 1f / attachmentSize.y,
                 attachmentSize.x, attachmentSize.y
             ));
+            if (screenMask.Enabled)
+            {
+                cmd.SetGlobalVectorArray(screenMaskCirclesID, screenMask.Circles);
+                cmd.SetGlobalFloatArray(screenMaskStrengthsID, screenMask.Strengths);
+                cmd.SetGlobalFloatArray(screenMaskEyeDepthsID, screenMask.EyeDepths);
+                cmd.SetGlobalInt(screenMaskCountID, screenMask.Count);
+                cmd.SetGlobalFloat(screenMaskAspectID, screenMask.Aspect);
+            }
+            else
+            {
+                cmd.SetGlobalInt(screenMaskCountID, 0);
+            }
             context.renderContext.ExecuteCommandBuffer(cmd);
             cmd.Clear();
         }
 
         public static CameraRendererTextures Record(RenderGraph renderGraph, bool copyColor, bool copyDepth,
             bool useHDR, Vector2Int attachmentSize, Camera camera, MSAASamples msaaSamples,
-            Vector2 taaJitter = default, bool useTAA = false)
+            Vector2 taaJitter = default, bool useTAA = false, ScreenMaskData screenMask = default)
         {
             using RenderGraphBuilder builder =
                 renderGraph.AddRenderPass(sampler.name, out SetupPass pass, sampler);
@@ -63,6 +81,7 @@ namespace TaoTie.RenderPipelines
             pass.clearFlags = camera.clearFlags;
             pass.jitter = taaJitter;
             pass.useJitter = useTAA;
+            pass.screenMask = screenMask;
 
             TextureHandle colorCopy = default, depthCopy = default;
 

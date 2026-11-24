@@ -72,7 +72,8 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 	#if defined(_CLIPPING)
 		clip(base.a - GetCutoff(config));
 	#endif
-	
+	ClipByScreenMask(config.fragment);
+
 	Surface surface;
 	surface.position = input.positionWS;
 	surface.screenUV = config.fragment.screenUV;

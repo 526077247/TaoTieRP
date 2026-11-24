@@ -71,6 +71,7 @@ GBufferOutput DeferredGBufferPassFragment (Varyings input) {
     #if defined(_CLIPPING)
         clip(base.a - GetCutoff(config));
     #endif
+    ClipByScreenMask(config.fragment);
 
     float3 normalWS;
     #if defined(_NORMAL_MAP)

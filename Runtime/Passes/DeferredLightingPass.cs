@@ -23,6 +23,12 @@ namespace TaoTie.RenderPipelines
         TextureHandle colorAttachment;
         TextureHandle depthAttachment;
         TextureHandle gBufferAlbedoAO, gBufferNormalMS, gBufferEmission;
+        // TAA jittered projection used by SetupPass / GBufferPass. Must be restored after
+        // this fullscreen pass so transparent geometry (roads drawn slightly above terrain)
+        // keeps the SAME projection as the depth buffer written by the G-Buffer.
+        // Restoring the non-jittered camera.projectionMatrix here makes transparent objects
+        // z-fight against jittered G-Buffer depth, flickering every TAA frame.
+        Matrix4x4 jitteredProjection;
 
         void Render(RenderGraphContext context)
         {
@@ -47,8 +53,12 @@ namespace TaoTie.RenderPipelines
                 RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
             buffer.SetViewport(new Rect(0, 0, copier.Camera.pixelWidth, copier.Camera.pixelHeight));
             buffer.DrawMesh(CameraRendererCopier.FullscreenMesh, Matrix4x4.identity, material, 0, 0);
+            // Restore the SAME jittered projection SetupPass applied, not the raw camera
+            // projection. Otherwise transparent geometry rendered after this pass (e.g. the
+            // hex road, offset +0.04 above terrain) is transformed with a different projection
+            // than the G-Buffer depth it is tested against -> per-frame flicker under TAA.
             buffer.SetViewProjectionMatrices(
-                copier.Camera.worldToCameraMatrix, cam.projectionMatrix);
+                copier.Camera.worldToCameraMatrix, jitteredProjection);
 
             context.renderContext.ExecuteCommandBuffer(buffer);
             buffer.Clear();
@@ -60,7 +70,8 @@ namespace TaoTie.RenderPipelines
             in CameraRendererTextures textures,
             in GBufferTextures gBuffer,
             in ShadowTextures shadowTextures,
-            Shader deferredLightingShader)
+            Shader deferredLightingShader,
+            Matrix4x4 jitteredProjection)
         {
             if (deferredLightingShader == null) return;
 
@@ -75,6 +86,7 @@ namespace TaoTie.RenderPipelines
 
             pass.material = deferredLightingMaterial;
             pass.copier = copier;
+            pass.jitteredProjection = jitteredProjection;
             pass.colorAttachment = builder.WriteTexture(textures.colorAttachment);
             pass.depthAttachment = builder.ReadTexture(gBuffer.depthAttachment);
             pass.gBufferAlbedoAO = builder.ReadTexture(gBuffer.albedoAO);

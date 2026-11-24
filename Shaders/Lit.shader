@@ -4,8 +4,8 @@ Shader "TaoTie RP/Lit" {
 		[Main(Surface, _, off, off)]
 		_group ("Surface", float) = 0
 		[Space()]
-		[Tex(Surface, _BaseColor)]_BaseMap("Texture", 2D) = "white" {}
-		[HideInInspector]_BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
+		[Tex(Surface, _Color)]_MainTex("Texture", 2D) = "white" {}
+		[HideInInspector]_Color("Color", Color) = (0.5, 0.5, 0.5, 1.0)
 		[Sub(Surface)]_Metallic ("Metallic", Range(0, 1)) = 0
 		[Sub(Surface)]_OcclusionStrength ("Occlusion", Range(0, 1)) = 1
 		[Sub(Surface)]_Smoothness ("Smoothness", Range(0, 1)) = 0.5
@@ -55,8 +55,6 @@ Shader "TaoTie RP/Lit" {
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 0
 		[Enum(Off, 0, On, 1)] _ZWrite ("Z Write", Float) = 1
 
-		[HideInInspector] _MainTex("Texture for Lightmap", 2D) = "white" {}
-		[HideInInspector] _Color("Color for Lightmap", Color) = (0.5, 0.5, 0.5, 1.0)
 	}
 	
 	SubShader {
@@ -84,6 +82,7 @@ Shader "TaoTie RP/Lit" {
 			#pragma multi_compile_local _ _SHADOW_MASK
 			#pragma multi_compile _ _SCREEN_SPACE_SHADOWS
 			#pragma multi_compile _ _TAOTIE_FORWARD_PLUS
+			#pragma multi_compile _ _SCREEN_MASK_ENABLED
 			#pragma multi_compile _ _SSAO_ENABLED
 			#pragma multi_compile_local _ LIGHTMAP_ON
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
@@ -124,6 +123,7 @@ Shader "TaoTie RP/Lit" {
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_instancing
 			#pragma vertex DepthOnlyPassVertex
+			#pragma multi_compile _ _SCREEN_MASK_ENABLED
 			#pragma fragment DepthOnlyPassFragment
 			#include "../ShaderLibrary/DepthOnlyPass.hlsl"
 			ENDHLSL
@@ -147,6 +147,7 @@ Shader "TaoTie RP/Lit" {
 			#pragma multi_compile _ LOD_FADE_CROSSFADE
 			#pragma multi_compile_instancing
 			#pragma vertex DeferredGBufferPassVertex
+			#pragma multi_compile _ _SCREEN_MASK_ENABLED
 			#pragma fragment DeferredGBufferPassFragment
 			#include "../ShaderLibrary/DeferredGBufferPass.hlsl"
 			ENDHLSL

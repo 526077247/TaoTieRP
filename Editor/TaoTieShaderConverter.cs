@@ -53,8 +53,8 @@ namespace TaoTie.RenderPipelines.Editor
         // Property name remapping: source name → target name
         static readonly Dictionary<string, string> PropertyRemap = new()
         {
-            { "_MainTex", "_BaseMap" },
-            { "_Color",   "_BaseColor" },
+            { "_BaseMap", "_MainTex" },
+            { "_BaseColor", "_Color" },
             { "_Glossiness", "_Smoothness" },
             { "_GlossMapScale", "_Smoothness" },
         };
@@ -286,7 +286,7 @@ namespace TaoTie.RenderPipelines.Editor
                         case ShaderUtil.ShaderPropertyType.TexEnv:
                             var tex = (Texture)src.value;
                             mat.SetTexture(targetName, tex);
-                            // Transfer tiling/offset if both source and target use _BaseMap
+                            // Transfer tiling/offset when the source uses a main texture property
                             if (sourceName == "_MainTex" || sourceName == "_BaseMap")
                             {
                                 var st = sourceProps.ContainsKey(sourceName + "_ST")

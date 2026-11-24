@@ -48,6 +48,7 @@ float OrthographicDepthBufferToLinear (float rawDepth) {
 }
 
 #include "Fragment.hlsl"
+#include "OcclusionFade.hlsl"
 #if defined(_TAOTIE_FORWARD_PLUS) && !defined(SHADER_API_GLES)
     #include "ForwardPlus.hlsl"
     #define TAOTIE_FORWARD_PLUS 1
